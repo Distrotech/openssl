@@ -157,7 +157,7 @@ $(EXE): progs.h $(E_OBJ) $(PROGRAM).o $(DLIBCRYPTO) $(DLIBSSL)
 	LIBRARIES="$(LIBSSL) $(LIBKRB5) $(LIBCRYPTO)" ; \
 	$(MAKE) -f $(TOP)/Makefile.shared -e \
 		APPNAME=$(EXE) OBJECTS="$(PROGRAM).o $(E_OBJ)" \
-		LIBDEPS="$(PEX_LIBS) $$LIBRARIES $(EX_LIBS)" \
+		LIBDEPS="$(PEX_LIBS) $$LIBRARIES $(EX_LIBS) $(LIBSSL) $(LIBCRYPTO)" \
 		link_app.$${shlib_target}
 	@(cd ..; $(MAKE) rehash)
 
