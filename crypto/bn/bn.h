@@ -172,6 +172,13 @@ extern "C" {
 # endif
 #endif
 
+/* Address type.  */
+#ifdef _WIN64
+#define BN_ADDR unsigned long long
+#else
+#define BN_ADDR unsigned long
+#endif
+
 /* assuming long is 64bit - this is the DEC Alpha
  * unsigned long long is only 64 bits :-(, don't define
  * BN_LLONG for the DEC Alpha */
