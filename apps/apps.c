@@ -143,9 +143,7 @@
 #include <openssl/jpake.h>
 #endif
 
-#define NON_MAIN
 #include "apps.h"
-#undef NON_MAIN
 
 #ifdef _WIN32
 static int WIN32_rename(const char *from, const char *to);
@@ -171,89 +169,6 @@ load_netscape_key(BIO *err, BIO *key, const char *file,
 #endif
 
 int app_init(long mesgwin);
-#ifdef undef /* never finished - probably never will be :-) */
-int args_from_file(char *file, int *argc, char **argv[])
-	{
-	FILE *fp;
-	int num,i;
-	unsigned int len;
-	static char *buf=NULL;
-	static char **arg=NULL;
-	char *p;
-
-	fp=fopen(file,"r");
-	if (fp == NULL)
-		return(0);
-
-	if (fseek(fp,0,SEEK_END)==0)
-		len=ftell(fp), rewind(fp);
-	else	len=-1;
-	if (len<=0)
-		{
-		fclose(fp);
-		return(0);
-		}
-
-	*argc=0;
-	*argv=NULL;
-
-	if (buf != NULL) OPENSSL_free(buf);
-	buf=(char *)OPENSSL_malloc(len+1);
-	if (buf == NULL) return(0);
-
-	len=fread(buf,1,len,fp);
-	if (len <= 1) return(0);
-	buf[len]='\0';
-
-	i=0;
-	for (p=buf; *p; p++)
-		if (*p == '\n') i++;
-	if (arg != NULL) OPENSSL_free(arg);
-	arg=(char **)OPENSSL_malloc(sizeof(char *)*(i*2));
-
-	*argv=arg;
-	num=0;
-	p=buf;
-	for (;;)
-		{
-		if (!*p) break;
-		if (*p == '#') /* comment line */
-			{
-			while (*p && (*p != '\n')) p++;
-			continue;
-			}
-		/* else we have a line */
-		*(arg++)=p;
-		num++;
-		while (*p && ((*p != ' ') && (*p != '\t') && (*p != '\n')))
-			p++;
-		if (!*p) break;
-		if (*p == '\n')
-			{
-			*(p++)='\0';
-			continue;
-			}
-		/* else it is a tab or space */
-		p++;
-		while (*p && ((*p == ' ') || (*p == '\t') || (*p == '\n')))
-			p++;
-		if (!*p) break;
-		if (*p == '\n')
-			{
-			p++;
-			continue;
-			}
-		*(arg++)=p++;
-		num++;
-		while (*p && (*p != '\n')) p++;
-		if (!*p) break;
-		/* else *p == '\n' */
-		*(p++)='\0';
-		}
-	*argc=num;
-	return(1);
-	}
-#endif
 
 int str2fmt(char *s)
 	{
@@ -290,96 +205,6 @@ int str2fmt(char *s)
 		return(FORMAT_UNDEF);
 	}
 
-#if defined(OPENSSL_SYS_MSDOS) || defined(OPENSSL_SYS_WIN32) || defined(OPENSSL_SYS_WIN16) || defined(OPENSSL_SYS_NETWARE)
-void program_name(char *in, char *out, int size)
-	{
-	int i,n;
-	char *p=NULL;
-
-	n=strlen(in);
-	/* find the last '/', '\' or ':' */
-	for (i=n-1; i>0; i--)
-		{
-		if ((in[i] == '/') || (in[i] == '\\') || (in[i] == ':'))
-			{
-			p= &(in[i+1]);
-			break;
-			}
-		}
-	if (p == NULL)
-		p=in;
-	n=strlen(p);
-
-#if defined(OPENSSL_SYS_NETWARE)
-   /* strip off trailing .nlm if present. */
-   if ((n > 4) && (p[n-4] == '.') &&
-      ((p[n-3] == 'n') || (p[n-3] == 'N')) &&
-      ((p[n-2] == 'l') || (p[n-2] == 'L')) &&
-      ((p[n-1] == 'm') || (p[n-1] == 'M')))
-      n-=4;
-#else
-	/* strip off trailing .exe if present. */
-	if ((n > 4) && (p[n-4] == '.') &&
-		((p[n-3] == 'e') || (p[n-3] == 'E')) &&
-		((p[n-2] == 'x') || (p[n-2] == 'X')) &&
-		((p[n-1] == 'e') || (p[n-1] == 'E')))
-		n-=4;
-#endif
-
-	if (n > size-1)
-		n=size-1;
-
-	for (i=0; i<n; i++)
-		{
-		if ((p[i] >= 'A') && (p[i] <= 'Z'))
-			out[i]=p[i]-'A'+'a';
-		else
-			out[i]=p[i];
-		}
-	out[n]='\0';
-	}
-#else
-#ifdef OPENSSL_SYS_VMS
-void program_name(char *in, char *out, int size)
-	{
-	char *p=in, *q;
-	char *chars=":]>";
-
-	while(*chars != '\0')
-		{
-		q=strrchr(p,*chars);
-		if (q > p)
-			p = q + 1;
-		chars++;
-		}
-
-	q=strrchr(p,'.');
-	if (q == NULL)
-		q = p + strlen(p);
-	strncpy(out,p,size-1);
-	if (q-p >= size)
-		{
-		out[size-1]='\0';
-		}
-	else
-		{
-		out[q-p]='\0';
-		}
-	}
-#else
-void program_name(char *in, char *out, int size)
-	{
-	char *p;
-
-	p=strrchr(in,'/');
-	if (p != NULL)
-		p++;
-	else
-		p=in;
-	BUF_strlcpy(out,p,size);
-	}
-#endif
-#endif
 
 int chopup_args(ARGS *arg, char *buf, int *argc, char **argv[])
 	{
@@ -863,12 +688,6 @@ X509 *load_cert(BIO *err, const char *file, int format,
 		return x;
 		}
 
-	if ((cert=BIO_new(BIO_s_file())) == NULL)
-		{
-		ERR_print_errors(err);
-		goto end;
-		}
-
 	if (file == NULL)
 		{
 #ifdef _IONBF
@@ -876,17 +695,14 @@ X509 *load_cert(BIO *err, const char *file, int format,
 		setvbuf(stdin, NULL, _IONBF, 0);
 # endif /* ndef OPENSSL_NO_SETVBUF_IONBF */
 #endif
-		BIO_set_fp(cert,stdin,BIO_NOCLOSE);
+		cert = BIO_new_fp(stdin,BIO_NOCLOSE);
 		}
 	else
+		cert = BIO_new_file(file, RB(format));
+	if (cert == NULL)
 		{
-		if (BIO_read_filename(cert,file) <= 0)
-			{
-			BIO_printf(err, "Error opening %s %s\n",
-				cert_descrip, file);
-			ERR_print_errors(err);
-			goto end;
-			}
+		ERR_print_errors(err);
+		goto end;
 		}
 
 	if 	(format == FORMAT_ASN1)
@@ -944,22 +760,14 @@ X509_CRL *load_crl(const char *infile, int format)
 		return x;
 		}
 
-	in=BIO_new(BIO_s_file());
+	if (infile == NULL)
+		in = BIO_new_fp(stdin,BIO_NOCLOSE);
+	else
+		in = BIO_new_file(infile, RB(format));
 	if (in == NULL)
 		{
 		ERR_print_errors(bio_err);
 		goto end;
-		}
-
-	if (infile == NULL)
-		BIO_set_fp(in,stdin,BIO_NOCLOSE);
-	else
-		{
-		if (BIO_read_filename(in,infile) <= 0)
-			{
-			perror(infile);
-			goto end;
-			}
 		}
 	if 	(format == FORMAT_ASN1)
 		x=d2i_X509_CRL_bio(in,NULL);
@@ -1015,12 +823,6 @@ EVP_PKEY *load_key(BIO *err, const char *file, int format, int maybe_stdin,
 		goto end;
 		}
 #endif
-	key=BIO_new(BIO_s_file());
-	if (key == NULL)
-		{
-		ERR_print_errors(err);
-		goto end;
-		}
 	if (file == NULL && maybe_stdin)
 		{
 #ifdef _IONBF
@@ -1028,16 +830,15 @@ EVP_PKEY *load_key(BIO *err, const char *file, int format, int maybe_stdin,
 		setvbuf(stdin, NULL, _IONBF, 0);
 # endif /* ndef OPENSSL_NO_SETVBUF_IONBF */
 #endif
-		BIO_set_fp(key,stdin,BIO_NOCLOSE);
+		key = BIO_new_fp(stdin,BIO_NOCLOSE);
 		}
 	else
-		if (BIO_read_filename(key,file) <= 0)
-			{
-			BIO_printf(err, "Error opening %s %s\n",
-				key_descrip, file);
-			ERR_print_errors(err);
-			goto end;
-			}
+		key = BIO_new_file(file, RB(format));
+	if (key == NULL)
+		{
+		ERR_print_errors(err);
+		goto end;
+		}
 	if (format == FORMAT_ASN1)
 		{
 		pkey=d2i_PrivateKey_bio(key, NULL);
@@ -1106,12 +907,6 @@ EVP_PKEY *load_pubkey(BIO *err, const char *file, int format, int maybe_stdin,
 		goto end;
 		}
 #endif
-	key=BIO_new(BIO_s_file());
-	if (key == NULL)
-		{
-		ERR_print_errors(err);
-		goto end;
-		}
 	if (file == NULL && maybe_stdin)
 		{
 #ifdef _IONBF
@@ -1119,15 +914,16 @@ EVP_PKEY *load_pubkey(BIO *err, const char *file, int format, int maybe_stdin,
 		setvbuf(stdin, NULL, _IONBF, 0);
 # endif /* ndef OPENSSL_NO_SETVBUF_IONBF */
 #endif
-		BIO_set_fp(key,stdin,BIO_NOCLOSE);
+		key = BIO_new_fp(stdin,BIO_NOCLOSE);
 		}
 	else
-		if (BIO_read_filename(key,file) <= 0)
-			{
-			BIO_printf(err, "Error opening %s %s\n",
-				key_descrip, file);
-			ERR_print_errors(err);
-			goto end;
+		/* XXX rsalz look at all the format types below; RB() is 
+		 * too simple. */
+		key = BIO_new_file(file, RB(format));
+	if (key == NULL)
+		{
+		ERR_print_errors(err);
+		goto end;
 		}
 	if (format == FORMAT_ASN1)
 		{
@@ -1177,11 +973,6 @@ EVP_PKEY *load_pubkey(BIO *err, const char *file, int format, int maybe_stdin,
 	else if (format == FORMAT_MSBLOB)
 		pkey = b2i_PublicKey_bio(key);
 #endif
-	else
-		{
-		BIO_printf(err,"bad input format specified for key file\n");
-		goto end;
-		}
  end:
 	if (key != NULL) BIO_free(key);
 	if (pkey == NULL)
@@ -1635,47 +1426,6 @@ ENGINE *setup_engine(BIO *err, const char *engine, int debug)
         }
 #endif
 
-int load_config(BIO *err, CONF *cnf)
-	{
-	static int load_config_called = 0;
-	if (load_config_called)
-		return 1;
-	load_config_called = 1;
-	if (!cnf)
-		cnf = config;
-	if (!cnf)
-		return 1;
-
-	OPENSSL_load_builtin_modules();
-
-	if (CONF_modules_load(cnf, NULL, 0) <= 0)
-		{
-		BIO_printf(err, "Error configuring OpenSSL\n");
-		ERR_print_errors(err);
-		return 0;
-		}
-	return 1;
-	}
-
-char *make_config_name()
-	{
-	const char *t=X509_get_default_cert_area();
-	size_t len;
-	char *p;
-
-	len=strlen(t)+strlen(OPENSSL_CONF)+2;
-	p=OPENSSL_malloc(len);
-	if (p == NULL)
-		return NULL;
-	BUF_strlcpy(p,t,len);
-#ifndef OPENSSL_SYS_VMS
-	BUF_strlcat(p,"/",len);
-#endif
-	BUF_strlcat(p,OPENSSL_CONF,len);
-
-	return p;
-	}
-
 static unsigned long index_serial_hash(const OPENSSL_CSTRING *a)
 	{
 	const char *n;
@@ -1713,7 +1463,7 @@ static IMPLEMENT_LHASH_COMP_FN(index_name, OPENSSL_CSTRING)
 
 BIGNUM *load_serial(char *serialfile, int create, ASN1_INTEGER **retai)
 	{
-	BIO *in=NULL;
+	BIO *in;
 	BIGNUM *ret=NULL;
 	MS_STATIC char buf[1024];
 	ASN1_INTEGER *ai=NULL;
@@ -1721,25 +1471,17 @@ BIGNUM *load_serial(char *serialfile, int create, ASN1_INTEGER **retai)
 	ai=ASN1_INTEGER_new();
 	if (ai == NULL) goto err;
 
-	if ((in=BIO_new(BIO_s_file())) == NULL)
-		{
-		ERR_print_errors(bio_err);
-		goto err;
-		}
-
-	if (BIO_read_filename(in,serialfile) <= 0)
+	in = BIO_new_file(serialfile, "r");
+	if (in == NULL)
 		{
 		if (!create)
 			{
 			perror(serialfile);
 			goto err;
 			}
-		else
-			{
-			ret=BN_new();
-			if (ret == NULL || !rand_serial(ret, ai))
-				BIO_printf(bio_err, "Out of memory\n");
-			}
+		ret=BN_new();
+		if (ret == NULL || !rand_serial(ret, ai))
+			BIO_printf(bio_err, "Out of memory\n");
 		}
 	else
 		{
@@ -1799,15 +1541,10 @@ int save_serial(char *serialfile, char *suffix, BIGNUM *serial, ASN1_INTEGER **r
 #ifdef RL_DEBUG
 	BIO_printf(bio_err, "DEBUG: writing \"%s\"\n", buf[0]);
 #endif
-	out=BIO_new(BIO_s_file());
+	out=BIO_new_file(buf[0], "w");
 	if (out == NULL)
 		{
 		ERR_print_errors(bio_err);
-		goto err;
-		}
-	if (BIO_write_filename(out,buf[0]) <= 0)
-		{
-		perror(serialfile);
 		goto err;
 		}
 
@@ -1922,20 +1659,15 @@ CA_DB *load_index(char *dbfile, DB_ATTR *db_attr)
 	{
 	CA_DB *retdb = NULL;
 	TXT_DB *tmpdb = NULL;
-	BIO *in = BIO_new(BIO_s_file());
+	BIO *in;
 	CONF *dbattr_conf = NULL;
 	char buf[1][BSIZE];
 	long errorline= -1;
 
+	in = BIO_new_file(dbfile, "r");
 	if (in == NULL)
 		{
 		ERR_print_errors(bio_err);
-		goto err;
-		}
-	if (BIO_read_filename(in,dbfile) <= 0)
-		{
-		perror(dbfile);
-		BIO_printf(bio_err,"unable to open '%s'\n",dbfile);
 		goto err;
 		}
 	if ((tmpdb = TXT_DB_read(in,DB_NUMBER)) == NULL)
@@ -2024,14 +1756,8 @@ int index_index(CA_DB *db)
 int save_index(const char *dbfile, const char *suffix, CA_DB *db)
 	{
 	char buf[3][BSIZE];
-	BIO *out = BIO_new(BIO_s_file());
+	BIO *out;
 	int j;
-
-	if (out == NULL)
-		{
-		ERR_print_errors(bio_err);
-		goto err;
-		}
 
 	j = strlen(dbfile) + strlen(suffix);
 	if (j + 6 >= BSIZE)
@@ -2058,22 +1784,22 @@ int save_index(const char *dbfile, const char *suffix, CA_DB *db)
 #ifdef RL_DEBUG
 	BIO_printf(bio_err, "DEBUG: writing \"%s\"\n", buf[0]);
 #endif
-	if (BIO_write_filename(out,buf[0]) <= 0)
+	out = BIO_new_file(buf[0], "w");
+	if (out == NULL)
 		{
 		perror(dbfile);
 		BIO_printf(bio_err,"unable to open '%s'\n", dbfile);
 		goto err;
 		}
 	j=TXT_DB_write(out,db->db);
-	if (j <= 0) goto err;
-			
 	BIO_free(out);
+	if (j <= 0) goto err;
 
-	out = BIO_new(BIO_s_file());
+	out = BIO_new_file(buf[1], "w");
 #ifdef RL_DEBUG
 	BIO_printf(bio_err, "DEBUG: writing \"%s\"\n", buf[1]);
 #endif
-	if (BIO_write_filename(out,buf[1]) <= 0)
+	if (out == NULL)
 		{
 		perror(buf[2]);
 		BIO_printf(bio_err,"unable to open '%s'\n", buf[2]);

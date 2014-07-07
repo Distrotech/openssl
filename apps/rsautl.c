@@ -76,13 +76,30 @@
 
 static void usage(void);
 
-#undef PROG
+const char* rsautl_help[] = {
+	"-in file        input file",
+	"-out file       output file",
+	"-inkey file     input key",
+	"-keyform arg    private key format - default PEM",
+	"-pubin          input is an RSA public",
+	"-certin         input is a certificate carrying an RSA public key",
+	"-ssl            use SSL v2 padding",
+	"-raw            use no padding",
+	"-pkcs           use PKCS#1 v1.5 padding (default)",
+	"-oaep           use PKCS#1 OAEP",
+	"-sign           sign with private key",
+	"-verify         verify with public key",
+	"-encrypt        encrypt with public key",
+	"-decrypt        decrypt with private key",
+	"-hexdump        hex dump output",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e       use engine e, possibly a hardware device.",
+#endif
+	"-passin arg    pass phrase source",
+	NULL
+}; 
 
-#define PROG rsautl_main
-
-int MAIN(int argc, char **);
-
-int MAIN(int argc, char **argv)
+int rsautl_main(int argc, char **argv)
 {
 	ENGINE *e = NULL;
 	BIO *in = NULL, *out = NULL;
@@ -102,18 +119,10 @@ int MAIN(int argc, char **argv)
 	char *passargin = NULL, *passin = NULL;
 	int rsa_inlen, rsa_outlen = 0;
 	int keysize;
-
 	int ret = 1;
 
 	argc--;
 	argv++;
-
-	if(!bio_err) bio_err = BIO_new_fp(stderr, BIO_NOCLOSE);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
-	ERR_load_crypto_strings();
-	OpenSSL_add_all_algorithms();
 	pad = RSA_PKCS1_PADDING;
 	
 	while(argc >= 1)
@@ -320,26 +329,7 @@ int MAIN(int argc, char **argv)
 static void usage()
 {
 	BIO_printf(bio_err, "Usage: rsautl [options]\n");
-	BIO_printf(bio_err, "-in file        input file\n");
-	BIO_printf(bio_err, "-out file       output file\n");
-	BIO_printf(bio_err, "-inkey file     input key\n");
-	BIO_printf(bio_err, "-keyform arg    private key format - default PEM\n");
-	BIO_printf(bio_err, "-pubin          input is an RSA public\n");
-	BIO_printf(bio_err, "-certin         input is a certificate carrying an RSA public key\n");
-	BIO_printf(bio_err, "-ssl            use SSL v2 padding\n");
-	BIO_printf(bio_err, "-raw            use no padding\n");
-	BIO_printf(bio_err, "-pkcs           use PKCS#1 v1.5 padding (default)\n");
-	BIO_printf(bio_err, "-oaep           use PKCS#1 OAEP\n");
-	BIO_printf(bio_err, "-sign           sign with private key\n");
-	BIO_printf(bio_err, "-verify         verify with public key\n");
-	BIO_printf(bio_err, "-encrypt        encrypt with public key\n");
-	BIO_printf(bio_err, "-decrypt        decrypt with private key\n");
-	BIO_printf(bio_err, "-hexdump        hex dump output\n");
-#ifndef OPENSSL_NO_ENGINE
-	BIO_printf(bio_err, "-engine e       use engine e, possibly a hardware device.\n");
-	BIO_printf (bio_err, "-passin arg    pass phrase source\n");
-#endif
-
+	printhelp(rsautl_help);
 }
 
 #else /* !OPENSSL_NO_RSA */

@@ -71,8 +71,27 @@
 #undef BUFSIZE
 #define BUFSIZE	1024*8
 
-#undef PROG
-#define PROG	dgst_main
+const char *dgst_help[] = {
+	"-c              to output the digest with separating colons",
+	"-r              to output the digest in coreutils format",
+	"-d              to output debug info",
+	"-hex            output as hex dump",
+	"-binary         output in binary form",
+	"-sign   file    sign digest using private key in file",
+	"-verify file    verify a signature using public key in file",
+	"-prverify file  verify a signature using private key in file",
+	"-keyform arg    key file format (PEM or ENGINE)",
+	"-out filename   output to filename rather than stdout",
+	"-signature file signature to verify",
+	"-sigopt nm:v    signature parameter",
+	"-hmac key       create hashed MAC with key",
+	"-mac algorithm  create MAC (not neccessarily HMAC)", 
+	"-macopt nm:v    MAC algorithm parameters or key",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e       use engine e, possibly a hardware device.",
+#endif
+	NULL
+};
 
 int do_fp(BIO *out, unsigned char *buf, BIO *bp, int sep, int binout,
 	  EVP_PKEY *key, unsigned char *sigin, int siglen,
@@ -99,9 +118,7 @@ static void list_md_fn(const EVP_MD *m,
 			mname, mname);
 	}
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int dgst_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL, *impl = NULL;
 	unsigned char *buf=NULL;
@@ -110,8 +127,6 @@ int MAIN(int argc, char **argv)
 	BIO *in=NULL,*inp;
 	BIO *bmd=NULL;
 	BIO *out = NULL;
-#define PROG_NAME_SIZE  39
-	char pname[PROG_NAME_SIZE+1];
 	int separator=0;
 	int debug=0;
 	int keyform=FORMAT_PEM;
@@ -131,24 +146,13 @@ int MAIN(int argc, char **argv)
 	int non_fips_allow = 0;
 	STACK_OF(OPENSSL_STRING) *sigopts = NULL, *macopts = NULL;
 
-	apps_startup();
-
 	if ((buf=(unsigned char *)OPENSSL_malloc(BUFSIZE)) == NULL)
 		{
 		BIO_printf(bio_err,"out of memory\n");
 		goto end;
 		}
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
 
-	if (!load_config(bio_err, NULL))
-		goto end;
-
-	/* first check the program name */
-	program_name(argv[0],pname,sizeof pname);
-
-	md=EVP_get_digestbyname(pname);
+	md=EVP_get_digestbyname(opt_progname(argv[0]));
 
 	argc--;
 	argv++;
@@ -161,52 +165,42 @@ int MAIN(int argc, char **argv)
 			separator=2;
 		else if (strcmp(*argv,"-rand") == 0)
 			{
-			if (--argc < 1) break;
 			randfile=*(++argv);
 			}
 		else if (strcmp(*argv,"-out") == 0)
 			{
-			if (--argc < 1) break;
 			outfile=*(++argv);
 			}
 		else if (strcmp(*argv,"-sign") == 0)
 			{
-			if (--argc < 1) break;
 			keyfile=*(++argv);
 			}
 		else if (!strcmp(*argv,"-passin"))
 			{
-			if (--argc < 1)
-				break;
 			passargin=*++argv;
 			}
 		else if (strcmp(*argv,"-verify") == 0)
 			{
-			if (--argc < 1) break;
 			keyfile=*(++argv);
 			want_pub = 1;
 			do_verify = 1;
 			}
 		else if (strcmp(*argv,"-prverify") == 0)
 			{
-			if (--argc < 1) break;
 			keyfile=*(++argv);
 			do_verify = 1;
 			}
 		else if (strcmp(*argv,"-signature") == 0)
 			{
-			if (--argc < 1) break;
 			sigfile=*(++argv);
 			}
 		else if (strcmp(*argv,"-keyform") == 0)
 			{
-			if (--argc < 1) break;
 			keyform=str2fmt(*(++argv));
 			}
 #ifndef OPENSSL_NO_ENGINE
 		else if (strcmp(*argv,"-engine") == 0)
 			{
-			if (--argc < 1) break;
 			engine= *(++argv);
         		e = setup_engine(bio_err, engine, 0);
 			}
@@ -225,20 +219,14 @@ int MAIN(int argc, char **argv)
 			non_fips_allow=1;
 		else if (!strcmp(*argv,"-hmac"))
 			{
-			if (--argc < 1)
-				break;
 			hmac_key=*++argv;
 			}
 		else if (!strcmp(*argv,"-mac"))
 			{
-			if (--argc < 1)
-				break;
 			mac_name=*++argv;
 			}
 		else if (strcmp(*argv,"-sigopt") == 0)
 			{
-			if (--argc < 1)
-				break;
 			if (!sigopts)
 				sigopts = sk_OPENSSL_STRING_new_null();
 			if (!sigopts || !sk_OPENSSL_STRING_push(sigopts, *(++argv)))
@@ -246,8 +234,6 @@ int MAIN(int argc, char **argv)
 			}
 		else if (strcmp(*argv,"-macopt") == 0)
 			{
-			if (--argc < 1)
-				break;
 			if (!macopts)
 				macopts = sk_OPENSSL_STRING_new_null();
 			if (!macopts || !sk_OPENSSL_STRING_push(macopts, *(++argv)))
@@ -271,25 +257,7 @@ int MAIN(int argc, char **argv)
 		{
 		BIO_printf(bio_err,"unknown option '%s'\n",*argv);
 		BIO_printf(bio_err,"options are\n");
-		BIO_printf(bio_err,"-c              to output the digest with separating colons\n");
-		BIO_printf(bio_err,"-r              to output the digest in coreutils format\n");
-		BIO_printf(bio_err,"-d              to output debug info\n");
-		BIO_printf(bio_err,"-hex            output as hex dump\n");
-		BIO_printf(bio_err,"-binary         output in binary form\n");
-		BIO_printf(bio_err,"-sign   file    sign digest using private key in file\n");
-		BIO_printf(bio_err,"-verify file    verify a signature using public key in file\n");
-		BIO_printf(bio_err,"-prverify file  verify a signature using private key in file\n");
-		BIO_printf(bio_err,"-keyform arg    key file format (PEM or ENGINE)\n");
-		BIO_printf(bio_err,"-out filename   output to filename rather than stdout\n");
-		BIO_printf(bio_err,"-signature file signature to verify\n");
-		BIO_printf(bio_err,"-sigopt nm:v    signature parameter\n");
-		BIO_printf(bio_err,"-hmac key       create hashed MAC with key\n");
-		BIO_printf(bio_err,"-mac algorithm  create MAC (not neccessarily HMAC)\n"); 
-		BIO_printf(bio_err,"-macopt nm:v    MAC algorithm parameters or key\n");
-#ifndef OPENSSL_NO_ENGINE
-		BIO_printf(bio_err,"-engine e       use engine e, possibly a hardware device.\n");
-#endif
-
+		printhelp(dgst_help);
 		EVP_MD_do_all_sorted(list_md_fn, bio_err);
 		goto end;
 		}
@@ -299,7 +267,6 @@ int MAIN(int argc, char **argv)
 		impl = e;
 #endif
 
-	in=BIO_new(BIO_s_file());
 	bmd=BIO_new(BIO_f_md());
 	if (debug)
 		{
@@ -330,21 +297,13 @@ int MAIN(int argc, char **argv)
 	if(randfile)
 		app_RAND_load_file(randfile, bio_err, 0);
 
-	if(outfile) {
-		if(out_bin)
-			out = BIO_new_file(outfile, "wb");
-		else    out = BIO_new_file(outfile, "w");
-	} else {
-		out = BIO_new_fp(stdout, BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-		{
-		BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		out = BIO_push(tmpbio, out);
-		}
-#endif
-	}
+	if(outfile)
+		out = BIO_new_file(outfile, out_bin ? "wb" :"w");
+	else
+		out = BIO_dup_chain(bio_out);
 
-	if(!out) {
+	if (out == NULL)
+		{
 		BIO_printf(bio_err, "Error opening output file %s\n", 
 					outfile ? outfile : "(stdout)");
 		ERR_print_errors(bio_err);
@@ -475,7 +434,7 @@ int MAIN(int argc, char **argv)
 			md = EVP_md5(); 
 		if (!EVP_DigestInit_ex(mctx, md, impl))
 			{
-			BIO_printf(bio_err, "Error setting digest %s\n", pname);
+			BIO_printf(bio_err, "Error setting digest\n");
 			ERR_print_errors(bio_err);
 			goto end;
 			}
@@ -557,8 +516,7 @@ end:
 		OPENSSL_free(buf);
 		}
 	if (in != NULL) BIO_free(in);
-	if (passin)
-		OPENSSL_free(passin);
+	if (passin) OPENSSL_free(passin);
 	BIO_free_all(out);
 	EVP_PKEY_free(sigkey);
 	if (sigopts)
@@ -567,8 +525,7 @@ end:
 		sk_OPENSSL_STRING_free(macopts);
 	if(sigbuf) OPENSSL_free(sigbuf);
 	if (bmd != NULL) BIO_free(bmd);
-	apps_shutdown();
-	OPENSSL_EXIT(err);
+	return(err);
 	}
 
 int do_fp(BIO *out, unsigned char *buf, BIO *bp, int sep, int binout,

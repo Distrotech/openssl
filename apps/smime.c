@@ -67,8 +67,6 @@
 #include <openssl/x509_vfy.h>
 #include <openssl/x509v3.h>
 
-#undef PROG
-#define PROG smime_main
 static int save_certs(char *signerfile, STACK_OF(X509) *signers);
 static int smime_cb(int ok, X509_STORE_CTX *ctx);
 
@@ -82,9 +80,68 @@ static int smime_cb(int ok, X509_STORE_CTX *ctx);
 #define SMIME_PK7OUT	(5 | SMIME_IP | SMIME_OP)
 #define SMIME_RESIGN	(6 | SMIME_IP | SMIME_OP | SMIME_SIGNERS)
 
-int MAIN(int, char **);
+const char* smime_help[] = {
+	"-encrypt       encrypt message",
+	"-decrypt       decrypt encrypted message",
+	"-sign          sign message",
+	"-verify        verify signed message",
+	"-pk7out        output PKCS#7 structure",
+#ifndef OPENSSL_NO_DES
+	"-des3          encrypt with triple DES",
+	"-des           encrypt with DES",
+#endif
+#ifndef OPENSSL_NO_SEED
+	"-seed          encrypt with SEED",
+#endif
+#ifndef OPENSSL_NO_RC2
+	"-rc2-40        encrypt with RC2-40 (default)",
+	"-rc2-64        encrypt with RC2-64",
+	"-rc2-128       encrypt with RC2-128",
+#endif
+#ifndef OPENSSL_NO_AES
+	"-aes128, -aes192, -aes256",
+	"               encrypt PEM output with cbc aes",
+#endif
+#ifndef OPENSSL_NO_CAMELLIA
+	"-camellia128, -camellia192, -camellia256",
+	"               encrypt PEM output with cbc camellia",
+#endif
+	"-nointern      don't search certificates in message for signer",
+	"-nosigs        don't verify message signature",
+	"-noverify      don't verify signers certificate",
+	"-nocerts       don't include signers certificate when signing",
+	"-nodetach      use opaque signing",
+	"-noattr        don't include any signed attributes",
+	"-binary        don't translate message to text",
+	"-certfile file other certificates file",
+	"-signer file   signer certificate file",
+	"-recip  file   recipient certificate file for decryption",
+	"-in file       input file",
+	"-inform arg    input format SMIME (default), PEM or DER",
+	"-inkey file    input private key (if not signer or recipient)",
+	"-keyform arg   input private key format (PEM or ENGINE)",
+	"-out file      output file",
+	"-outform arg   output format SMIME (default), PEM or DER",
+	"-content file  supply or override content for detached signature",
+	"-to addr       to address",
+	"-from addr     from address",
+	"-subject s     subject",
+	"-text          include or delete text MIME headers",
+	"-CApath dir    trusted certificates directory",
+	"-CAfile file   trusted certificates file",
+	"-trusted_first use locally trusted CA's first when building trust chain",
+	"-crl_check     check revocation status of signer's certificate using CRLs",
+	"-crl_check_all check revocation status of signer's certificate chain using CRLs",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e      use engine e, possibly a hardware device.",
+#endif
+	"-passin arg    input file pass phrase source",
+	"-rand file...  load the file(s) into the random number generator",
+	"cert.pem       recipient certificate(s) for encryption",
+	NULL,
+};
 
-int MAIN(int argc, char **argv)
+int smime_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL;
 	int operation = 0;
@@ -116,22 +173,10 @@ int MAIN(int argc, char **argv)
 #ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
 #endif
-
 	X509_VERIFY_PARAM *vpm = NULL;
 
 	args = argv + 1;
 	ret = 1;
-
-	apps_startup();
-
-	if (bio_err == NULL)
-		{
-		if ((bio_err = BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err, stderr, BIO_NOCLOSE|BIO_FP_TEXT);
-		}
-
-	if (!load_config(bio_err, NULL))
-		goto end;
 
 	while (!badarg && *args && *args[0] == '-')
 		{
@@ -431,65 +476,7 @@ int MAIN(int argc, char **argv)
 		argerr:
 		BIO_printf (bio_err, "Usage smime [options] cert.pem ...\n");
 		BIO_printf (bio_err, "where options are\n");
-		BIO_printf (bio_err, "-encrypt       encrypt message\n");
-		BIO_printf (bio_err, "-decrypt       decrypt encrypted message\n");
-		BIO_printf (bio_err, "-sign          sign message\n");
-		BIO_printf (bio_err, "-verify        verify signed message\n");
-		BIO_printf (bio_err, "-pk7out        output PKCS#7 structure\n");
-#ifndef OPENSSL_NO_DES
-		BIO_printf (bio_err, "-des3          encrypt with triple DES\n");
-		BIO_printf (bio_err, "-des           encrypt with DES\n");
-#endif
-#ifndef OPENSSL_NO_SEED
-		BIO_printf (bio_err, "-seed          encrypt with SEED\n");
-#endif
-#ifndef OPENSSL_NO_RC2
-		BIO_printf (bio_err, "-rc2-40        encrypt with RC2-40 (default)\n");
-		BIO_printf (bio_err, "-rc2-64        encrypt with RC2-64\n");
-		BIO_printf (bio_err, "-rc2-128       encrypt with RC2-128\n");
-#endif
-#ifndef OPENSSL_NO_AES
-		BIO_printf (bio_err, "-aes128, -aes192, -aes256\n");
-		BIO_printf (bio_err, "               encrypt PEM output with cbc aes\n");
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-		BIO_printf (bio_err, "-camellia128, -camellia192, -camellia256\n");
-		BIO_printf (bio_err, "               encrypt PEM output with cbc camellia\n");
-#endif
-		BIO_printf (bio_err, "-nointern      don't search certificates in message for signer\n");
-		BIO_printf (bio_err, "-nosigs        don't verify message signature\n");
-		BIO_printf (bio_err, "-noverify      don't verify signers certificate\n");
-		BIO_printf (bio_err, "-nocerts       don't include signers certificate when signing\n");
-		BIO_printf (bio_err, "-nodetach      use opaque signing\n");
-		BIO_printf (bio_err, "-noattr        don't include any signed attributes\n");
-		BIO_printf (bio_err, "-binary        don't translate message to text\n");
-		BIO_printf (bio_err, "-certfile file other certificates file\n");
-		BIO_printf (bio_err, "-signer file   signer certificate file\n");
-		BIO_printf (bio_err, "-recip  file   recipient certificate file for decryption\n");
-		BIO_printf (bio_err, "-in file       input file\n");
-		BIO_printf (bio_err, "-inform arg    input format SMIME (default), PEM or DER\n");
-		BIO_printf (bio_err, "-inkey file    input private key (if not signer or recipient)\n");
-		BIO_printf (bio_err, "-keyform arg   input private key format (PEM or ENGINE)\n");
-		BIO_printf (bio_err, "-out file      output file\n");
-		BIO_printf (bio_err, "-outform arg   output format SMIME (default), PEM or DER\n");
-		BIO_printf (bio_err, "-content file  supply or override content for detached signature\n");
-		BIO_printf (bio_err, "-to addr       to address\n");
-		BIO_printf (bio_err, "-from ad       from address\n");
-		BIO_printf (bio_err, "-subject s     subject\n");
-		BIO_printf (bio_err, "-text          include or delete text MIME headers\n");
-		BIO_printf (bio_err, "-CApath dir    trusted certificates directory\n");
-		BIO_printf (bio_err, "-CAfile file   trusted certificates file\n");
-		BIO_printf (bio_err, "-trusted_first use locally trusted CA's first when building trust chain\n");
-		BIO_printf (bio_err, "-crl_check     check revocation status of signer's certificate using CRLs\n");
-		BIO_printf (bio_err, "-crl_check_all check revocation status of signer's certificate chain using CRLs\n");
-#ifndef OPENSSL_NO_ENGINE
-		BIO_printf (bio_err, "-engine e      use engine e, possibly a hardware device.\n");
-#endif
-		BIO_printf (bio_err, "-passin arg    input file pass phrase source\n");
-		BIO_printf(bio_err,  "-rand file%cfile%c...\n", LIST_SEPARATOR_CHAR, LIST_SEPARATOR_CHAR);
-		BIO_printf(bio_err,  "               load the file (or the files in the directory) into\n");
-		BIO_printf(bio_err,  "               the random number generator\n");
-		BIO_printf (bio_err, "cert.pem       recipient certificate(s) for encryption\n");
+		printhelp(smime_help);
 		goto end;
 		}
 

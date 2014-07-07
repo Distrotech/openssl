@@ -71,30 +71,40 @@
 #include <openssl/pem.h>
 #include <openssl/bn.h>
 
-#undef PROG
-#define PROG	dsa_main
 
-/* -inform arg	- input format - default PEM (one of DER, NET or PEM)
- * -outform arg - output format - default PEM
- * -in arg	- input file - default stdin
- * -out arg	- output file - default stdout
- * -des		- encrypt output if PEM format with DES in cbc mode
- * -des3	- encrypt output if PEM format
- * -idea	- encrypt output if PEM format
- * -aes128	- encrypt output if PEM format
- * -aes192	- encrypt output if PEM format
- * -aes256	- encrypt output if PEM format
- * -camellia128 - encrypt output if PEM format
- * -camellia192 - encrypt output if PEM format
- * -camellia256 - encrypt output if PEM format
- * -seed        - encrypt output if PEM format
- * -text	- print a text version
- * -modulus	- print the DSA public key
- */
+const char* dsa_help[] = {
+	"-inform arg     input format - DER or PEM",
+	"-outform arg    output format - DER or PEM",
+	"-in arg         input file",
+	"-passin arg     input file pass phrase source",
+	"-out arg        output file",
+	"-passout arg    output file pass phrase source",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e       use engine e, possibly a hardware device.",
+#endif
+	"-des            encrypt PEM output with cbc des",
+	"-des3           encrypt PEM output with ede cbc des using 168 bit key",
+#ifndef OPENSSL_NO_IDEA
+	"-idea           encrypt PEM output with cbc idea",
+#endif
+#ifndef OPENSSL_NO_AES
+	"-aes128, -aes192, -aes256",
+	"                 encrypt PEM output with cbc aes",
+#endif
+#ifndef OPENSSL_NO_CAMELLIA
+	"-camellia128, -camellia192, -camellia256",
+	"                 encrypt PEM output with cbc camellia",
+#endif
+#ifndef OPENSSL_NO_SEED
+	"-seed           encrypt PEM output with cbc seed",
+#endif
+	"-text           print the key in text",
+	"-noout          don't print key out",
+	"-modulus        print the DSA public value",
+	NULL
+};
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int dsa_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL;
 	int ret=1;
@@ -113,15 +123,6 @@ int MAIN(int argc, char **argv)
 	int modulus=0;
 
 	int pvk_encr = 2;
-
-	apps_startup();
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
 
 #ifndef OPENSSL_NO_ENGINE
 	engine=NULL;
@@ -204,38 +205,9 @@ int MAIN(int argc, char **argv)
 bad:
 		BIO_printf(bio_err,"%s [options] <infile >outfile\n",prog);
 		BIO_printf(bio_err,"where options are\n");
-		BIO_printf(bio_err," -inform arg     input format - DER or PEM\n");
-		BIO_printf(bio_err," -outform arg    output format - DER or PEM\n");
-		BIO_printf(bio_err," -in arg         input file\n");
-		BIO_printf(bio_err," -passin arg     input file pass phrase source\n");
-		BIO_printf(bio_err," -out arg        output file\n");
-		BIO_printf(bio_err," -passout arg    output file pass phrase source\n");
-#ifndef OPENSSL_NO_ENGINE
-		BIO_printf(bio_err," -engine e       use engine e, possibly a hardware device.\n");
-#endif
-		BIO_printf(bio_err," -des            encrypt PEM output with cbc des\n");
-		BIO_printf(bio_err," -des3           encrypt PEM output with ede cbc des using 168 bit key\n");
-#ifndef OPENSSL_NO_IDEA
-		BIO_printf(bio_err," -idea           encrypt PEM output with cbc idea\n");
-#endif
-#ifndef OPENSSL_NO_AES
-		BIO_printf(bio_err," -aes128, -aes192, -aes256\n");
-		BIO_printf(bio_err,"                 encrypt PEM output with cbc aes\n");
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-		BIO_printf(bio_err," -camellia128, -camellia192, -camellia256\n");
-		BIO_printf(bio_err,"                 encrypt PEM output with cbc camellia\n");
-#endif
-#ifndef OPENSSL_NO_SEED
-		BIO_printf(bio_err," -seed           encrypt PEM output with cbc seed\n");
-#endif
-		BIO_printf(bio_err," -text           print the key in text\n");
-		BIO_printf(bio_err," -noout          don't print key out\n");
-		BIO_printf(bio_err," -modulus        print the DSA public value\n");
+		printhelp(dsa_help);
 		goto end;
 		}
-
-	ERR_load_crypto_strings();
 
 #ifndef OPENSSL_NO_ENGINE
         e = setup_engine(bio_err, engine, 0);
@@ -246,23 +218,14 @@ bad:
 		goto end;
 	}
 
-	in=BIO_new(BIO_s_file());
-	out=BIO_new(BIO_s_file());
-	if ((in == NULL) || (out == NULL))
-		{
-		ERR_print_errors(bio_err);
-		goto end;
-		}
-
 	if (infile == NULL)
-		BIO_set_fp(in,stdin,BIO_NOCLOSE);
+		in = BIO_new_fp(stdin,BIO_NOCLOSE);
 	else
+		in = BIO_new_file(infile, "r");
+	if (in == NULL)
 		{
-		if (BIO_read_filename(in,infile) <= 0)
-			{
-			perror(infile);
-			goto end;
-			}
+		perror(infile);
+		goto end;
 		}
 
 	BIO_printf(bio_err,"read DSA key\n");
@@ -291,22 +254,13 @@ bad:
 		}
 
 	if (outfile == NULL)
-		{
-		BIO_set_fp(out,stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-		{
-		BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		out = BIO_push(tmpbio, out);
-		}
-#endif
-		}
+		out = BIO_dup_chain(bio_out);
 	else
+		out = BIO_new_file(outfile, "w");
+	if (out == NULL)
 		{
-		if (BIO_write_filename(out,outfile) <= 0)
-			{
-			perror(outfile);
-			goto end;
-			}
+		ERR_print_errors(bio_err);
+		goto end;
 		}
 
 	if (text) 
@@ -364,8 +318,7 @@ end:
 	if(dsa != NULL) DSA_free(dsa);
 	if(passin) OPENSSL_free(passin);
 	if(passout) OPENSSL_free(passout);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 #else /* !OPENSSL_NO_DSA */
 

@@ -178,9 +178,6 @@ typedef unsigned int u_int;
 #include <fcntl.h>
 #endif
 
-#undef PROG
-#define PROG	s_client_main
-
 /*#define SSL_HOST_NAME	"www.netscape.com" */
 /*#define SSL_HOST_NAME	"193.118.187.102" */
 #define SSL_HOST_NAME	"localhost"
@@ -220,6 +217,124 @@ static BIO *bio_c_msg=NULL;
 static int c_quiet=0;
 static int c_ign_eof=0;
 static int c_brief=0;
+
+#ifndef OPENSSL_NO_TLSEXT
+
+static unsigned char *generated_supp_data = NULL;
+
+static const unsigned char *most_recent_supplemental_data = NULL;
+static size_t most_recent_supplemental_data_length = 0;
+
+static int server_provided_server_authz = 0;
+static int server_provided_client_authz = 0;
+
+static const unsigned char auth_ext_data[]={TLSEXT_AUTHZDATAFORMAT_dtcp};
+
+static int suppdata_cb(SSL *s, unsigned short supp_data_type,
+		       const unsigned char *in,
+		       unsigned short inlen, int *al,
+		       void *arg);
+
+static int auth_suppdata_generate_cb(SSL *s, unsigned short supp_data_type,
+				     const unsigned char **out,
+				     unsigned short *outlen, int *al, void *arg);
+
+static int authz_tlsext_generate_cb(SSL *s, unsigned short ext_type,
+				    const unsigned char **out, unsigned short *outlen,
+				    int *al, void *arg);
+
+static int authz_tlsext_cb(SSL *s, unsigned short ext_type,
+			   const unsigned char *in,
+			   unsigned short inlen, int *al,
+			   void *arg);
+#endif
+
+const char* s_client_help[] = {
+	"-host host     use -connect instead",
+	"-port port     use -connect instead",
+	"-connect host:port  connect over TCP/IP (default is " SSL_HOST_NAME ":" PORT_STR ")",
+	"-unix path     connect over unix domain sockets",
+	"-verify arg    turn on peer certificate verification",
+	"-cert arg      certificate file to use, PEM format assumed",
+	"-certform arg  certificate format (PEM or DER) PEM default",
+	"-key arg       private key file to use, in cert file if",
+	"               not specified but cert file is",
+	"-keyform arg   key format (PEM or DER) PEM default",
+	"-pass arg      private key file pass phrase source",
+	"-CApath arg    PEM format directory of CA's",
+	"-CAfile arg    PEM format file of CA's",
+	"-trusted_first  use local CA's first when building trust chain",
+	"-reconnect     drop and re-make the connection with the same Session-ID",
+	"-pause         sleep(1) after each read(2) and write(2) system call",
+	"-showcerts     show all certificates in the chain",
+	"-debug         extra output",
+#ifdef WATT32
+	"-wdebug        WATT-32 tcp debugging",
+#endif
+	"-msg           show protocol messages",
+	"-nbio_test     more ssl protocol testing",
+	"-state         print the 'ssl' states",
+#ifdef FIONBIO
+	"-nbio         use non-blocking IO",
+#endif
+	"-crlf          convert LF from terminal into CRLF",
+	"-quiet         no s_client output",
+	"-ign_eof       ignore input eof (default when -quiet)",
+	"-no_ign_eof    don't ignore input eof",
+#ifndef OPENSSL_NO_PSK
+	"-psk_identity arg  PSK identity",
+	"-psk arg       PSK in hex (without 0x)",
+# ifndef OPENSSL_NO_JPAKE
+	"-jpake arg     JPAKE secret to use",
+# endif
+#endif
+#ifndef OPENSSL_NO_SRP
+	"-srpuser user  SRP authentification for 'user'",
+	"-srppass arg   password for 'user'",
+	"-srp_lateuser  SRP username into second ClientHello message",
+	"-srp_moregroups   tolerate other than the known g N values.",
+	"-srp_strength int minimal mength in bits for N (default %d).",
+#endif
+	"-ssl2          just use SSLv2",
+	"-ssl3          just use SSLv3",
+	"-tls1_2        just use TLSv1.2",
+	"-tls1_1        just use TLSv1.1",
+	"-tls1          just use TLSv1",
+	"-dtls1         just use DTLSv1",
+	"-mtu           set the link layer MTU",
+	"-no_tls1_2/-no_tls1_1/-no_tls1/-no_ssl3/-no_ssl2  turn off that protocol",
+	"-bugs          switch on all SSL implementation bug workarounds",
+	"-serverpref    use server's cipher preferences (only SSLv2)",
+	"-cipher        preferred cipher to use; see 'openssl ciphers'",
+	"-starttls prot  use the STARTTLS command before starting TLS",
+	"               prot must be: smtp pop3 imap ftp or xmpp",
+	"-xmpphost host  when used with \"-starttls xmpp\" specifies the virtual host",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine id     initialise and use the specified engine",
+#endif
+	"-rand file...  load the file(s) into the random number generator",
+	"-sess_out arg  file to write SSL session to",
+	"-sess_in arg   file to read SSL session from",
+#ifndef OPENSSL_NO_TLSEXT
+	"-servername host  set TLS extension servername in ClientHello",
+	"-tlsextdebug   hex dump of all TLS extensions received",
+	"-status        request certificate status from server",
+	"-no_ticket     disable use of RFC4507bis session tickets",
+	"-serverinfo types  send empty ClientHello extensions (comma-separated numbers)",
+	"-auth           send and receive RFC 5878 TLS auth extensions and supplemental data",
+	"-auth_require_reneg  do not send TLS auth extensions until renegotiation",
+# ifndef OPENSSL_NO_NEXTPROTONEG
+	"-nextprotoneg arg  enable NPN extension, considering named protocols supported (comma-separated list)",
+# endif
+	"-alpn arg      enable ALPN extension, considering named protocols supported (comma-separated list)",
+#endif
+	"-legacy_renegotiation  enable use of legacy renegotiation (dangerous)",
+	"-use_srtp profiles  offer SRTP key management with a colon-separated profile list",
+	"-keymatexport label   export keying material using label",
+	"-keymatexportlen len  export len bytes of keying material (default 20)",
+
+	NULL
+};
 
 #ifndef OPENSSL_NO_PSK
 /* Default PSK identity and key */
@@ -287,93 +402,7 @@ static unsigned int psk_client_cb(SSL *ssl, const char *hint, char *identity,
 static void sc_usage(void)
 	{
 	BIO_printf(bio_err,"usage: s_client args\n");
-	BIO_printf(bio_err,"\n");
-	BIO_printf(bio_err," -host host     - use -connect instead\n");
-	BIO_printf(bio_err," -port port     - use -connect instead\n");
-	BIO_printf(bio_err," -connect host:port - connect over TCP/IP (default is %s:%s)\n",SSL_HOST_NAME,PORT_STR);
-	BIO_printf(bio_err," -unix path    - connect over unix domain sockets\n");
-	BIO_printf(bio_err," -verify arg   - turn on peer certificate verification\n");
-	BIO_printf(bio_err," -verify_return_error - return verification errors\n");
-	BIO_printf(bio_err," -cert arg     - certificate file to use, PEM format assumed\n");
-	BIO_printf(bio_err," -certform arg - certificate format (PEM or DER) PEM default\n");
-	BIO_printf(bio_err," -key arg      - Private key file to use, in cert file if\n");
-	BIO_printf(bio_err,"                 not specified but cert file is.\n");
-	BIO_printf(bio_err," -keyform arg  - key format (PEM or DER) PEM default\n");
-	BIO_printf(bio_err," -pass arg     - private key file pass phrase source\n");
-	BIO_printf(bio_err," -CApath arg   - PEM format directory of CA's\n");
-	BIO_printf(bio_err," -CAfile arg   - PEM format file of CA's\n");
-	BIO_printf(bio_err," -trusted_first - Use local CA's first when building trust chain\n");
-	BIO_printf(bio_err," -reconnect    - Drop and re-make the connection with the same Session-ID\n");
-	BIO_printf(bio_err," -pause        - sleep(1) after each read(2) and write(2) system call\n");
-	BIO_printf(bio_err," -prexit       - print session information even on connection failure\n");
-	BIO_printf(bio_err," -showcerts    - show all certificates in the chain\n");
-	BIO_printf(bio_err," -debug        - extra output\n");
-#ifdef WATT32
-	BIO_printf(bio_err," -wdebug       - WATT-32 tcp debugging\n");
-#endif
-	BIO_printf(bio_err," -msg          - Show protocol messages\n");
-	BIO_printf(bio_err," -nbio_test    - more ssl protocol testing\n");
-	BIO_printf(bio_err," -state        - print the 'ssl' states\n");
-#ifdef FIONBIO
-	BIO_printf(bio_err," -nbio         - Run with non-blocking IO\n");
-#endif
-	BIO_printf(bio_err," -crlf         - convert LF from terminal into CRLF\n");
-	BIO_printf(bio_err," -quiet        - no s_client output\n");
-	BIO_printf(bio_err," -ign_eof      - ignore input eof (default when -quiet)\n");
-	BIO_printf(bio_err," -no_ign_eof   - don't ignore input eof\n");
-#ifndef OPENSSL_NO_PSK
-	BIO_printf(bio_err," -psk_identity arg - PSK identity\n");
-	BIO_printf(bio_err," -psk arg      - PSK in hex (without 0x)\n");
-# ifndef OPENSSL_NO_JPAKE
-	BIO_printf(bio_err," -jpake arg    - JPAKE secret to use\n");
-# endif
-#endif
-#ifndef OPENSSL_NO_SRP
-	BIO_printf(bio_err," -srpuser user     - SRP authentification for 'user'\n");
-	BIO_printf(bio_err," -srppass arg      - password for 'user'\n");
-	BIO_printf(bio_err," -srp_lateuser     - SRP username into second ClientHello message\n");
-	BIO_printf(bio_err," -srp_moregroups   - Tolerate other than the known g N values.\n");
-	BIO_printf(bio_err," -srp_strength int - minimal mength in bits for N (default %d).\n",SRP_MINIMAL_N);
-#endif
-	BIO_printf(bio_err," -ssl2         - just use SSLv2\n");
-	BIO_printf(bio_err," -ssl3         - just use SSLv3\n");
-	BIO_printf(bio_err," -tls1_2       - just use TLSv1.2\n");
-	BIO_printf(bio_err," -tls1_1       - just use TLSv1.1\n");
-	BIO_printf(bio_err," -tls1         - just use TLSv1\n");
-	BIO_printf(bio_err," -dtls1        - just use DTLSv1\n");    
-	BIO_printf(bio_err," -mtu          - set the link layer MTU\n");
-	BIO_printf(bio_err," -no_tls1_2/-no_tls1_1/-no_tls1/-no_ssl3/-no_ssl2 - turn off that protocol\n");
-	BIO_printf(bio_err," -bugs         - Switch on all SSL implementation bug workarounds\n");
-	BIO_printf(bio_err," -serverpref   - Use server's cipher preferences (only SSLv2)\n");
-	BIO_printf(bio_err," -cipher       - preferred cipher to use, use the 'openssl ciphers'\n");
-	BIO_printf(bio_err,"                 command to see what is available\n");
-	BIO_printf(bio_err," -starttls prot - use the STARTTLS command before starting TLS\n");
-	BIO_printf(bio_err,"                 for those protocols that support it, where\n");
-	BIO_printf(bio_err,"                 'prot' defines which one to assume.  Currently,\n");
-	BIO_printf(bio_err,"                 only \"smtp\", \"pop3\", \"imap\", \"ftp\" and \"xmpp\"\n");
-	BIO_printf(bio_err,"                 are supported.\n");
-	BIO_printf(bio_err," -xmpphost host - When used with \"-starttls xmpp\" specifies the virtual host.\n");
-#ifndef OPENSSL_NO_ENGINE
-	BIO_printf(bio_err," -engine id    - Initialise and use the specified engine\n");
-#endif
-	BIO_printf(bio_err," -rand file%cfile%c...\n", LIST_SEPARATOR_CHAR, LIST_SEPARATOR_CHAR);
-	BIO_printf(bio_err," -sess_out arg - file to write SSL session to\n");
-	BIO_printf(bio_err," -sess_in arg  - file to read SSL session from\n");
-#ifndef OPENSSL_NO_TLSEXT
-	BIO_printf(bio_err," -servername host  - Set TLS extension servername in ClientHello\n");
-	BIO_printf(bio_err," -tlsextdebug      - hex dump of all TLS extensions received\n");
-	BIO_printf(bio_err," -status           - request certificate status from server\n");
-	BIO_printf(bio_err," -no_ticket        - disable use of RFC4507bis session tickets\n");
-	BIO_printf(bio_err," -serverinfo types - send empty ClientHello extensions (comma-separated numbers)\n");
-# ifndef OPENSSL_NO_NEXTPROTONEG
-	BIO_printf(bio_err," -nextprotoneg arg - enable NPN extension, considering named protocols supported (comma-separated list)\n");
-# endif
-	BIO_printf(bio_err," -alpn arg         - enable ALPN extension, considering named protocols supported (comma-separated list)\n");
-#endif
-	BIO_printf(bio_err," -legacy_renegotiation - enable use of legacy renegotiation (dangerous)\n");
-	BIO_printf(bio_err," -use_srtp profiles - Offer SRTP key management with a colon-separated profile list\n");
- 	BIO_printf(bio_err," -keymatexport label   - Export keying material using label\n");
- 	BIO_printf(bio_err," -keymatexportlen len  - Export len bytes of keying material (default 20)\n");
+	printhelp(s_client_help);
 	}
 
 #ifndef OPENSSL_NO_TLSEXT
@@ -385,7 +414,7 @@ typedef struct tlsextctx_st {
 } tlsextctx;
 
 
-static int MS_CALLBACK ssl_servername_cb(SSL *s, int *ad, void *arg)
+static int ssl_servername_cb(SSL *s, int *ad, void *arg)
 	{
 	tlsextctx * p = (tlsextctx *) arg;
 	const char * hn= SSL_get_servername(s, TLSEXT_NAMETYPE_host_name);
@@ -455,7 +484,7 @@ static int srp_Verify_N_and_g(const BIGNUM *N, const BIGNUM *g)
    primality tests are rather cpu consuming.
 */
 
-static int MS_CALLBACK ssl_srp_verify_param_cb(SSL *s, void *arg)
+static int ssl_srp_verify_param_cb(SSL *s, void *arg)
 	{
 	SRP_ARG *srp_arg = (SRP_ARG *)arg;
 	BIGNUM *N = NULL, *g = NULL;
@@ -490,7 +519,7 @@ static int MS_CALLBACK ssl_srp_verify_param_cb(SSL *s, void *arg)
 
 #define PWD_STRLEN 1024
 
-static char * MS_CALLBACK ssl_give_srp_client_pwd_cb(SSL *s, void *arg)
+static char * ssl_give_srp_client_pwd_cb(SSL *s, void *arg)
 	{
 	SRP_ARG *srp_arg = (SRP_ARG *)arg;
 	char *pass = (char *)OPENSSL_malloc(PWD_STRLEN+1);
@@ -579,9 +608,7 @@ enum
 	PROTO_XMPP
 };
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int s_client_main(int argc, char **argv)
 	{
 	int build_chain = 0;
 	SSL *con=NULL;
@@ -676,7 +703,6 @@ static char *jpake_secret = NULL;
 
 	meth=SSLv23_client_method();
 
-	apps_startup();
 	c_Pause=0;
 	c_quiet=0;
 	c_ign_eof=0;
@@ -684,11 +710,6 @@ static char *jpake_secret = NULL;
 	c_msg=0;
 	c_showcerts=0;
 
-	if (bio_err == NULL)
-		bio_err=BIO_new_fp(stderr,BIO_NOCLOSE);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
 	cctx = SSL_CONF_CTX_new();
 	if (!cctx)
 		goto end;
@@ -2169,8 +2190,7 @@ end:
 		BIO_free(bio_c_msg);
 		bio_c_msg=NULL;
 		}
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 
 

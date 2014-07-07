@@ -68,9 +68,6 @@
 
 static void usage(void);
 
-#undef PROG
-
-#define PROG pkeyutl_main
 
 static EVP_PKEY_CTX *init_ctx(int *pkeysize,
 				char *keyfile, int keyform, int key_type,
@@ -83,9 +80,30 @@ static int do_keyop(EVP_PKEY_CTX *ctx, int pkey_op,
 		unsigned char *out, size_t *poutlen,
 		unsigned char *in, size_t inlen);
 
-int MAIN(int argc, char **);
+const char* pkeyutl_help[] = {
+	 "-in file        input file",
+	 "-out file       output file",
+	 "-sigfile file   signature file (verify operation only)",
+	 "-inkey file     input key",
+	 "-keyform arg    private key format - default PEM",
+	 "-pubin          input is a public key",
+	 "-certin         input is a certificate carrying a public key",
+	 "-pkeyopt X:Y    public key options",
+	 "-sign           sign with private key",
+	 "-verify         verify with public key",
+	 "-verifyrecover  verify with public key, recover original data",
+	 "-encrypt        encrypt with public key",
+	 "-decrypt        decrypt with private key",
+	 "-derive         derive shared secret",
+	 "-hexdump        hex dump output",
+#ifndef OPENSSL_NO_ENGINE
+	 "-engine e       use engine e, possibly a hardware device.",
+#endif
+	 "-passin arg     pass phrase source",
+	 NULL
+};
 
-int MAIN(int argc, char **argv)
+int pkeyutl_main(int argc, char **argv)
 {
 	BIO *in = NULL, *out = NULL;
 	char *infile = NULL, *outfile = NULL, *sigfile = NULL;
@@ -107,13 +125,6 @@ int MAIN(int argc, char **argv)
 	argc--;
 	argv++;
 
-	if(!bio_err) bio_err = BIO_new_fp(stderr, BIO_NOCLOSE);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
-	ERR_load_crypto_strings();
-	OpenSSL_add_all_algorithms();
-	
 	while(argc >= 1)
 		{
 		if (!strcmp(*argv,"-in"))
@@ -388,26 +399,7 @@ int MAIN(int argc, char **argv)
 static void usage()
 {
 	BIO_printf(bio_err, "Usage: pkeyutl [options]\n");
-	BIO_printf(bio_err, "-in file        input file\n");
-	BIO_printf(bio_err, "-out file       output file\n");
-	BIO_printf(bio_err, "-sigfile file signature file (verify operation only)\n");
-	BIO_printf(bio_err, "-inkey file     input key\n");
-	BIO_printf(bio_err, "-keyform arg    private key format - default PEM\n");
-	BIO_printf(bio_err, "-pubin          input is a public key\n");
-	BIO_printf(bio_err, "-certin         input is a certificate carrying a public key\n");
-	BIO_printf(bio_err, "-pkeyopt X:Y    public key options\n");
-	BIO_printf(bio_err, "-sign           sign with private key\n");
-	BIO_printf(bio_err, "-verify         verify with public key\n");
-	BIO_printf(bio_err, "-verifyrecover  verify with public key, recover original data\n");
-	BIO_printf(bio_err, "-encrypt        encrypt with public key\n");
-	BIO_printf(bio_err, "-decrypt        decrypt with private key\n");
-	BIO_printf(bio_err, "-derive         derive shared secret\n");
-	BIO_printf(bio_err, "-hexdump        hex dump output\n");
-#ifndef OPENSSL_NO_ENGINE
-	BIO_printf(bio_err, "-engine e       use engine e, possibly a hardware device.\n");
-#endif
-	BIO_printf(bio_err, "-passin arg     pass phrase source\n");
-
+	printhelp(pkeyutl_help);
 }
 
 static EVP_PKEY_CTX *init_ctx(int *pkeysize,

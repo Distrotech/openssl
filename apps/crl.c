@@ -66,41 +66,33 @@
 #include <openssl/x509v3.h>
 #include <openssl/pem.h>
 
-#undef PROG
-#define PROG	crl_main
 
 #undef POSTFIX
 #define	POSTFIX	".rvk"
 
-static const char *crl_usage[]={
-"usage: crl args\n",
-"\n",
-" -inform arg     - input format - default PEM (DER or PEM)\n",
-" -outform arg    - output format - default PEM\n",
-" -text           - print out a text format version\n",
-" -in arg         - input file - default stdin\n",
-" -out arg        - output file - default stdout\n",
-" -hash           - print hash value\n",
+const char *crl_help[]={
+	"-inform arg      input format - default PEM (DER or PEM)",
+	"-outform arg     output format - default PEM",
+	"-text            print out a text format version",
+	"-in arg          input file - default stdin",
+	"-out arg         output file - default stdout",
+	"-hash            print hash value",
 #ifndef OPENSSL_NO_MD5
-" -hash_old       - print old-style (MD5) hash value\n",
+	"-hash_old        print old-style (MD5) hash value",
 #endif
-" -fingerprint    - print the crl fingerprint\n",
-" -issuer         - print issuer DN\n",
-" -lastupdate     - lastUpdate field\n",
-" -nextupdate     - nextUpdate field\n",
-" -crlnumber      - print CRL number\n",
-" -noout          - no CRL output\n",
-" -CAfile  name   - verify CRL using certificates in file \"name\"\n",
-" -CApath  dir    - verify CRL using certificates in \"dir\"\n",
-" -nameopt arg    - various certificate name options\n",
+	"-fingerprint     print the crl fingerprint",
+	"-issuer          print issuer DN",
+	"-lastupdate      lastUpdate field",
+	"-nextupdate      nextUpdate field",
+	"-crlnumber       print CRL number",
+	"-noout           no CRL output",
+	"-CAfile name     verify CRL using certificates in file name",
+	"-CApath dir      verify CRL using certificates in dir",
+	"-nameopt arg     various certificate name options",
 NULL
 };
 
-static BIO *bio_out=NULL;
-
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int crl_main(int argc, char **argv)
 	{
 	unsigned long nmflag = 0;
 	X509_CRL *x=NULL;
@@ -114,7 +106,6 @@ int MAIN(int argc, char **argv)
        int hash_old=0;
 #endif
 	int fingerprint = 0, crlnumber = 0;
-	const char **pp;
 	X509_STORE *store = NULL;
 	X509_STORE_CTX ctx;
 	X509_LOOKUP *lookup = NULL;
@@ -122,27 +113,6 @@ int MAIN(int argc, char **argv)
 	EVP_PKEY *pkey;
 	int do_ver = 0;
 	const EVP_MD *md_alg,*digest=EVP_sha1();
-
-	apps_startup();
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
-
-	if (bio_out == NULL)
-		if ((bio_out=BIO_new(BIO_s_file())) != NULL)
-			{
-			BIO_set_fp(bio_out,stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-			{
-			BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-			bio_out = BIO_push(tmpbio, bio_out);
-			}
-#endif
-			}
 
 	informat=FORMAT_PEM;
 	outformat=FORMAT_PEM;
@@ -254,12 +224,12 @@ int MAIN(int argc, char **argv)
 	if (badops)
 		{
 bad:
-		for (pp=crl_usage; (*pp != NULL); pp++)
-			BIO_printf(bio_err,"%s",*pp);
+		BIO_printf(bio_err,"crl [options]\n");
+		BIO_printf(bio_err,"where options are\n");
+		printhelp(crl_help);
 		goto end;
 		}
 
-	ERR_load_crypto_strings();
 	x=load_crl(infile,informat);
 	if (x == NULL) { goto end; }
 
@@ -411,29 +381,16 @@ bad:
 				}
 			}
 		}
-
-	out=BIO_new(BIO_s_file());
-	if (out == NULL)
-		{
-		ERR_print_errors(bio_err);
-		goto end;
-		}
-
 	if (outfile == NULL)
 		{
-		BIO_set_fp(out,stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-		{
-		BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		out = BIO_push(tmpbio, out);
-		}
-#endif
+		out = BIO_dup_chain(bio_out);
 		}
 	else
 		{
-		if (BIO_write_filename(out,outfile) <= 0)
+		out=BIO_new_file(outfile, "w");
+		if (out == NULL)
 			{
-			perror(outfile);
+			ERR_print_errors(bio_err);
 			goto end;
 			}
 		}
@@ -464,13 +421,10 @@ end:
 	if (ret != 0)
 		ERR_print_errors(bio_err);
 	BIO_free_all(out);
-	BIO_free_all(bio_out);
-	bio_out=NULL;
 	X509_CRL_free(x);
 	if(store) {
 		X509_STORE_CTX_cleanup(&ctx);
 		X509_STORE_free(store);
 	}
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}

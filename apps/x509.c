@@ -80,83 +80,79 @@
 #include <openssl/dsa.h>
 #endif
 
-#undef PROG
-#define PROG x509_main
-
 #undef POSTFIX
 #define	POSTFIX	".srl"
 #define DEF_DAYS	30
 
-static const char *x509_usage[]={
-"usage: x509 args\n",
-" -inform arg     - input format - default PEM (one of DER, NET or PEM)\n",
-" -outform arg    - output format - default PEM (one of DER, NET or PEM)\n",
-" -keyform arg    - private key format - default PEM\n",
-" -CAform arg     - CA format - default PEM\n",
-" -CAkeyform arg  - CA key format - default PEM\n",
-" -in arg         - input file - default stdin\n",
-" -out arg        - output file - default stdout\n",
-" -passin arg     - private key password source\n",
-" -serial         - print serial number value\n",
-" -subject_hash   - print subject hash value\n",
+const char *x509_help[]={
+	"-inform arg       input format - default PEM (one of DER, NET or PEM)",
+	"-outform arg      output format - default PEM (one of DER, NET or PEM)",
+	"-keyform arg      private key format - default PEM",
+	"-CAform arg       CA format - default PEM",
+	"-CAkeyform arg    CA key format - default PEM",
+	"-in arg           input file - default stdin",
+	"-out arg          output file - default stdout",
+	"-passin arg       private key password source",
+	"-serial           print serial number value",
+	"-subject_hash     print subject hash value",
 #ifndef OPENSSL_NO_MD5
-" -subject_hash_old   - print old-style (MD5) subject hash value\n",
+	"-subject_hash_old print old-style (MD5) subject hash value",
 #endif
-" -issuer_hash    - print issuer hash value\n",
+	"-issuer_hash      print issuer hash value",
 #ifndef OPENSSL_NO_MD5
-" -issuer_hash_old    - print old-style (MD5) issuer hash value\n",
+	"-issuer_hash_old  print old-style (MD5) issuer hash value",
 #endif
-" -hash           - synonym for -subject_hash\n",
-" -subject        - print subject DN\n",
-" -issuer         - print issuer DN\n",
-" -email          - print email address(es)\n",
-" -startdate      - notBefore field\n",
-" -enddate        - notAfter field\n",
-" -purpose        - print out certificate purposes\n",
-" -dates          - both Before and After dates\n",
-" -modulus        - print the RSA key modulus\n",
-" -pubkey         - output the public key\n",
-" -fingerprint    - print the certificate fingerprint\n",
-" -alias          - output certificate alias\n",
-" -noout          - no certificate output\n",
-" -ocspid         - print OCSP hash values for the subject name and public key\n",
-" -ocsp_uri       - print OCSP Responder URL(s)\n",
-" -trustout       - output a \"trusted\" certificate\n",
-" -clrtrust       - clear all trusted purposes\n",
-" -clrreject      - clear all rejected purposes\n",
-" -addtrust arg   - trust certificate for a given purpose\n",
-" -addreject arg  - reject certificate for a given purpose\n",
-" -setalias arg   - set certificate alias\n",
-" -days arg       - How long till expiry of a signed certificate - def 30 days\n",
-" -checkend arg   - check whether the cert expires in the next arg seconds\n",
-"                   exit 1 if so, 0 if not\n",
-" -signkey arg    - self sign cert with arg\n",
-" -x509toreq      - output a certification request object\n",
-" -req            - input is a certificate request, sign and output.\n",
-" -CA arg         - set the CA certificate, must be PEM format.\n",
-" -CAkey arg      - set the CA key, must be PEM format\n",
-"                   missing, it is assumed to be in the CA file.\n",
-" -CAcreateserial - create serial number file if it does not exist\n",
-" -CAserial arg   - serial file\n",
-" -set_serial     - serial number to use\n",
-" -text           - print the certificate in text form\n",
-" -C              - print out C code forms\n",
-" -md2/-md5/-sha1/-mdc2 - digest to use\n",
-" -extfile        - configuration file with X509V3 extensions to add\n",
-" -extensions     - section from config file with X509V3 extensions to add\n",
-" -clrext         - delete extensions before signing and input certificate\n",
-" -nameopt arg    - various certificate name options\n",
+	"-hash             synonym for -subject_hash",
+	"-subject          print subject DN",
+	"-issuer           print issuer DN",
+	"-email            print email address(es)",
+	"-startdate        notBefore field",
+	"-enddate          notAfter field",
+	"-purpose          print out certificate purposes",
+	"-dates            both Before and After dates",
+	"-modulus          print the RSA key modulus",
+	"-pubkey           output the public key",
+	"-fingerprint      print the certificate fingerprint",
+	"-alias            output certificate alias",
+	"-noout            no certificate output",
+	"-ocspid           print OCSP hash values for the subject name and public key",
+	"-ocsp_uri         print OCSP Responder URL(s)",
+	"-trustout         output a trusted certificate",
+	"-clrtrust         clear all trusted purposes",
+	"-clrreject        clear all rejected purposes",
+	"-addtrust arg     trust certificate for a given purpose",
+	"-addreject arg    reject certificate for a given purpose",
+	"-setalias arg     set certificate alias",
+	"-days arg         how long till expiry of a signed certificate - def 30 days",
+	"-checkend arg     check whether the cert expires in the next arg seconds",
+	"                  exit 1 if so, 0 if not",
+	"-signkey arg      self sign cert with arg",
+	"-x509toreq        output a certification request object",
+	"-req              input is a certificate request, sign and output.",
+	"-CA arg           set the CA certificate, must be PEM format.",
+	"-CAkey arg        set the CA key, must be PEM format",
+	"                  if missing, it is assumed to be in the CA file.",
+	"-CAcreateserial   create serial number file if it does not exist",
+	"-CAserial arg     serial file",
+	"-set_serial       serial number to use",
+	"-text             print the certificate in text form",
+	"-C                print out C code forms",
+	"-{digest}         digest to use",
+	"-extfile          configuration file with X509V3 extensions to add",
+	"-extensions       section from config file with X509V3 extensions to add",
+	"-clrext           delete extensions before signing and input certificate",
+	"-nameopt arg      various certificate name options",
 #ifndef OPENSSL_NO_ENGINE
-" -engine e       - use engine e, possibly a hardware device.\n",
+	"-engine e         use engine e, possibly a hardware device.",
 #endif
-" -certopt arg    - various certificate text options\n",
-" -checkhost host - check certificate matches \"host\"\n",
-" -checkemail email - check certificate matches \"email\"\n",
-" -checkip ipaddr - check certificate matches \"ipaddr\"\n",
-NULL
+	"-certopt arg      various certificate text options",
+	"-checkhost host   check certificate matches host",
+	"-checkemail email check certificate matches email",
+	"-checkip ipaddr   check certificate matches ipaddr",
+	NULL
 };
 
-static int MS_CALLBACK callb(int ok, X509_STORE_CTX *ctx);
+static int callb(int ok, X509_STORE_CTX *ctx);
 static int sign (X509 *x, EVP_PKEY *pkey,int days,int clrext, const EVP_MD *digest,
 						CONF *conf, char *section);
 static int x509_certify (X509_STORE *ctx,char *CAfile,const EVP_MD *digest,
@@ -170,9 +166,7 @@ static int reqfile=0;
 static int force_version=2;
 #endif
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int x509_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL;
 	int ret=1;
@@ -203,7 +197,6 @@ int MAIN(int argc, char **argv)
 	int C=0;
 	int x509req=0,days=DEF_DAYS,modulus=0,pubkey=0;
 	int pprint = 0;
-	const char **pp;
 	X509_STORE *ctx=NULL;
 	X509_REQ *rq=NULL;
 	int fingerprint=0;
@@ -223,13 +216,6 @@ int MAIN(int argc, char **argv)
 
 	reqfile=0;
 
-	apps_startup();
-
-	if (bio_err == NULL)
-		bio_err=BIO_new_fp(stderr,BIO_NOCLOSE);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
 	STDout=BIO_new_fp(stdout,BIO_NOCLOSE);
 #ifdef OPENSSL_SYS_VMS
 	{
@@ -530,8 +516,8 @@ int MAIN(int argc, char **argv)
 	if (badops)
 		{
 bad:
-		for (pp=x509_usage; (*pp != NULL); pp++)
-			BIO_printf(bio_err,"%s",*pp);
+		BIO_printf(bio_err, "x509 [args]\n");
+		printhelp(x509_help);
 		goto end;
 		}
 
@@ -541,8 +527,6 @@ bad:
 
 	if (need_rand)
 		app_RAND_load_file(NULL, bio_err, 0);
-
-	ERR_load_crypto_strings();
 
 	if (!app_passwd(bio_err, passargin, NULL, &passin, NULL))
 		{
@@ -620,23 +604,14 @@ bad:
 			BIO_printf(bio_err,"We need a private key to sign with\n");
 			goto end;
 			}
-		in=BIO_new(BIO_s_file());
+		if (infile == NULL)
+			in = BIO_new_fp(stdin,BIO_NOCLOSE|BIO_FP_TEXT);
+		else
+			in = BIO_new_file(infile, "r");
 		if (in == NULL)
 			{
 			ERR_print_errors(bio_err);
 			goto end;
-			}
-
-		if (infile == NULL)
-			BIO_set_fp(in,stdin,BIO_NOCLOSE|BIO_FP_TEXT);
-		else
-			{
-			if (BIO_read_filename(in,infile) <= 0)
-				{
-				perror(infile);
-				BIO_free(in);
-				goto end;
-				}
 			}
 		req=PEM_read_bio_X509_REQ(in,NULL,NULL,NULL);
 		BIO_free(in);
@@ -723,29 +698,14 @@ bad:
 		OBJ_create("2.99999.3",
 			"SET.ex3","SET x509v3 extension 3");
 
-		out=BIO_new(BIO_s_file());
+		if (outfile == NULL)
+			out = BIO_dup_chain(bio_out);
+		else
+			out = BIO_new_file(outfile, "w");
 		if (out == NULL)
 			{
 			ERR_print_errors(bio_err);
 			goto end;
-			}
-		if (outfile == NULL)
-			{
-			BIO_set_fp(out,stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-			{
-			BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-			out = BIO_push(tmpbio, out);
-			}
-#endif
-			}
-		else
-			{
-			if (BIO_write_filename(out,outfile) <= 0)
-				{
-				perror(outfile);
-				goto end;
-				}
 			}
 		}
 
@@ -1156,8 +1116,7 @@ end:
 	sk_ASN1_OBJECT_pop_free(trust, ASN1_OBJECT_free);
 	sk_ASN1_OBJECT_pop_free(reject, ASN1_OBJECT_free);
 	if (passin) OPENSSL_free(passin);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 
 static ASN1_INTEGER *x509_load_serial(char *CAfile, char *serialfile, int create)
@@ -1279,7 +1238,7 @@ end:
 	return ret;
 	}
 
-static int MS_CALLBACK callb(int ok, X509_STORE_CTX *ctx)
+static int callb(int ok, X509_STORE_CTX *ctx)
 	{
 	int err;
 	X509 *err_cert;

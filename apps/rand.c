@@ -63,19 +63,20 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
-#undef PROG
-#define PROG rand_main
 
-/* -out file         - write to file
- * -rand file:file   - PRNG seed files
- * -base64           - base64 encode output
- * -hex              - hex encode output
- * num               - write 'num' bytes
- */
+const char *rand_help[] = {
+	"-out file        write to file",
+	"-rand file...    seed PRNG from files",
+	"-base64          base64 encode output",
+	"-hex             hex encode output",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e        use engine e, possibly a hardware device.",
+#endif
+	NULL
+};
 
-int MAIN(int, char **);
 
-int MAIN(int argc, char **argv)
+int rand_main(int argc, char **argv)
 	{
 	int i, r, ret = 1;
 	int badopt;
@@ -89,14 +90,6 @@ int MAIN(int argc, char **argv)
 	char *engine=NULL;
 #endif
 
-	apps_startup();
-
-	if (bio_err == NULL)
-		if ((bio_err = BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err, stderr, BIO_NOCLOSE|BIO_FP_TEXT);
-
-	if (!load_config(bio_err, NULL))
-		goto err;
 
 	badopt = 0;
 	i = 0;
@@ -164,13 +157,7 @@ int MAIN(int argc, char **argv)
 		{
 		BIO_printf(bio_err, "Usage: rand [options] num\n");
 		BIO_printf(bio_err, "where options are\n");
-		BIO_printf(bio_err, "-out file             - write to file\n");
-#ifndef OPENSSL_NO_ENGINE
-		BIO_printf(bio_err, "-engine e             - use engine e, possibly a hardware device.\n");
-#endif
-		BIO_printf(bio_err, "-rand file%cfile%c... - seed PRNG from files\n", LIST_SEPARATOR_CHAR, LIST_SEPARATOR_CHAR);
-		BIO_printf(bio_err, "-base64               - base64 encode output\n");
-		BIO_printf(bio_err, "-hex                  - hex encode output\n");
+		printhelp(rand_help);
 		goto err;
 		}
 
@@ -183,23 +170,15 @@ int MAIN(int argc, char **argv)
 		BIO_printf(bio_err,"%ld semi-random bytes loaded\n",
 			app_RAND_load_files(inrand));
 
-	out = BIO_new(BIO_s_file());
-	if (out == NULL)
-		goto err;
-	if (outfile != NULL)
-		r = BIO_write_filename(out, outfile);
+	if (outfile == NULL)
+		out = BIO_dup_chain(bio_out);
 	else
+		out = BIO_new_file(outfile, "w");
+	if (out == NULL)
 		{
-		r = BIO_set_fp(out, stdout, BIO_NOCLOSE | BIO_FP_TEXT);
-#ifdef OPENSSL_SYS_VMS
-		{
-		BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		out = BIO_push(tmpbio, out);
-		}
-#endif
-		}
-	if (r <= 0)
+		ERR_print_errors(bio_err);
 		goto err;
+		}
 
 	if (base64)
 		{
@@ -237,9 +216,7 @@ int MAIN(int argc, char **argv)
 	ret = 0;
 	
 err:
-	ERR_print_errors(bio_err);
 	if (out)
 		BIO_free_all(out);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}

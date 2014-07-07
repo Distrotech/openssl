@@ -69,26 +69,23 @@
 #include <openssl/engine.h>
 #include <openssl/ssl.h>
 
-#undef PROG
-#define PROG	engine_main
 
-static const char *engine_usage[]={
-"usage: engine opts [engine ...]\n",
-" -v[v[v[v]]] - verbose mode, for each engine, list its 'control commands'\n",
-"               -vv will additionally display each command's description\n",
-"               -vvv will also add the input flags for each command\n",
-"               -vvvv will also show internal input flags\n",
-" -c          - for each engine, also list the capabilities\n",
-" -t[t]       - for each engine, check that they are really available\n",
-"               -tt will display error trace for unavailable engines\n",
-" -pre <cmd>  - runs command 'cmd' against the ENGINE before any attempts\n",
-"               to load it (if -t is used)\n",
-" -post <cmd> - runs command 'cmd' against the ENGINE after loading it\n",
-"               (only used if -t is also provided)\n",
-" NB: -pre and -post will be applied to all ENGINEs supplied on the command\n",
-" line, or all supported ENGINEs if none are specified.\n",
-" Eg. '-pre \"SO_PATH:/lib/libdriver.so\"' calls command \"SO_PATH\" with\n",
-" argument \"/lib/libdriver.so\".\n",
+const char *engine_help[] = {
+	"-v          verbose mode; for each engine, list its 'control commands'",
+	"-vv         also display each command's description",
+	"-vvv        also add the input flags for each command",
+	"-vvvv       also show internal input flags",
+	"-c          for each engine, also list the capabilities",
+	"-t          check that each engine is available",
+	"-tt         display error trace for unavailable engines",
+	"-pre cmd    runs command 'cmd' against the ENGINE before any attempts",
+	"            to load it (if -t is used)",
+	"-post cmd   runs command 'cmd' against the ENGINE after loading it",
+	"            (only used if -t is also provided)",
+	"NB: -pre and -post will be applied to all ENGINEs supplied on the command",
+	"line, or all supported ENGINEs if none are specified.\n",
+	"Eg. '-pre \"SO_PATH:/lib/libdriver.so\"' calls command \"SO_PATH\" with",
+	"argument \"/lib/libdriver.so\".",
 NULL
 };
 
@@ -336,12 +333,9 @@ static void util_do_cmds(ENGINE *e, STACK_OF(OPENSSL_STRING) *cmds,
 		}
 	}
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int engine_main(int argc, char **argv)
 	{
 	int ret=1,i;
-	const char **pp;
 	int verbose=0, list_cap=0, test_avail=0, test_avail_noise = 0;
 	ENGINE *e;
 	STACK_OF(OPENSSL_STRING) *engines = sk_OPENSSL_STRING_new_null();
@@ -351,14 +345,8 @@ int MAIN(int argc, char **argv)
 	BIO *bio_out=NULL;
 	const char *indent = "     ";
 
-	apps_startup();
 	SSL_load_error_strings();
 
-	if (bio_err == NULL)
-		bio_err=BIO_new_fp(stderr,BIO_NOCLOSE);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
 	bio_out=BIO_new_fp(stdout,BIO_NOCLOSE);
 #ifdef OPENSSL_SYS_VMS
 	{
@@ -416,8 +404,8 @@ skip_arg_loop:
 
 	if (badops)
 		{
-		for (pp=engine_usage; (*pp != NULL); pp++)
-			BIO_printf(bio_err,"%s",*pp);
+		BIO_printf(bio_err, "usage: engine opts [engine ...]\n");
+		printhelp(engine_help);
 		goto end;
 		}
 
@@ -537,8 +525,7 @@ end:
 	sk_OPENSSL_STRING_pop_free(pre_cmds, identity);
 	sk_OPENSSL_STRING_pop_free(post_cmds, identity);
 	if (bio_out != NULL) BIO_free_all(bio_out);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 #else
 

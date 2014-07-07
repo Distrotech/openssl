@@ -77,22 +77,6 @@
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 
-#undef PROG
-#define PROG	dsaparam_main
-
-/* -inform arg	- input format - default PEM (DER or PEM)
- * -outform arg - output format - default PEM
- * -in arg	- input file - default stdin
- * -out arg	- output file - default stdout
- * -noout
- * -text
- * -C
- * -noout
- * -genkey
- *  #ifdef GENCB_TEST
- * -timebomb n  - interrupt keygen after <n> seconds
- *  #endif
- */
 
 #ifdef GENCB_TEST
 
@@ -105,11 +89,28 @@ static void timebomb_sigalarm(int foo)
 
 #endif
 
-static int MS_CALLBACK dsa_cb(int p, int n, BN_GENCB *cb);
+static int dsa_cb(int p, int n, BN_GENCB *cb);
 
-int MAIN(int, char **);
+const char* dsaparam_help[] = {
+	"-inform arg   input format - DER or PEM",
+	"-outform arg  output format - DER or PEM",
+	"-in arg       input file",
+	"-out arg      output file",
+	"-text         print as text",
+	"-C            Output C code",
+	"-noout        no output",
+	"-genkey       generate a DSA key",
+	"-rand         files to use for random number input",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e     use engine e, possibly a hardware device.",
+#endif
+#ifdef GENCB_TEST
+	"-timebomb n   interrupt keygen after <n> seconds",
+#endif
+	NULL
+};
 
-int MAIN(int argc, char **argv)
+int dsaparam_main(int argc, char **argv)
 	{
 	DSA *dsa=NULL;
 	int i,badops=0,text=0;
@@ -125,15 +126,6 @@ int MAIN(int argc, char **argv)
 #ifdef GENCB_TEST
 	int timebomb=0;
 #endif
-
-	apps_startup();
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
 
 	infile=NULL;
 	outfile=NULL;
@@ -219,62 +211,27 @@ int MAIN(int argc, char **argv)
 bad:
 		BIO_printf(bio_err,"%s [options] [bits] <infile >outfile\n",prog);
 		BIO_printf(bio_err,"where options are\n");
-		BIO_printf(bio_err," -inform arg   input format - DER or PEM\n");
-		BIO_printf(bio_err," -outform arg  output format - DER or PEM\n");
-		BIO_printf(bio_err," -in arg       input file\n");
-		BIO_printf(bio_err," -out arg      output file\n");
-		BIO_printf(bio_err," -text         print as text\n");
-		BIO_printf(bio_err," -C            Output C code\n");
-		BIO_printf(bio_err," -noout        no output\n");
-		BIO_printf(bio_err," -genkey       generate a DSA key\n");
-		BIO_printf(bio_err," -rand         files to use for random number input\n");
-#ifndef OPENSSL_NO_ENGINE
-		BIO_printf(bio_err," -engine e     use engine e, possibly a hardware device.\n");
-#endif
-#ifdef GENCB_TEST
-		BIO_printf(bio_err," -timebomb n   interrupt keygen after <n> seconds\n");
-#endif
-		BIO_printf(bio_err," number        number of bits to use for generating private key\n");
-		goto end;
-		}
-
-	ERR_load_crypto_strings();
-
-	in=BIO_new(BIO_s_file());
-	out=BIO_new(BIO_s_file());
-	if ((in == NULL) || (out == NULL))
-		{
-		ERR_print_errors(bio_err);
+		printhelp(dsaparam_help);
 		goto end;
 		}
 
 	if (infile == NULL)
-		BIO_set_fp(in,stdin,BIO_NOCLOSE);
+		in = BIO_new_fp(stdin,BIO_NOCLOSE);
 	else
+		in = BIO_new_file(infile, "r");
+	if (in == NULL)
 		{
-		if (BIO_read_filename(in,infile) <= 0)
-			{
-			perror(infile);
-			goto end;
-			}
+		ERR_print_errors(bio_err);
+		goto end;
 		}
 	if (outfile == NULL)
-		{
-		BIO_set_fp(out,stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-		{
-		BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		out = BIO_push(tmpbio, out);
-		}
-#endif
-		}
+		out = BIO_dup_chain(bio_out);
 	else
+		out = BIO_new_file(outfile, "w");
+	if (out == NULL)
 		{
-		if (BIO_write_filename(out,outfile) <= 0)
-			{
-			perror(outfile);
-			goto end;
-			}
+		ERR_print_errors(bio_err);
+		goto end;
 		}
 
 #ifndef OPENSSL_NO_ENGINE
@@ -461,11 +418,10 @@ end:
 	if (in != NULL) BIO_free(in);
 	if (out != NULL) BIO_free_all(out);
 	if (dsa != NULL) DSA_free(dsa);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 
-static int MS_CALLBACK dsa_cb(int p, int n, BN_GENCB *cb)
+static int dsa_cb(int p, int n, BN_GENCB *cb)
 	{
 	char c='*';
 

@@ -62,11 +62,21 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 
-#define PROG pkey_main
+const char* pkey_help[] = {
+	"-in file        input file",
+	"-inform X       input format (DER or PEM)",
+	"-passin arg     input file pass phrase source",
+	"-outform X      output format (DER or PEM)",
+	"-out file       output file",
+	"-passout arg    output file pass phrase source",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e       use engine e, possibly a hardware device.",
+#endif
+	NULL
+};
 
-int MAIN(int, char **);
 
-int MAIN(int argc, char **argv)
+int pkey_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL;
 	char **args, *infile = NULL, *outfile = NULL;
@@ -83,17 +93,9 @@ int MAIN(int argc, char **argv)
 #endif
 	int ret = 1;
 
-	if (bio_err == NULL)
-		bio_err = BIO_new_fp (stderr, BIO_NOCLOSE);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
-
 	informat=FORMAT_PEM;
 	outformat=FORMAT_PEM;
 
-	ERR_load_crypto_strings();
-	OpenSSL_add_all_algorithms();
 	args = argv + 1;
 	while (!badarg && *args && *args[0] == '-')
 		{
@@ -185,15 +187,7 @@ int MAIN(int argc, char **argv)
 		bad:
 		BIO_printf(bio_err, "Usage pkey [options]\n");
 		BIO_printf(bio_err, "where options are\n");
-		BIO_printf(bio_err, "-in file        input file\n");
-		BIO_printf(bio_err, "-inform X       input format (DER or PEM)\n");
-		BIO_printf(bio_err, "-passin arg     input file pass phrase source\n");
-		BIO_printf(bio_err, "-outform X      output format (DER or PEM)\n");
-		BIO_printf(bio_err, "-out file       output file\n");
-		BIO_printf(bio_err, "-passout arg    output file pass phrase source\n");
-#ifndef OPENSSL_NO_ENGINE
-		BIO_printf(bio_err, "-engine e       use engine e, possibly a hardware device.\n");
-#endif
+		printhelp(pkey_help);
 		return 1;
 		}
 

@@ -96,8 +96,6 @@
 #  define R_OK 4
 #endif
 
-#undef PROG
-#define PROG ca_main
 
 #define BASE_SECTION	"ca"
 #define CONFIG_FILE "openssl.cnf"
@@ -145,48 +143,46 @@
 #define REV_KEY_COMPROMISE	3	/* Value is cert key compromise time */
 #define REV_CA_COMPROMISE	4	/* Value is CA key compromise time */
 
-static const char *ca_usage[]={
-"usage: ca args\n",
-"\n",
-" -verbose        - Talk a lot while doing things\n",
-" -config file    - A config file\n",
-" -name arg       - The particular CA definition to use\n",
-" -gencrl         - Generate a new CRL\n",
-" -crldays days   - Days is when the next CRL is due\n",
-" -crlhours hours - Hours is when the next CRL is due\n",
-" -startdate YYMMDDHHMMSSZ  - certificate validity notBefore\n",
-" -enddate YYMMDDHHMMSSZ    - certificate validity notAfter (overrides -days)\n",
-" -days arg       - number of days to certify the certificate for\n",
-" -md arg         - md to use, one of md2, md5, sha or sha1\n",
-" -policy arg     - The CA 'policy' to support\n",
-" -keyfile arg    - private key file\n",
-" -keyform arg    - private key file format (PEM or ENGINE)\n",
-" -key arg        - key to decode the private key if it is encrypted\n",
-" -cert file      - The CA certificate\n",
-" -selfsign       - sign a certificate with the key associated with it\n",
-" -in file        - The input PEM encoded certificate request(s)\n",
-" -out file       - Where to put the output file(s)\n",
-" -outdir dir     - Where to put output certificates\n",
-" -infiles ....   - The last argument, requests to process\n",
-" -spkac file     - File contains DN and signed public key and challenge\n",
-" -ss_cert file   - File contains a self signed cert to sign\n",
-" -preserveDN     - Don't re-order the DN\n",
-" -noemailDN      - Don't add the EMAIL field into certificate' subject\n",
-" -batch          - Don't ask questions\n",
-" -msie_hack      - msie modifications to handle all those universal strings\n",
-" -revoke file    - Revoke a certificate (given in file)\n",
-" -subj arg       - Use arg instead of request's subject\n",
-" -utf8           - input characters are UTF8 (default ASCII)\n",
-" -multivalue-rdn - enable support for multivalued RDNs\n",
-" -extensions ..  - Extension section (override value in config file)\n",
-" -extfile file   - Configuration file with X509v3 extensions to add\n",
-" -crlexts ..     - CRL extension section (override value in config file)\n",
+const char *ca_help[] = {
+	"-verbose        - Talk a lot while doing things",
+	"-config file    - A config file",
+	"-name arg       - The particular CA definition to use",
+	"-gencrl         - Generate a new CRL",
+	"-crldays days   - Days is when the next CRL is due",
+	"-crlhours hours - Hours is when the next CRL is due",
+	"-startdate YYMMDDHHMMSSZ  - certificate validity notBefore",
+	"-enddate YYMMDDHHMMSSZ    - certificate validity notAfter (overrides -days)",
+	"-days arg       - number of days to certify the certificate for",
+	"-md arg         - md to use, one of md2, md5, sha or sha1",
+	"-policy arg     - The CA 'policy' to support",
+	"-keyfile arg    - private key file",
+	"-keyform arg    - private key file format (PEM or ENGINE)",
+	"-key arg        - key to decode the private key if it is encrypted",
+	"-cert file      - The CA certificate",
+	"-selfsign       - sign a certificate with the key associated with it",
+	"-in file        - The input PEM encoded certificate request(s)",
+	"-out file       - Where to put the output file(s)",
+	"-outdir dir     - Where to put output certificates",
+	"-infiles ....   - The last argument, requests to process",
+	"-spkac file     - File contains DN and signed public key and challenge",
+	"-ss_cert file   - File contains a self signed cert to sign",
+	"-preserveDN     - Don't re-order the DN",
+	"-noemailDN      - Don't add the EMAIL field into certificate' subject",
+	"-batch          - Don't ask questions",
+	"-msie_hack      - msie modifications to handle all those universal strings",
+	"-revoke file    - Revoke a certificate (given in file)",
+	"-subj arg       - Use arg instead of request's subject",
+	"-utf8           - input characters are UTF8 (default ASCII)",
+	"-multivalue-rdn - enable support for multivalued RDNs",
+	"-extensions ..  - Extension section (override value in config file)",
+	"-extfile file   - Configuration file with X509v3 extensions to add",
+	"-crlexts ..     - CRL extension section (override value in config file)",
 #ifndef OPENSSL_NO_ENGINE
-" -engine e       - use engine e, possibly a hardware device.\n",
+	"-engine e       - use engine e, possibly a hardware device.",
 #endif
-" -status serial  - Shows certificate status given the serial number\n",
-" -updatedb       - Updates db for expired certificates\n",
-NULL
+	"-status serial  - Shows certificate status given the serial number",
+	"-updatedb       - Updates db for expired certificates",
+	NULL
 };
 
 #ifdef EFENCE
@@ -197,30 +193,30 @@ extern int EF_ALIGNMENT;
 
 static void lookup_fail(const char *name, const char *tag);
 static int certify(X509 **xret, char *infile,EVP_PKEY *pkey,X509 *x509,
-		   const EVP_MD *dgst,STACK_OF(OPENSSL_STRING) *sigopts,
-		   STACK_OF(CONF_VALUE) *policy,CA_DB *db,
-		   BIGNUM *serial, char *subj,unsigned long chtype, int multirdn, int email_dn, char *startdate,
-		   char *enddate, long days, int batch, char *ext_sect, CONF *conf,
-		   int verbose, unsigned long certopt, unsigned long nameopt,
-		   int default_op, int ext_copy, int selfsign);
+		const EVP_MD *dgst,STACK_OF(OPENSSL_STRING) *sigopts,
+		STACK_OF(CONF_VALUE) *policy,CA_DB *db,
+		BIGNUM *serial, char *subj,unsigned long chtype, int multirdn, int email_dn, char *startdate,
+		char *enddate, long days, int batch, char *ext_sect, CONF *conf,
+		int verbose, unsigned long certopt, unsigned long nameopt,
+		int default_op, int ext_copy, int selfsign);
 static int certify_cert(X509 **xret, char *infile,EVP_PKEY *pkey,X509 *x509,
-			const EVP_MD *dgst,STACK_OF(OPENSSL_STRING) *sigopts,
-			STACK_OF(CONF_VALUE) *policy,
-			CA_DB *db, BIGNUM *serial, char *subj,unsigned long chtype, int multirdn, int email_dn,
-			char *startdate, char *enddate, long days, int batch,
-			char *ext_sect, CONF *conf,int verbose, unsigned long certopt,
-			unsigned long nameopt, int default_op, int ext_copy,
-			ENGINE *e);
+		const EVP_MD *dgst,STACK_OF(OPENSSL_STRING) *sigopts,
+		STACK_OF(CONF_VALUE) *policy,
+		CA_DB *db, BIGNUM *serial, char *subj,unsigned long chtype, int multirdn, int email_dn,
+		char *startdate, char *enddate, long days, int batch,
+		char *ext_sect, CONF *conf,int verbose, unsigned long certopt,
+		unsigned long nameopt, int default_op, int ext_copy,
+		ENGINE *e);
 static int certify_spkac(X509 **xret, char *infile,EVP_PKEY *pkey,X509 *x509,
-			 const EVP_MD *dgst,STACK_OF(OPENSSL_STRING) *sigopts,
-			 STACK_OF(CONF_VALUE) *policy,
-			 CA_DB *db, BIGNUM *serial,char *subj,unsigned long chtype, int multirdn, int email_dn,
-			 char *startdate, char *enddate, long days, char *ext_sect,
-			 CONF *conf, int verbose, unsigned long certopt, 
-			 unsigned long nameopt, int default_op, int ext_copy);
+		const EVP_MD *dgst,STACK_OF(OPENSSL_STRING) *sigopts,
+		STACK_OF(CONF_VALUE) *policy,
+		CA_DB *db, BIGNUM *serial,char *subj,unsigned long chtype, int multirdn, int email_dn,
+		char *startdate, char *enddate, long days, char *ext_sect,
+		CONF *conf, int verbose, unsigned long certopt, 
+		unsigned long nameopt, int default_op, int ext_copy);
 static void write_new_certificate(BIO *bp, X509 *x, int output_der, int notext);
 static int do_body(X509 **xret, EVP_PKEY *pkey, X509 *x509, const EVP_MD *dgst,
-	STACK_OF(OPENSSL_STRING) *sigopts,
+		STACK_OF(OPENSSL_STRING) *sigopts,
 	STACK_OF(CONF_VALUE) *policy, CA_DB *db, BIGNUM *serial,char *subj,unsigned long chtype, int multirdn,
 	int email_dn, char *startdate, char *enddate, long days, int batch,
        	int verbose, X509_REQ *req, char *ext_sect, CONF *conf,
@@ -241,9 +237,7 @@ static int preserve=0;
 static int msie_hack=0;
 
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int ca_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL;
 	char *key=NULL,*passargin=NULL;
@@ -332,18 +326,12 @@ EF_PROTECT_BELOW=1;
 EF_ALIGNMENT=0;
 #endif
 
-	apps_startup();
-
 	conf = NULL;
 	key = NULL;
 	section = NULL;
 
 	preserve=0;
 	msie_hack=0;
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
-
 	argc--;
 	argv++;
 	while (argc >= 1)
@@ -575,14 +563,10 @@ bad:
 
 	if (badops)
 		{
-		const char **pp2;
-
-		for (pp2=ca_usage; (*pp2 != NULL); pp2++)
-			BIO_printf(bio_err,"%s",*pp2);
+		BIO_printf(bio_err, "usage: ca args\n");
+		printhelp(ca_help);
 		goto err;
 		}
-
-	ERR_load_crypto_strings();
 
 	/*****************************************************************/
 	tofree=NULL;
@@ -624,9 +608,6 @@ bad:
 		OPENSSL_free(tofree);
 		tofree = NULL;
 		}
-
-	if (!load_config(bio_err, conf))
-		goto err;
 
 #ifndef OPENSSL_NO_ENGINE
 	e = setup_engine(bio_err, engine, 0);
@@ -716,16 +697,6 @@ bad:
 		db_attr.unique_subject);
 #endif
 	
-	in=BIO_new(BIO_s_file());
-	out=BIO_new(BIO_s_file());
-	Sout=BIO_new(BIO_s_file());
-	Cout=BIO_new(BIO_s_file());
-	if ((in == NULL) || (out == NULL) || (Sout == NULL) || (Cout == NULL))
-		{
-		ERR_print_errors(bio_err);
-		goto err;
-		}
-
 	/*****************************************************************/
 	/* report status of cert with serial number given on command line */
 	if (ser_status)
@@ -948,14 +919,7 @@ bad:
 		}
 	if (verbose)
 		{
-		BIO_set_fp(out,stdout,BIO_NOCLOSE|BIO_FP_TEXT); /* cannot fail */
-#ifdef OPENSSL_SYS_VMS
-		{
-		BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		out = BIO_push(tmpbio, out);
-		}
-#endif
-		TXT_DB_write(out,db->db);
+		TXT_DB_write(bio_out,db->db);
 		BIO_printf(bio_err,"%d entries loaded from the database\n",
 			   sk_OPENSSL_PSTRING_num(db->db->data));
 		BIO_printf(bio_err,"generating index\n");
@@ -1023,7 +987,8 @@ bad:
 		{
 		if (outfile != NULL)
 			{
-			if (BIO_write_filename(Sout,outfile) <= 0)
+			Sout = BIO_new_file(outfile, "w");
+			if (Sout == NULL)
 				{
 				perror(outfile);
 				goto err;
@@ -1031,13 +996,7 @@ bad:
 			}
 		else
 			{
-			BIO_set_fp(Sout,stdout,BIO_NOCLOSE|BIO_FP_TEXT);
-#ifdef OPENSSL_SYS_VMS
-			{
-			BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-			Sout = BIO_push(tmpbio, Sout);
-			}
-#endif
+			Sout = BIO_dup_chain(bio_out);
 			}
 		}
 
@@ -1352,7 +1311,8 @@ bad:
 			if (verbose)
 				BIO_printf(bio_err,"writing %s\n",buf[2]);
 
-			if (BIO_write_filename(Cout,buf[2]) <= 0)
+			Cout = BIO_new_file(buf[2], "w");
+			if (Cout == NULL)
 				{
 				perror(buf[2]);
 				goto err;
@@ -1570,8 +1530,7 @@ err:
 	NCONF_free(conf);
 	NCONF_free(extconf);
 	OBJ_cleanup();
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 
 static void lookup_fail(const char *name, const char *tag)
@@ -1593,11 +1552,10 @@ static int certify(X509 **xret, char *infile, EVP_PKEY *pkey, X509 *x509,
 	EVP_PKEY *pktmp=NULL;
 	int ok= -1,i;
 
-	in=BIO_new(BIO_s_file());
-
-	if (BIO_read_filename(in,infile) <= 0)
+	in = BIO_new_file(infile, "r");
+	if (in == NULL)
 		{
-		perror(infile);
+		ERR_print_errors(bio_err);
 		goto err;
 		}
 	if ((req=PEM_read_bio_X509_REQ(in,NULL,NULL,NULL)) == NULL)

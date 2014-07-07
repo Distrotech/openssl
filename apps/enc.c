@@ -72,14 +72,37 @@
 #endif
 #include <ctype.h>
 
+const char* enc_help[] = {
+	"-in file    input file",
+	"-out <file> output file"
+	"-pass arg   phrase source",
+	"-e          encrypt",
+	"-d          decrypt",
+	"-a base64   encode/decode, depending on encryption flag",
+	"-base64     same as -a",
+	"-k pass     passphrase",
+	"-kfile name  read passphrase from file",
+	"-md digest  use specified digest to create key from passphrase",
+	"-S salt     salt, in hex",
+	"-iv iv      IV in hex",
+	"-K iv       same as -iv",
+	"-p          print the iv/key",
+	"-P          print the iv/key and exit",
+	"-bufsize n  buffer size",
+	"-nopad      disable standard block padding",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e   use engine e, possibly a hardware device",
+#endif
+	NULL
+};
+
+
 int set_hex(char *in,unsigned char *out,int size);
+
 #undef SIZE
 #undef BSIZE
-#undef PROG
-
 #define SIZE	(512)
 #define BSIZE	(8*1024)
-#define	PROG	enc_main
 
 static void show_ciphers(const OBJ_NAME *name,void *bio_)
 	{
@@ -99,9 +122,7 @@ static void show_ciphers(const OBJ_NAME *name,void *bio_)
 		BIO_printf(bio," ");
 	}
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int enc_main(int argc, char **argv)
 	{
 	static const char magic[]="Salted__";
 	char mbuf[sizeof magic-1];
@@ -116,48 +137,33 @@ int MAIN(int argc, char **argv)
 	char *hkey=NULL,*hiv=NULL,*hsalt = NULL;
 	char *md=NULL;
 	int enc=1,printkey=0,i,base64=0;
-#ifdef ZLIB
 	int do_zlib=0;
+#ifdef ZLIB
 	BIO *bzl = NULL;
 #endif
 	int debug=0,olb64=0,nosalt=0;
 	const EVP_CIPHER *cipher=NULL,*c;
 	EVP_CIPHER_CTX *ctx = NULL;
-	char *inf=NULL,*outf=NULL;
+	char *inf=NULL,*outf=NULL, *pname;
 	BIO *in=NULL,*out=NULL,*b64=NULL,*benc=NULL,*rbio=NULL,*wbio=NULL;
-#define PROG_NAME_SIZE  39
-	char pname[PROG_NAME_SIZE+1];
 #ifndef OPENSSL_NO_ENGINE
 	char *engine = NULL;
 #endif
 	const EVP_MD *dgst=NULL;
 	int non_fips_allow = 0;
 
-	apps_startup();
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
-
 	/* first check the program name */
-	program_name(argv[0],pname,sizeof pname);
-	if (strcmp(pname,"base64") == 0)
+	pname = opt_progname(argv[0]);
+	if (strcmp(pname, "base64") == 0)
 		base64=1;
 #ifdef ZLIB
-	if (strcmp(pname,"zlib") == 0)
+	else if (strcmp(pname, "zlib") == 0)
 		do_zlib=1;
 #endif
-
-	cipher=EVP_get_cipherbyname(pname);
-#ifdef ZLIB
+	else
+		cipher=EVP_get_cipherbyname(pname);
 	if (!do_zlib && !base64 && (cipher == NULL)
 				&& (strcmp(pname,"enc") != 0))
-#else
-	if (!base64 && (cipher == NULL) && (strcmp(pname,"enc") != 0))
-#endif
 		{
 		BIO_printf(bio_err,"%s is an unknown cipher\n",pname);
 		goto bad;
@@ -296,27 +302,9 @@ int MAIN(int argc, char **argv)
 		else
 			{
 			BIO_printf(bio_err,"unknown option '%s'\n",*argv);
+			BIO_printf(bio_err,"options are:\n");
 bad:
-			BIO_printf(bio_err,"options are\n");
-			BIO_printf(bio_err,"%-14s input file\n","-in <file>");
-			BIO_printf(bio_err,"%-14s output file\n","-out <file>");
-			BIO_printf(bio_err,"%-14s pass phrase source\n","-pass <arg>");
-			BIO_printf(bio_err,"%-14s encrypt\n","-e");
-			BIO_printf(bio_err,"%-14s decrypt\n","-d");
-			BIO_printf(bio_err,"%-14s base64 encode/decode, depending on encryption flag\n","-a/-base64");
-			BIO_printf(bio_err,"%-14s passphrase is the next argument\n","-k");
-			BIO_printf(bio_err,"%-14s passphrase is the first line of the file argument\n","-kfile");
-			BIO_printf(bio_err,"%-14s the next argument is the md to use to create a key\n","-md");
-			BIO_printf(bio_err,"%-14s   from a passphrase.  One of md2, md5, sha or sha1\n","");
-			BIO_printf(bio_err,"%-14s salt in hex is the next argument\n","-S");
-			BIO_printf(bio_err,"%-14s key/iv in hex is the next argument\n","-K/-iv");
-			BIO_printf(bio_err,"%-14s print the iv/key (then exit if -P)\n","-[pP]");
-			BIO_printf(bio_err,"%-14s buffer size\n","-bufsize <n>");
-			BIO_printf(bio_err,"%-14s disable standard block padding\n","-nopad");
-#ifndef OPENSSL_NO_ENGINE
-			BIO_printf(bio_err,"%-14s use engine e, possibly a hardware device.\n","-engine e");
-#endif
-
+			printhelp(enc_help);
 			BIO_printf(bio_err,"Cipher Types\n");
 			OBJ_NAME_do_all_sorted(OBJ_NAME_TYPE_CIPHER_METH,
 					       show_ciphers,
@@ -387,13 +375,6 @@ bad:
 		goto end;
 		}
 
-	in=BIO_new(BIO_s_file());
-	out=BIO_new(BIO_s_file());
-	if ((in == NULL) || (out == NULL))
-		{
-		ERR_print_errors(bio_err);
-		goto end;
-		}
 	if (debug)
 		{
 		BIO_set_callback(in,BIO_debug_callback);
@@ -408,15 +389,14 @@ bad:
 		if (bufsize != NULL)
 			setvbuf(stdin, (char *)NULL, _IONBF, 0);
 #endif /* ndef OPENSSL_NO_SETVBUF_IONBF */
-		BIO_set_fp(in,stdin,BIO_NOCLOSE);
+		in = BIO_new_fp(stdin, BIO_NOCLOSE);
 	        }
 	else
+		in = BIO_new_file(inf, "r");
+	if (in == NULL)
 		{
-		if (BIO_read_filename(in,inf) <= 0)
-			{
-			perror(inf);
-			goto end;
-			}
+		ERR_print_errors(bio_err);
+		goto end;
 		}
 
 	if(!str && passarg) {
@@ -458,33 +438,19 @@ bad:
 
 
 	if (outf == NULL)
-		{
-		BIO_set_fp(out,stdout,BIO_NOCLOSE);
-#ifndef OPENSSL_NO_SETVBUF_IONBF
-		if (bufsize != NULL)
-			setvbuf(stdout, (char *)NULL, _IONBF, 0);
-#endif /* ndef OPENSSL_NO_SETVBUF_IONBF */
-#ifdef OPENSSL_SYS_VMS
-		{
-		BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		out = BIO_push(tmpbio, out);
-		}
-#endif
-		}
+		out = BIO_dup_chain(bio_out);
 	else
+		out = BIO_new_file(outf, "w");
+	if (out == NULL)
 		{
-		if (BIO_write_filename(out,outf) <= 0)
-			{
-			perror(outf);
-			goto end;
-			}
+		ERR_print_errors(bio_err);
+		goto end;
 		}
 
 	rbio=in;
 	wbio=out;
 
 #ifdef ZLIB
-
 	if (do_zlib)
 		{
 		if ((bzl=BIO_new(BIO_f_zlib())) == NULL)
@@ -703,8 +669,7 @@ end:
 	if (bzl != NULL) BIO_free(bzl);
 #endif
 	if(pass) OPENSSL_free(pass);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 
 int set_hex(char *in, unsigned char *out, int size)

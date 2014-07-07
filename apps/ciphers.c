@@ -66,22 +66,17 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
-#undef PROG
-#define PROG	ciphers_main
 
-static const char *ciphers_usage[]={
-"usage: ciphers args\n",
-" -v          - verbose mode, a textual listing of the SSL/TLS ciphers in OpenSSL\n",
-" -V          - even more verbose\n",
-" -ssl2       - SSL2 mode\n",
-" -ssl3       - SSL3 mode\n",
-" -tls1       - TLS1 mode\n",
-NULL
+const char *ciphers_help[]={
+	"-v          verbose textual listing of the SSL/TLS ciphers in OpenSSL",
+	"-V          even more verbose",
+	"-ssl2       SSL2 mode",
+	"-ssl3       SSL3 mode",
+	"-tls1       TLS1 mode",
+	NULL
 };
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int ciphers_main(int argc, char **argv)
 	{
 	int ret=1,i;
 	int verbose=0,Verbose=0;
@@ -89,7 +84,6 @@ int MAIN(int argc, char **argv)
 #ifndef OPENSSL_NO_SSL_TRACE
 	int stdname = 0;
 #endif
-	const char **pp;
 	const char *p;
 	int badops=0;
 	SSL_CTX *ctx=NULL;
@@ -98,23 +92,8 @@ int MAIN(int argc, char **argv)
 	const SSL_METHOD *meth=NULL;
 	STACK_OF(SSL_CIPHER) *sk=NULL;
 	char buf[512];
-	BIO *STDout=NULL;
 
 	meth=SSLv23_server_method();
-
-	apps_startup();
-
-	if (bio_err == NULL)
-		bio_err=BIO_new_fp(stderr,BIO_NOCLOSE);
-	STDout=BIO_new_fp(stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-	{
-	BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-	STDout = BIO_push(tmpbio, STDout);
-	}
-#endif
-	if (!load_config(bio_err, NULL))
-		goto end;
 
 	argc--;
 	argv++;
@@ -158,8 +137,8 @@ int MAIN(int argc, char **argv)
 
 	if (badops)
 		{
-		for (pp=ciphers_usage; (*pp != NULL); pp++)
-			BIO_printf(bio_err,"%s",*pp);
+		BIO_printf(bio_err, "usage: ciphers args\n");
+		printhelp(ciphers_help);
 		goto end;
 		}
 
@@ -188,10 +167,10 @@ int MAIN(int argc, char **argv)
 			SSL_CIPHER *c = sk_SSL_CIPHER_value(sk,i);
 			p = SSL_CIPHER_get_name(c);
 			if (p == NULL) break;
-			if (i != 0) BIO_printf(STDout,":");
-			BIO_printf(STDout,"%s",p);
+			if (i != 0) BIO_printf(bio_out,":");
+			BIO_printf(bio_out,"%s",p);
 			}
-		BIO_printf(STDout,"\n");
+		BIO_printf(bio_out,"\n");
 		}
 	else /* verbose */
 		{
@@ -211,11 +190,11 @@ int MAIN(int argc, char **argv)
 				int id3 = (int)(id & 0xffL);
 				
 				if ((id & 0xff000000L) == 0x02000000L)
-					BIO_printf(STDout, "     0x%02X,0x%02X,0x%02X - ", id1, id2, id3); /* SSL2 cipher */
+					BIO_printf(bio_out, "     0x%02X,0x%02X,0x%02X - ", id1, id2, id3); /* SSL2 cipher */
 				else if ((id & 0xff000000L) == 0x03000000L)
-					BIO_printf(STDout, "          0x%02X,0x%02X - ", id2, id3); /* SSL3 cipher */
+					BIO_printf(bio_out, "          0x%02X,0x%02X - ", id2, id3); /* SSL3 cipher */
 				else
-					BIO_printf(STDout, "0x%02X,0x%02X,0x%02X,0x%02X - ", id0, id1, id2, id3); /* whatever */
+					BIO_printf(bio_out, "0x%02X,0x%02X,0x%02X,0x%02X - ", id0, id1, id2, id3); /* whatever */
 				}
 #ifndef OPENSSL_NO_SSL_TRACE
 			if (stdname)
@@ -223,10 +202,10 @@ int MAIN(int argc, char **argv)
 				const char *nm = SSL_CIPHER_standard_name(c);
 				if (nm == NULL)
 					nm = "UNKNOWN";
-				BIO_printf(STDout, "%s - ", nm);
+				BIO_printf(bio_out, "%s - ", nm);
 				}
 #endif
-			BIO_puts(STDout,SSL_CIPHER_description(c,buf,sizeof buf));
+			BIO_puts(bio_out,SSL_CIPHER_description(c,buf,sizeof buf));
 			}
 		}
 
@@ -242,8 +221,6 @@ end:
 		sk_SSL_CIPHER_free(sk);
 	if (ctx != NULL) SSL_CTX_free(ctx);
 	if (ssl != NULL) SSL_free(ssl);
-	if (STDout != NULL) BIO_free_all(STDout);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 

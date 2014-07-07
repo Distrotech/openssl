@@ -126,6 +126,7 @@
 #include <openssl/ocsp.h>
 #endif
 #include <openssl/ossl_typ.h>
+#include "progs.h"
 
 int app_RAND_load_file(const char *file, BIO *bio_e, int dont_warn);
 int app_RAND_write_file(const char *file, BIO *bio_e);
@@ -137,26 +138,11 @@ long app_RAND_load_files(char *file); /* `file' is a list of files to read,
                                        * (see e_os.h).  The string is
                                        * destroyed! */
 
-#ifndef MONOLITH
-
-#define MAIN(a,v)	main(a,v)
-
-#ifndef NON_MAIN
-CONF *config=NULL;
-BIO *bio_err=NULL;
-#else
-extern CONF *config;
-extern BIO *bio_err;
-#endif
-
-#else
-
-#define MAIN(a,v)	PROG(a,v)
 extern CONF *config;
 extern char *default_config_file;
+extern BIO *bio_in;
+extern BIO *bio_out;
 extern BIO *bio_err;
-
-#endif
 
 #ifndef OPENSSL_SYS_NETWARE
 #include <signal.h>
@@ -174,35 +160,6 @@ extern BIO *bio_err;
 #define zlib_cleanup() COMP_zlib_cleanup()
 #endif
 
-#if defined(MONOLITH) && !defined(OPENSSL_C)
-#  define apps_startup() \
-		do_pipe_sig()
-#  define apps_shutdown()
-#else
-#  ifndef OPENSSL_NO_ENGINE
-#    define apps_startup() \
-			do { do_pipe_sig(); CRYPTO_malloc_init(); \
-			ERR_load_crypto_strings(); OpenSSL_add_all_algorithms(); \
-			ENGINE_load_builtin_engines(); setup_ui_method(); } while(0)
-#    define apps_shutdown() \
-			do { CONF_modules_unload(1); destroy_ui_method(); \
-			OBJ_cleanup(); EVP_cleanup(); ENGINE_cleanup(); \
-			CRYPTO_cleanup_all_ex_data(); ERR_remove_thread_state(NULL); \
-			RAND_cleanup(); \
-			ERR_free_strings(); zlib_cleanup();} while(0)
-#  else
-#    define apps_startup() \
-			do { do_pipe_sig(); CRYPTO_malloc_init(); \
-			ERR_load_crypto_strings(); OpenSSL_add_all_algorithms(); \
-			setup_ui_method(); } while(0)
-#    define apps_shutdown() \
-			do { CONF_modules_unload(1); destroy_ui_method(); \
-			OBJ_cleanup(); EVP_cleanup(); \
-			CRYPTO_cleanup_all_ex_data(); ERR_remove_thread_state(NULL); \
-			RAND_cleanup(); \
-			ERR_free_strings(); zlib_cleanup(); } while(0)
-#  endif
-#endif
 
 #if defined(OPENSSL_SYSNAME_WIN32) || defined(OPENSSL_SYSNAME_WINCE)
 #  define openssl_fdset(a,b) FD_SET((unsigned int)a, b)
@@ -210,6 +167,33 @@ extern BIO *bio_err;
 #  define openssl_fdset(a,b) FD_SET(a, b)
 #endif
 
+/*
+ * Option parsing.
+ */
+typedef struct options_st {
+	const char* name;
+	int retval;
+	/* value type:
+	 *   - no value, (also the value zero)
+	 *   n number, p positive number, u unsigned,
+	 *   s string, < input file, > output file,
+	 *   f der/pem format, F any format identifier */
+	int valtype;
+} OPTIONS;
+
+extern char* opt_progname(const char *argv0);
+extern void opt_init(int ac, char** av, const OPTIONS* o);
+extern int opt_next();
+extern int opt_format(const char *s, int onlyderpem, int* result);
+extern char* opt_arg(void);
+extern char* opt_unknown(void);
+extern char* opt_reset(void);
+extern char** opt_rest(void);
+extern int opt_num_rest(void);
+extern int str2fmt(char* s); /* XXX rsalz remove */
+
+#define RB(xformat)  ((xformat) == FORMAT_ASN1 ? "rb" : "r")
+#define WB(xformat)  ((xformat) == FORMAT_ASN1 ? "wb" : "w")
 
 typedef struct args_st
 	{
@@ -230,10 +214,6 @@ int password_callback(char *buf, int bufsiz, int verify,
 int setup_ui_method(void);
 void destroy_ui_method(void);
 
-int should_retry(int i);
-int args_from_file(char *file, int *argc, char **argv[]);
-int str2fmt(char *s);
-void program_name(char *in,char *out,int size);
 int chopup_args(ARGS *arg,char *buf, int *argc, char **argv[]);
 #ifdef HEADER_X509_H
 int dump_cert_text(BIO *out, X509 *x);
@@ -270,9 +250,6 @@ OCSP_RESPONSE *process_responder(BIO *err, OCSP_REQUEST *req,
 				 const STACK_OF(CONF_VALUE) *headers,
 				 int req_timeout);
 #endif
-
-int load_config(BIO *err, CONF *cnf);
-char *make_config_name(void);
 
 /* Functions defined in ca.c and also used in ocsp.c */
 int unpack_revinfo(ASN1_TIME **prevtm, int *preason, ASN1_OBJECT **phold,
@@ -379,6 +356,7 @@ int app_isdir(const char *);
 int raw_read_stdin(void *,int);
 int raw_write_stdout(const void *,int);
 
+void printhelp(const char**);
 #define TM_START	0
 #define TM_STOP		1
 double app_tminterval (int stop,int usertime);

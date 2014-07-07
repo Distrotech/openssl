@@ -66,18 +66,26 @@
 #include <openssl/x509v3.h>
 #include <openssl/pem.h>
 
-#undef PROG
-#define PROG	verify_main
+const char* verify_help[] = {
+	"-verbose",
+	"-CApath path",
+	"-CAfile file",
+	"-trusted_first",
+	"-purpose purpose",
+	"-crl_check",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e",
+#endif
+	NULL
+};
 
-static int MS_CALLBACK cb(int ok, X509_STORE_CTX *ctx);
+static int cb(int ok, X509_STORE_CTX *ctx);
 static int check(X509_STORE *ctx, char *file,
 		STACK_OF(X509) *uchain, STACK_OF(X509) *tchain,
 		STACK_OF(X509_CRL) *crls, ENGINE *e, int show_chain);
 static int v_verbose=0, vflags = 0;
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int verify_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL;
 	int i,ret=1, badarg = 0;
@@ -96,17 +104,6 @@ int MAIN(int argc, char **argv)
 	cert_ctx=X509_STORE_new();
 	if (cert_ctx == NULL) goto end;
 	X509_STORE_set_verify_cb(cert_ctx,cb);
-
-	ERR_load_crypto_strings();
-
-	apps_startup();
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
 
 	argc--;
 	argv++;
@@ -245,12 +242,10 @@ int MAIN(int argc, char **argv)
 
 end:
 	if (ret == 1) {
-		BIO_printf(bio_err,"usage: verify [-verbose] [-CApath path] [-CAfile file] [-trusted_first] [-purpose purpose] [-crl_check]");
-#ifndef OPENSSL_NO_ENGINE
-		BIO_printf(bio_err," [-engine e]");
-#endif
-		BIO_printf(bio_err," cert1 cert2 ...\n");
-
+		BIO_printf(bio_err,"usage: verify [options] cert...\n");
+		BIO_printf(bio_err,"where options are:\n");
+		printhelp(verify_help);
+		/* rsalz XXX */
 		BIO_printf(bio_err,"recognized usages:\n");
 		for(i = 0; i < X509_PURPOSE_get_count(); i++)
 			{
@@ -276,8 +271,7 @@ end:
 	sk_X509_pop_free(untrusted, X509_free);
 	sk_X509_pop_free(trusted, X509_free);
 	sk_X509_CRL_pop_free(crls, X509_CRL_free);
-	apps_shutdown();
-	OPENSSL_EXIT(ret < 0 ? 2 : ret);
+	return(ret < 0 ? 2 : ret);
 	}
 
 static int check(X509_STORE *ctx, char *file,
@@ -292,7 +286,7 @@ static int check(X509_STORE *ctx, char *file,
 	x = load_cert(bio_err, file, FORMAT_PEM, NULL, e, "certificate file");
 	if (x == NULL)
 		goto end;
-	fprintf(stdout,"%s: ",(file == NULL)?"stdin":file);
+	printf("%s: ",(file == NULL)?"stdin":file);
 
 	csc = X509_STORE_CTX_new();
 	if (csc == NULL)
@@ -318,7 +312,7 @@ static int check(X509_STORE *ctx, char *file,
 end:
 	if (i > 0)
 		{
-		fprintf(stdout,"OK\n");
+		printf("OK\n");
 		ret=1;
 		}
 	else
@@ -342,7 +336,7 @@ end:
 	return(ret);
 	}
 
-static int MS_CALLBACK cb(int ok, X509_STORE_CTX *ctx)
+static int cb(int ok, X509_STORE_CTX *ctx)
 	{
 	int cert_error = X509_STORE_CTX_get_error(ctx);
 	X509 *current_cert = X509_STORE_CTX_get_current_cert(ctx);

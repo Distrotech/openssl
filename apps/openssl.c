@@ -113,7 +113,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#define OPENSSL_C /* tells apps.h to use complete apps_startup() */
+#define APP_MAIN
 #include "apps.h"
 #include <openssl/bio.h>
 #include <openssl/crypto.h>
@@ -127,12 +127,13 @@
 #include <openssl/engine.h>
 #endif
 #define USE_SOCKETS /* needed for the _O_BINARY defs in the MS world */
-#include "progs.h"
 #include "s_apps.h"
 #include <openssl/err.h>
 #ifdef OPENSSL_FIPS
 #include <openssl/fips.h>
 #endif
+
+DECLARE_LHASH_OF(FUNCTION);
 
 /* The LHASH callbacks ("hash" & "cmp") have been replaced by functions with the
  * base prototypes (we cast each variable inside the function to the required
@@ -146,11 +147,87 @@ static void list_cipher(BIO *out);
 static void list_md(BIO *out);
 char *default_config_file=NULL;
 
-/* Make sure there is only one when MONOLITH is defined */
-#ifdef MONOLITH
 CONF *config=NULL;
+BIO *bio_in=NULL;
+BIO *bio_out=NULL;
 BIO *bio_err=NULL;
+
+void printhelp(const char** cpp)
+	{
+	for ( ; *cpp; cpp++)
+		BIO_printf(bio_err, "%s\n", *cpp);
+	}
+
+static void apps_startup()
+	{
+	do_pipe_sig();
+	CRYPTO_malloc_init();
+	ERR_load_crypto_strings();
+	OpenSSL_add_all_algorithms();
+#ifndef OPENSSL_NO_ENGINE
+	/*ENGINE_load_builtin_engines();
+	 */
 #endif
+	setup_ui_method();
+	}
+
+static void apps_shutdown()
+	{
+	CONF_modules_unload(1);
+	destroy_ui_method();
+	OBJ_cleanup();
+	EVP_cleanup();
+#ifndef OPENSSL_NO_ENGINE
+	/*ENGINE_cleanup();
+	 */
+#endif
+	CRYPTO_cleanup_all_ex_data();
+	ERR_remove_thread_state(NULL);
+	RAND_cleanup();
+	ERR_free_strings();
+	zlib_cleanup();
+	}
+
+static char *make_config_name()
+	{
+	const char *t=X509_get_default_cert_area();
+	size_t len;
+	char *p;
+
+	len=strlen(t)+strlen(OPENSSL_CONF)+2;
+	p=OPENSSL_malloc(len);
+	if (p == NULL)
+		return NULL;
+	BUF_strlcpy(p,t,len);
+#ifndef OPENSSL_SYS_VMS
+	BUF_strlcat(p,"/",len);
+#endif
+	BUF_strlcat(p,OPENSSL_CONF,len);
+
+	return p;
+	}
+
+static int load_config(BIO *err, CONF *cnf)
+	{
+	static int load_config_called = 0;
+	if (load_config_called)
+		return 1;
+	load_config_called = 1;
+	if (!cnf)
+		cnf = config;
+	if (!cnf)
+		return 1;
+
+	OPENSSL_load_builtin_modules();
+
+	if (CONF_modules_load(cnf, NULL, 0) <= 0)
+		{
+		BIO_printf(err, "Error configuring OpenSSL\n");
+		ERR_print_errors(err);
+		return 0;
+		}
+	return 1;
+	}
 
 
 static void lock_dbg_cb(int mode, int type, const char *file, int line)
@@ -226,7 +303,7 @@ int main(int Argc, char *ARGV[])
 	{
 	ARGS arg;
 #define PROG_NAME_SIZE	39
-	char pname[PROG_NAME_SIZE+1];
+	char *pname;
 	FUNCTION f,*fp;
 	MS_STATIC const char *prompt;
 	MS_STATIC char buf[1024];
@@ -237,60 +314,8 @@ int main(int Argc, char *ARGV[])
 	LHASH_OF(FUNCTION) *prog=NULL;
 	long errline;
 
-#if defined( OPENSSL_SYS_VMS) && (__INITIAL_POINTER_SIZE == 64)
-	/* 2011-03-22 SMS.
-	 * If we have 32-bit pointers everywhere, then we're safe, and
-	 * we bypass this mess, as on non-VMS systems.  (See ARGV,
-	 * above.)
-	 * Problem 1: Compaq/HP C before V7.3 always used 32-bit
-	 * pointers for argv[].
-	 * Fix 1: For a 32-bit argv[], when we're using 64-bit pointers
-	 * everywhere else, we always allocate and use a 64-bit
-	 * duplicate of argv[].
-	 * Problem 2: Compaq/HP C V7.3 (Alpha, IA64) before ECO1 failed
-	 * to NULL-terminate a 64-bit argv[].  (As this was written, the
-	 * compiler ECO was available only on IA64.)
-	 * Fix 2: Unless advised not to (VMS_TRUST_ARGV), we test a
-	 * 64-bit argv[argc] for NULL, and, if necessary, use a
-	 * (properly) NULL-terminated (64-bit) duplicate of argv[].
-	 * The same code is used in either case to duplicate argv[].
-	 * Some of these decisions could be handled in preprocessing,
-	 * but the code tends to get even uglier, and the penalty for
-	 * deciding at compile- or run-time is tiny.
-	 */
-	char **Argv = NULL;
-	int free_Argv = 0;
-
-	if ((sizeof( _Argv) < 8)        /* 32-bit argv[]. */
-# if !defined( VMS_TRUST_ARGV)
-	 || (_Argv[ Argc] != NULL)      /* Untrusted argv[argc] not NULL. */
-# endif
-		)
-		{
-		int i;
-		Argv = OPENSSL_malloc( (Argc+ 1)* sizeof( char *));
-		if (Argv == NULL)
-			{ ret = -1; goto end; }
-		for(i = 0; i < Argc; i++)
-			Argv[i] = _Argv[i];
-		Argv[ Argc] = NULL;     /* Certain NULL termination. */
-		free_Argv = 1;
-		}
-	else
-		{
-		/* Use the known-good 32-bit argv[] (which needs the
-		 * type cast to satisfy the compiler), or the trusted or
-		 * tested-good 64-bit argv[] as-is. */
-		Argv = (char **)_Argv;
-		}
-#endif /* defined( OPENSSL_SYS_VMS) && (__INITIAL_POINTER_SIZE == 64) */
-
 	arg.data=NULL;
 	arg.count=0;
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
 
 	if (getenv("OPENSSL_DEBUG_MEMORY") != NULL) /* if not defined, use compiled-in library defaults */
 		{
@@ -330,11 +355,21 @@ int main(int Argc, char *ARGV[])
 	apps_startup();
 
 	/* Lets load up our environment a little */
+	bio_in = BIO_new_fp(stdin, BIO_NOCLOSE|BIO_FP_TEXT);
+	bio_out = BIO_new_fp(stdout, BIO_NOCLOSE|BIO_FP_TEXT);
+#ifdef OPENSSL_SYS_VMS
+	bio_out = BIO_push(BIO_new(BIO_f_linebuffer()), out);
+#endif
+	bio_err = BIO_new_fp(stderr, BIO_NOCLOSE|BIO_FP_TEXT);
+
 	p=getenv("OPENSSL_CONF");
 	if (p == NULL)
 		p=getenv("SSLEAY_CONF");
 	if (p == NULL)
 		p=to_free=make_config_name();
+
+	if (!load_config(bio_err, NULL))
+		goto end;
 
 	default_config_file=p;
 
@@ -360,10 +395,9 @@ int main(int Argc, char *ARGV[])
 		}
 
 	prog=prog_init();
+	pname = opt_progname(Argv[0]);
 
 	/* first check the program name */
-	program_name(Argv[0],pname,sizeof pname);
-
 	f.name=pname;
 	fp=lh_FUNCTION_retrieve(prog,&f);
 	if (fp != NULL)
@@ -420,6 +454,7 @@ int main(int Argc, char *ARGV[])
 			}
 		if (ret != 0)
 			BIO_printf(bio_err,"error in %s\n",argv[0]);
+		(void)BIO_flush(bio_out);
 		(void)BIO_flush(bio_err);
 		}
 	BIO_printf(bio_err,"bad exit\n");
@@ -437,20 +472,11 @@ end:
 
 	apps_shutdown();
 
+	BIO_free_all(bio_in);
+	BIO_free_all(bio_out);
 	CRYPTO_mem_leaks(bio_err);
-	if (bio_err != NULL)
-		{
-		BIO_free(bio_err);
-		bio_err=NULL;
-		}
-#if defined( OPENSSL_SYS_VMS) && (__INITIAL_POINTER_SIZE == 64)
-	/* Free any duplicate Argv[] storage. */
-	if (free_Argv)
-		{
-		OPENSSL_free(Argv);
-		}
-#endif
-	OPENSSL_EXIT(ret);
+	BIO_free(bio_err);
+	return(ret);
 	}
 
 #define LIST_STANDARD_COMMANDS "list-standard-commands"
@@ -464,7 +490,8 @@ end:
 static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 	{
 	FUNCTION f,*fp;
-	int i,ret=1,tp,nl;
+	int i,ret=1,nl;
+	int tp;
 
 	if ((argc <= 0) || (argv[0] == NULL))
 		{ ret=0; goto end; }
@@ -522,7 +549,7 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 		(strcmp(argv[0],LIST_CIPHER_ALGORITHMS) == 0) ||
 		(strcmp(argv[0],LIST_PUBLIC_KEY_ALGORITHMS) == 0))
 		{
-		int list_type;
+		int list_type = FUNC_TYPE_CIPHER;
 		BIO *bio_stdout;
 
 		if (strcmp(argv[0],LIST_STANDARD_COMMANDS) == 0)
@@ -535,8 +562,6 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 			list_type = FUNC_TYPE_PKEY;
 		else if (strcmp(argv[0],LIST_CIPHER_ALGORITHMS) == 0)
 			list_type = FUNC_TYPE_CIPHER_ALG;
-		else /* strcmp(argv[0],LIST_CIPHER_COMMANDS) == 0 */
-			list_type = FUNC_TYPE_CIPHER;
 		bio_stdout = BIO_new_fp(stdout,BIO_NOCLOSE);
 #ifdef OPENSSL_SYS_VMS
 		{
@@ -571,7 +596,7 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 			argv[0]);
 		BIO_printf(bio_err, "\nStandard commands");
 		i=0;
-		tp=0;
+		tp=FUNC_TYPE_NONE;
 		for (fp=functions; fp->name != NULL; fp++)
 			{
 			nl=0;
@@ -696,13 +721,13 @@ static void list_md(BIO *out)
 	EVP_MD_do_all_sorted(list_md_fn, out);
 	}
 
-static int MS_CALLBACK function_cmp(const FUNCTION *a, const FUNCTION *b)
+static int function_cmp(const FUNCTION *a, const FUNCTION *b)
 	{
 	return strncmp(a->name,b->name,8);
 	}
 static IMPLEMENT_LHASH_COMP_FN(function, FUNCTION)
 
-static unsigned long MS_CALLBACK function_hash(const FUNCTION *a)
+static unsigned long function_hash(const FUNCTION *a)
 	{
 	return lh_strhash(a->name);
 	}	
