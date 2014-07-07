@@ -85,8 +85,6 @@
 #include OPENSSL_UNISTD
 #endif
 
-#undef PROG
-#define PROG s_time_main
 
 #undef ioctl
 #define ioctl ioctlsocket
@@ -107,6 +105,7 @@
 
 #undef SECONDS
 #define SECONDS	30
+#define SECONDSSTR "30"
 extern int verify_depth;
 extern int verify_error;
 
@@ -166,34 +165,33 @@ static void s_time_init(void)
 #endif
 	}
 
-/***********************************************************************
- * usage - display usage message
- */
+const char* s_time_help[] = {
+	"-time arg      max number of seconds to collect data, default" SECONDSSTR,
+	"-verify arg    turn on peer certificate verification, arg == depth",
+	"-cert arg      certificate file to use, PEM format assumed",
+	"-key arg       RSA file to use, PEM format assumed, key is in cert file",
+	"               file if not specified by this option",
+	"-CApath arg    PEM format directory of CA's",
+	"-CAfile arg    PEM format file of CA's",
+	"-cipher        preferred cipher to use, play with 'openssl ciphers'",
+
+	"-connect host:port  where to connect to (default is "SSL_CONNECT_NAME ")",
+	"-ssl2          just use SSLv2",
+	"-ssl3          just use SSLv3",
+	"-bugs          turn on SSL bug compatibility",
+	"-new           just time new connections",
+	"-reuse         just time connection reuse",
+	"-www page      retrieve 'page' from the site",
+#ifdef FIONBIO
+	"-nbio          use non-blocking IO",
+#endif
+	NULL
+};
+
 static void s_time_usage(void)
 {
-	static char umsg[] = "\
--time arg     - max number of seconds to collect data, default %d\n\
--verify arg   - turn on peer certificate verification, arg == depth\n\
--cert arg     - certificate file to use, PEM format assumed\n\
--key arg      - RSA file to use, PEM format assumed, key is in cert file\n\
-                file if not specified by this option\n\
--CApath arg   - PEM format directory of CA's\n\
--CAfile arg   - PEM format file of CA's\n\
--cipher       - preferred cipher to use, play with 'openssl ciphers'\n\n";
-
-	printf( "usage: s_time <args>\n\n" );
-
-	printf("-connect host:port - host:port to connect to (default is %s)\n",SSL_CONNECT_NAME);
-#ifdef FIONBIO
-	printf("-nbio         - Run with non-blocking IO\n");
-	printf("-ssl2         - Just use SSLv2\n");
-	printf("-ssl3         - Just use SSLv3\n");
-	printf("-bugs         - Turn on SSL bug compatibility\n");
-	printf("-new          - Just time new connections\n");
-	printf("-reuse        - Just time connection reuse\n");
-	printf("-www page     - Retrieve 'page' from the site\n");
-#endif
-	printf( umsg,SECONDS );
+	BIO_printf(bio_err,"usage: s_time <args>\n\n" );
+	printhelp(s_time_help);
 }
 
 /***********************************************************************
@@ -217,18 +215,6 @@ static int parseArgs(int argc, char **argv)
 		if (--argc < 1) goto bad;
 		host= *(++argv);
 		}
-#if 0
-	else if( strcmp(*argv,"-host") == 0)
-		{
-		if (--argc < 1) goto bad;
-		host= *(++argv);
-		}
-	else if( strcmp(*argv,"-port") == 0)
-		{
-		if (--argc < 1) goto bad;
-		port= *(++argv);
-		}
-#endif
 	else if (strcmp(*argv,"-reuse") == 0)
 		perform=2;
 	else if (strcmp(*argv,"-new") == 0)
@@ -327,13 +313,7 @@ static double tm_Time_F(int s)
 	return app_tminterval(s,1);
 	}
 
-/***********************************************************************
- * MAIN - main processing area for client
- *			real name depends on MONOLITH
- */
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int s_time_main(int argc, char **argv)
 	{
 	double totalTime = 0.0;
 	int nConn = 0;
@@ -343,11 +323,7 @@ int MAIN(int argc, char **argv)
 	MS_STATIC char buf[1024*8];
 	int ver;
 
-	apps_startup();
 	s_time_init();
-
-	if (bio_err == NULL)
-		bio_err=BIO_new_fp(stderr,BIO_NOCLOSE);
 
 #if !defined(OPENSSL_NO_SSL2) && !defined(OPENSSL_NO_SSL3)
 	s_time_meth=SSLv23_client_method();
@@ -552,8 +528,7 @@ end:
 		SSL_CTX_free(tm_ctx);
 		tm_ctx=NULL;
 		}
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 
 /***********************************************************************

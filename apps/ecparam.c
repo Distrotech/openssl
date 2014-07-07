@@ -84,39 +84,34 @@
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 
-#undef PROG
-#define PROG	ecparam_main
 
-/* -inform arg      - input format - default PEM (DER or PEM)
- * -outform arg     - output format - default PEM
- * -in  arg         - input file  - default stdin
- * -out arg         - output file - default stdout
- * -noout           - do not print the ec parameter
- * -text            - print the ec parameters in text form
- * -check           - validate the ec parameters
- * -C               - print a 'C' function creating the parameters
- * -name arg        - use the ec parameters with 'short name' name
- * -list_curves     - prints a list of all currently available curve 'short names'
- * -conv_form arg   - specifies the point conversion form 
- *                  - possible values: compressed
- *                                     uncompressed (default)
- *                                     hybrid
- * -param_enc arg   - specifies the way the ec parameters are encoded
- *                    in the asn1 der encoding
- *                    possible values: named_curve (default)
- *                                     explicit
- * -no_seed         - if 'explicit' parameters are chosen do not use the seed
- * -genkey          - generate ec key
- * -rand file       - files to use for random number input
- * -engine e        - use engine e, possibly a hardware device
- */
-
+const char* ecparam_help[] = {
+	"-inform arg       input format - default PEM (DER or PEM)",
+	"-outform arg      output format - default PEM",
+	"-in  arg          input file  - default stdin",
+	"-out arg          output file - default stdout",
+	"-noout            do not print the ec parameter",
+	"-text             print the ec parameters in text form",
+	"-check            validate the ec parameters",
+	"-C                print a 'C' function creating the parameters",
+	"-name arg         use the ec parameters with 'short name' name",
+	"-list_curves      prints a list of all currently available curve 'short names'",
+	"-conv_form arg  specifies the point conversion form ",
+	"                possible values: compressed",
+	"                    uncompressed (default) or hybrid",
+	"-param_enc arg  specifies the way the ec parameters are encoded",
+	"                 in the asn1 der encoding",
+	"                 possible values: named_curve (default) or explicit",
+	"-no_seed          if 'explicit' parameters are chosen do not use the seed",
+	"-genkey           generate ec key",
+	"-rand file        files to use for random number input",
+	"-engine e         use engine e, possibly a hardware device",
+	NULL
+};
 
 static int ecparam_print_var(BIO *,BIGNUM *,const char *,int,unsigned char *);
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int ecparam_main(int argc, char **argv)
 	{
 	EC_GROUP *group = NULL;
 	point_conversion_form_t form = POINT_CONVERSION_UNCOMPRESSED; 
@@ -134,15 +129,6 @@ int MAIN(int argc, char **argv)
 	BIGNUM	*ec_p = NULL, *ec_a = NULL, *ec_b = NULL,
 		*ec_gen = NULL, *ec_order = NULL, *ec_cofactor = NULL;
 	unsigned char *buffer = NULL;
-
-	apps_startup();
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
 
 	informat=FORMAT_PEM;
 	outformat=FORMAT_PEM;
@@ -249,91 +235,27 @@ int MAIN(int argc, char **argv)
 bad:
 		BIO_printf(bio_err, "%s [options] <infile >outfile\n",prog);
 		BIO_printf(bio_err, "where options are\n");
-		BIO_printf(bio_err, " -inform arg       input format - "
-				"default PEM (DER or PEM)\n");
-		BIO_printf(bio_err, " -outform arg      output format - "
-				"default PEM\n");
-		BIO_printf(bio_err, " -in  arg          input file  - "
-				"default stdin\n");
-		BIO_printf(bio_err, " -out arg          output file - "
-				"default stdout\n");
-		BIO_printf(bio_err, " -noout            do not print the "
-				"ec parameter\n");
-		BIO_printf(bio_err, " -text             print the ec "
-				"parameters in text form\n");
-		BIO_printf(bio_err, " -check            validate the ec "
-				"parameters\n");
-		BIO_printf(bio_err, " -C                print a 'C' "
-				"function creating the parameters\n");
-		BIO_printf(bio_err, " -name arg         use the "
-				"ec parameters with 'short name' name\n");
-		BIO_printf(bio_err, " -list_curves      prints a list of "
-				"all currently available curve 'short names'\n");
-		BIO_printf(bio_err, " -conv_form arg    specifies the "
-				"point conversion form \n");
-		BIO_printf(bio_err, "                   possible values:"
-				" compressed\n");
-		BIO_printf(bio_err, "                                   "
-				" uncompressed (default)\n");
-		BIO_printf(bio_err, "                                   "
-				" hybrid\n");
-		BIO_printf(bio_err, " -param_enc arg    specifies the way"
-				" the ec parameters are encoded\n");
-		BIO_printf(bio_err, "                   in the asn1 der "
-				"encoding\n");
-		BIO_printf(bio_err, "                   possible values:"
-				" named_curve (default)\n");
-		BIO_printf(bio_err, "                                   "
-				" explicit\n");
-		BIO_printf(bio_err, " -no_seed          if 'explicit'"
-				" parameters are chosen do not"
-				" use the seed\n");
-		BIO_printf(bio_err, " -genkey           generate ec"
-				" key\n");
-		BIO_printf(bio_err, " -rand file        files to use for"
-				" random number input\n");
-		BIO_printf(bio_err, " -engine e         use engine e, "
-				"possibly a hardware device\n");
-		goto end;
-		}
-
-	ERR_load_crypto_strings();
-
-	in=BIO_new(BIO_s_file());
-	out=BIO_new(BIO_s_file());
-	if ((in == NULL) || (out == NULL))
-		{
-		ERR_print_errors(bio_err);
+		printhelp(ecparam_help);
 		goto end;
 		}
 
 	if (infile == NULL)
-		BIO_set_fp(in,stdin,BIO_NOCLOSE);
+		in = BIO_new_fp(stdin,BIO_NOCLOSE);
 	else
+		in = BIO_new_file(infile, RB(informat));
+	if (in == NULL)
 		{
-		if (BIO_read_filename(in,infile) <= 0)
-			{
-			perror(infile);
-			goto end;
-			}
+		ERR_print_errors(bio_err);
+		goto end;
 		}
 	if (outfile == NULL)
-		{
-		BIO_set_fp(out,stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-		{
-		BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		out = BIO_push(tmpbio, out);
-		}
-#endif
-		}
+		out = BIO_dup_chain(bio_out);
 	else
+		out = BIO_new_file(outfile, WB(outformat));
+	if (out == NULL)
 		{
-		if (BIO_write_filename(out,outfile) <= 0)
-			{
-			perror(outfile);
-			goto end;
-			}
+		ERR_print_errors(bio_err);
+		goto end;
 		}
 
 #ifndef OPENSSL_NO_ENGINE
@@ -615,14 +537,8 @@ bad:
 		{
 		if (outformat == FORMAT_ASN1)
 			i = i2d_ECPKParameters_bio(out, group);
-		else if (outformat == FORMAT_PEM)
+		else
 			i = PEM_write_bio_ECPKParameters(out, group);
-		else	
-			{
-			BIO_printf(bio_err,"bad output format specified for"
-				" outfile\n");
-			goto end;
-			}
 		if (!i)
 			{
 			BIO_printf(bio_err, "unable to write elliptic "
@@ -659,16 +575,9 @@ bad:
 			}
 		if (outformat == FORMAT_ASN1)
 			i = i2d_ECPrivateKey_bio(out, eckey);
-		else if (outformat == FORMAT_PEM)
+		else
 			i = PEM_write_bio_ECPrivateKey(out, eckey, NULL,
 				NULL, 0, NULL, NULL);
-		else	
-			{
-			BIO_printf(bio_err, "bad output format specified "
-				"for outfile\n");
-			EC_KEY_free(eckey);
-			goto end;
-			}
 		EC_KEY_free(eckey);
 		}
 
@@ -697,8 +606,7 @@ end:
 		BIO_free_all(out);
 	if (group != NULL)
 		EC_GROUP_free(group);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 }
 
 static int ecparam_print_var(BIO *out, BIGNUM *in, const char *var,

@@ -79,14 +79,21 @@
 #include <openssl/pem.h>
 
 #define DEFBITS	512
-#undef PROG
-#define PROG gendh_main
 
-static int MS_CALLBACK dh_cb(int p, int n, BN_GENCB *cb);
+static int dh_cb(int p, int n, BN_GENCB *cb);
 
-int MAIN(int, char **);
+const char* gendh_help[] = {
+	"-out file      output the key to 'file",
+	"-2             use 2 as the generator value",
+	"-5             use 5 as the generator value",
+	"-rand file...  load the file(s) into the random number generator",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e      use engine e, possibly a hardware device.",
+#endif
+	NULL
+};
 
-int MAIN(int argc, char **argv)
+int gendh_main(int argc, char **argv)
 	{
 	BN_GENCB cb;
 	DH *dh=NULL;
@@ -99,16 +106,7 @@ int MAIN(int argc, char **argv)
 #endif
 	BIO *out=NULL;
 
-	apps_startup();
-
 	BN_GENCB_set(&cb, dh_cb, bio_err);
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
-
 	argv++;
 	argc--;
 	for (;;)
@@ -121,8 +119,6 @@ int MAIN(int argc, char **argv)
 			}
 		else if (strcmp(*argv,"-2") == 0)
 			g=2;
-	/*	else if (strcmp(*argv,"-3") == 0)
-			g=3; */
 		else if (strcmp(*argv,"-5") == 0)
 			g=5;
 #ifndef OPENSSL_NO_ENGINE
@@ -146,16 +142,7 @@ int MAIN(int argc, char **argv)
 		{
 bad:
 		BIO_printf(bio_err,"usage: gendh [args] [numbits]\n");
-		BIO_printf(bio_err," -out file - output the key to 'file\n");
-		BIO_printf(bio_err," -2        - use 2 as the generator value\n");
-	/*	BIO_printf(bio_err," -3        - use 3 as the generator value\n"); */
-		BIO_printf(bio_err," -5        - use 5 as the generator value\n");
-#ifndef OPENSSL_NO_ENGINE
-		BIO_printf(bio_err," -engine e - use engine e, possibly a hardware device.\n");
-#endif
-		BIO_printf(bio_err," -rand file%cfile%c...\n", LIST_SEPARATOR_CHAR, LIST_SEPARATOR_CHAR);
-		BIO_printf(bio_err,"           - load the file (or the files in the directory) into\n");
-		BIO_printf(bio_err,"             the random number generator\n");
+		printhelp(gendh_help);
 		goto end;
 		}
 		
@@ -163,30 +150,14 @@ bad:
         setup_engine(bio_err, engine, 0);
 #endif
 
-	out=BIO_new(BIO_s_file());
+	if (outfile == NULL)
+		out = BIO_dup_chain(bio_out);
+	else
+		out = BIO_new_file(outfile, "w");
 	if (out == NULL)
 		{
 		ERR_print_errors(bio_err);
 		goto end;
-		}
-
-	if (outfile == NULL)
-		{
-		BIO_set_fp(out,stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-		{
-		BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		out = BIO_push(tmpbio, out);
-		}
-#endif
-		}
-	else
-		{
-		if (BIO_write_filename(out,outfile) <= 0)
-			{
-			perror(outfile);
-			goto end;
-			}
 		}
 
 	if (!app_RAND_load_file(NULL, bio_err, 1) && inrand == NULL)
@@ -213,11 +184,10 @@ end:
 		ERR_print_errors(bio_err);
 	if (out != NULL) BIO_free_all(out);
 	if (dh != NULL) DH_free(dh);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 
-static int MS_CALLBACK dh_cb(int p, int n, BN_GENCB *cb)
+static int dh_cb(int p, int n, BN_GENCB *cb)
 	{
 	char c='*';
 

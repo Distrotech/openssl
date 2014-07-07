@@ -62,11 +62,18 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 
-#define PROG pkeyparam_main
+const char* pkeyparam_help[] = {
+	"-in file        input file",
+	"-out file       output file",
+	"-text           print parameters as text",
+	"-noout          don't output encoded parameters",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e       use engine e, possibly a hardware device.",
+#endif
+	NULL
+};
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int pkeyparam_main(int argc, char **argv)
 	{
 	char **args, *infile = NULL, *outfile = NULL;
 	BIO *in = NULL, *out = NULL;
@@ -78,14 +85,6 @@ int MAIN(int argc, char **argv)
 #endif
 	int ret = 1;
 
-	if (bio_err == NULL)
-		bio_err = BIO_new_fp (stderr, BIO_NOCLOSE);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
-
-	ERR_load_crypto_strings();
-	OpenSSL_add_all_algorithms();
 	args = argv + 1;
 	while (!badarg && *args && *args[0] == '-')
 		{
@@ -110,8 +109,12 @@ int MAIN(int argc, char **argv)
 #ifndef OPENSSL_NO_ENGINE
 		else if (strcmp(*args,"-engine") == 0)
 			{
-			if (!args[1]) goto bad;
-			engine= *(++args);
+			if (args[1])
+				{
+				args++;
+				engine = *args;
+				}
+			else badarg = 1;
 			}
 #endif
 
@@ -124,18 +127,9 @@ int MAIN(int argc, char **argv)
 
 	if (badarg)
 		{
-#ifndef OPENSSL_NO_ENGINE
-		bad:
-#endif
 		BIO_printf(bio_err, "Usage pkeyparam [options]\n");
 		BIO_printf(bio_err, "where options are\n");
-		BIO_printf(bio_err, "-in file        input file\n");
-		BIO_printf(bio_err, "-out file       output file\n");
-		BIO_printf(bio_err, "-text           print parameters as text\n");
-		BIO_printf(bio_err, "-noout          don't output encoded parameters\n");
-#ifndef OPENSSL_NO_ENGINE
-		BIO_printf(bio_err, "-engine e       use engine e, possibly a hardware device.\n");
-#endif
+		printhelp(pkeyparam_help);
 		return 1;
 		}
 

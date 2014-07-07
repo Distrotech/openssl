@@ -132,21 +132,23 @@
 # include <openssl/blowfish.h>
 #endif
 
-#undef PROG
-#define PROG	version_main
 
-int MAIN(int, char **);
+const char* version_help[] = {
+	"-a          show all data",
+	"-b          show build date",
+	"-v          show library version",
+	"-o          show some internal datatype options",
+	"-f          show compiler flags used",
+	"-p          show target build platform",
+	"-d          show configuration directory",
+	NULL
+};
 
-int MAIN(int argc, char **argv)
+int version_main(int argc, char **argv)
 	{
 	int i,ret=0;
 	int cflags=0,version=0,date=0,options=0,platform=0,dir=0;
 
-	apps_startup();
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
 
 	if (argc == 1) version=1;
 	for (i=1; i<argc; i++)
@@ -167,7 +169,8 @@ int MAIN(int argc, char **argv)
 			date=version=cflags=options=platform=dir=1;
 		else
 			{
-			BIO_printf(bio_err,"usage:version -[avbofpd]\n");
+			printhelp(version_help);
+			BIO_printf(bio_err,"usage version [options]\n");
 			ret=1;
 			goto end;
 			}
@@ -212,6 +215,5 @@ int MAIN(int argc, char **argv)
 	if (cflags)  printf("%s\n",SSLeay_version(SSLEAY_CFLAGS));
 	if (dir)  printf("%s\n",SSLeay_version(SSLEAY_DIR));
 end:
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}

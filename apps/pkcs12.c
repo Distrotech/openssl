@@ -68,8 +68,6 @@
 #include <openssl/pem.h>
 #include <openssl/pkcs12.h>
 
-#define PROG pkcs12_main
-
 const EVP_CIPHER *enc;
 
 
@@ -90,9 +88,65 @@ int alg_print(BIO *x, X509_ALGOR *alg);
 int cert_load(BIO *in, STACK_OF(X509) *sk);
 static int set_pbe(BIO *err, int *ppbe, const char *str);
 
-int MAIN(int, char **);
+const char* pkcs12_help[] = {
+	"-export       output PKCS12 file",
+	"-chain        add certificate chain",
+	"-inkey file   private key if not infile",
+	"-certfile f   add all certs in f",
+	"-CApath arg   PEM format directory of CA's",
+	"-CAfile arg   PEM format file of CA's",
+	"-name name   use name as friendly name",
+	"-caname name use name as CA friendly name (can be repeated)",
+	"-in  infile   input filename",
+	"-out outfile  output filename",
+	"-noout        don't output anything, just verify.",
+	"-nomacver     don't verify MAC.",
+	"-nocerts      don't output certificates.",
+	"-clcerts      only output client certificates.",
+	"-cacerts      only output CA certificates.",
+	"-nokeys       don't output private keys.",
+	"-info         give info about PKCS#12 structure.",
+	"-des          encrypt private keys with DES",
+	"-des3         encrypt private keys with triple DES (default)",
+#ifndef OPENSSL_NO_IDEA
+	"-idea         encrypt private keys with idea",
+#endif
+#ifndef OPENSSL_NO_SEED
+	"-seed         encrypt private keys with seed",
+#endif
+#ifndef OPENSSL_NO_AES
+	"-aes128, -aes192, -aes256",
+	"              encrypt PEM output with cbc aes",
+#endif
+#ifndef OPENSSL_NO_CAMELLIA
+	"-camellia128, -camellia192, -camellia256",
+	"              encrypt PEM output with cbc camellia",
+#endif
+	"-nodes        don't encrypt private keys",
+	"-noiter       don't use encryption iteration",
+	"-nomaciter    don't use MAC iteration",
+	"-maciter      use MAC iteration",
+	"-nomac        don't generate MAC",
+	"-twopass      separate MAC, encryption passwords",
+	"-descert      encrypt PKCS#12 certificates with 3DES (default RC2-40)",
+	"-certpbe alg  specify certificate PBE algorithm (default RC2-40)",
+	"-keypbe alg   specify private key PBE algorithm (default 3DES)",
+	"-macalg alg   digest algorithm used in MAC (default SHA1)",
+	"-keyex        set MS key exchange type",
+	"-keysig       set MS key signature type",
+	"-password p   set import/export password source",
+	"-passin p     input file pass phrase source",
+	"-passout p    output file pass phrase source",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e     use engine e, possibly a hardware device.",
+#endif
+	"-rand file...  load the file(s) into the random number generator",
+	"-CSP name     Microsoft CSP name",
+	"-LMK          Add local machine keyset attribute to private key",
+	NULL
+};
 
-int MAIN(int argc, char **argv)
+int pkcs12_main(int argc, char **argv)
 {
     ENGINE *e = NULL;
     char *infile=NULL, *outfile=NULL, *keyname = NULL;	
@@ -128,14 +182,8 @@ int MAIN(int argc, char **argv)
     char *engine=NULL;
 #endif
 
-    apps_startup();
 
     enc = EVP_des_ede3_cbc();
-    if (bio_err == NULL ) bio_err = BIO_new_fp (stderr, BIO_NOCLOSE);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
-
     args = argv + 1;
 
 
@@ -277,62 +325,7 @@ int MAIN(int argc, char **argv)
     if (badarg) {
 	BIO_printf (bio_err, "Usage: pkcs12 [options]\n");
 	BIO_printf (bio_err, "where options are\n");
-	BIO_printf (bio_err, "-export       output PKCS12 file\n");
-	BIO_printf (bio_err, "-chain        add certificate chain\n");
-	BIO_printf (bio_err, "-inkey file   private key if not infile\n");
-	BIO_printf (bio_err, "-certfile f   add all certs in f\n");
-	BIO_printf (bio_err, "-CApath arg   - PEM format directory of CA's\n");
-	BIO_printf (bio_err, "-CAfile arg   - PEM format file of CA's\n");
-	BIO_printf (bio_err, "-name \"name\"  use name as friendly name\n");
-	BIO_printf (bio_err, "-caname \"nm\"  use nm as CA friendly name (can be used more than once).\n");
-	BIO_printf (bio_err, "-in  infile   input filename\n");
-	BIO_printf (bio_err, "-out outfile  output filename\n");
-	BIO_printf (bio_err, "-noout        don't output anything, just verify.\n");
-	BIO_printf (bio_err, "-nomacver     don't verify MAC.\n");
-	BIO_printf (bio_err, "-nocerts      don't output certificates.\n");
-	BIO_printf (bio_err, "-clcerts      only output client certificates.\n");
-	BIO_printf (bio_err, "-cacerts      only output CA certificates.\n");
-	BIO_printf (bio_err, "-nokeys       don't output private keys.\n");
-	BIO_printf (bio_err, "-info         give info about PKCS#12 structure.\n");
-	BIO_printf (bio_err, "-des          encrypt private keys with DES\n");
-	BIO_printf (bio_err, "-des3         encrypt private keys with triple DES (default)\n");
-#ifndef OPENSSL_NO_IDEA
-	BIO_printf (bio_err, "-idea         encrypt private keys with idea\n");
-#endif
-#ifndef OPENSSL_NO_SEED
-	BIO_printf (bio_err, "-seed         encrypt private keys with seed\n");
-#endif
-#ifndef OPENSSL_NO_AES
-	BIO_printf (bio_err, "-aes128, -aes192, -aes256\n");
-	BIO_printf (bio_err, "              encrypt PEM output with cbc aes\n");
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-	BIO_printf (bio_err, "-camellia128, -camellia192, -camellia256\n");
-	BIO_printf (bio_err, "              encrypt PEM output with cbc camellia\n");
-#endif
-	BIO_printf (bio_err, "-nodes        don't encrypt private keys\n");
-	BIO_printf (bio_err, "-noiter       don't use encryption iteration\n");
-	BIO_printf (bio_err, "-nomaciter    don't use MAC iteration\n");
-	BIO_printf (bio_err, "-maciter      use MAC iteration\n");
-	BIO_printf (bio_err, "-nomac        don't generate MAC\n");
-	BIO_printf (bio_err, "-twopass      separate MAC, encryption passwords\n");
-	BIO_printf (bio_err, "-descert      encrypt PKCS#12 certificates with triple DES (default RC2-40)\n");
-	BIO_printf (bio_err, "-certpbe alg  specify certificate PBE algorithm (default RC2-40)\n");
-	BIO_printf (bio_err, "-keypbe alg   specify private key PBE algorithm (default 3DES)\n");
-	BIO_printf (bio_err, "-macalg alg   digest algorithm used in MAC (default SHA1)\n");
-	BIO_printf (bio_err, "-keyex        set MS key exchange type\n");
-	BIO_printf (bio_err, "-keysig       set MS key signature type\n");
-	BIO_printf (bio_err, "-password p   set import/export password source\n");
-	BIO_printf (bio_err, "-passin p     input file pass phrase source\n");
-	BIO_printf (bio_err, "-passout p    output file pass phrase source\n");
-#ifndef OPENSSL_NO_ENGINE
-	BIO_printf (bio_err, "-engine e     use engine e, possibly a hardware device.\n");
-#endif
-	BIO_printf(bio_err,  "-rand file%cfile%c...\n", LIST_SEPARATOR_CHAR, LIST_SEPARATOR_CHAR);
-	BIO_printf(bio_err,  "              load the file (or the files in the directory) into\n");
-	BIO_printf(bio_err,  "              the random number generator\n");
-	BIO_printf(bio_err,  "-CSP name     Microsoft CSP name\n");
-	BIO_printf(bio_err,  "-LMK          Add local machine keyset attribute to private key\n");
+	printhelp(pkcs12_help);
     	goto end;
     }
 
@@ -369,7 +362,6 @@ int MAIN(int argc, char **argv)
 		BIO_printf(bio_err,"%ld semi-random bytes loaded\n",
 			app_RAND_load_files(inrand));
     }
-    ERR_load_crypto_strings();
 
 #ifdef CRYPTO_MDEBUG
     CRYPTO_push_info("read files");
@@ -690,8 +682,7 @@ int MAIN(int argc, char **argv)
     if (canames) sk_OPENSSL_STRING_free(canames);
     if(passin) OPENSSL_free(passin);
     if(passout) OPENSSL_free(passout);
-    apps_shutdown();
-    OPENSSL_EXIT(ret);
+    return(ret);
 }
 
 int dump_certs_keys_p12 (BIO *out, PKCS12 *p12, char *pass,

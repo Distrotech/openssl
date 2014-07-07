@@ -70,16 +70,24 @@
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 
-#undef PROG
-#define PROG	spkac_main
 
-/* -in arg	- input file - default stdin
- * -out arg	- output file - default stdout
- */
+const char* spkac_help[] = {
+	" -in arg        input file",
+	" -out arg       output file",
+	" -key arg       create SPKAC using private key",
+	" -passin arg    input file pass phrase source",
+	" -challenge arg challenge string",
+	" -spkac arg     alternative SPKAC name",
+	" -noout         don't print SPKAC",
+	" -pubkey        output public key",
+	" -verify        verify SPKAC signature",
+#ifndef OPENSSL_NO_ENGINE
+	" -engine e      use engine e, possibly a hardware device.",
+#endif
+	NULL
+};
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int spkac_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL;
 	int i,badops=0, ret = 1;
@@ -96,13 +104,6 @@ int MAIN(int argc, char **argv)
 #ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
 #endif
-
-	apps_startup();
-
-	if (!bio_err) bio_err = BIO_new_fp(stderr, BIO_NOCLOSE);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
 
 	prog=argv[0];
 	argc--;
@@ -165,24 +166,12 @@ int MAIN(int argc, char **argv)
 	if (badops)
 		{
 bad:
-		BIO_printf(bio_err,"%s [options]\n",prog);
+		BIO_printf(bio_err,"spkac [options]\n");
 		BIO_printf(bio_err,"where options are\n");
-		BIO_printf(bio_err," -in arg        input file\n");
-		BIO_printf(bio_err," -out arg       output file\n");
-		BIO_printf(bio_err," -key arg       create SPKAC using private key\n");
-		BIO_printf(bio_err," -passin arg    input file pass phrase source\n");
-		BIO_printf(bio_err," -challenge arg challenge string\n");
-		BIO_printf(bio_err," -spkac arg     alternative SPKAC name\n");
-		BIO_printf(bio_err," -noout         don't print SPKAC\n");
-		BIO_printf(bio_err," -pubkey        output public key\n");
-		BIO_printf(bio_err," -verify        verify SPKAC signature\n");
-#ifndef OPENSSL_NO_ENGINE
-		BIO_printf(bio_err," -engine e      use engine e, possibly a hardware device.\n");
-#endif
+		printhelp(spkac_help);
 		goto end;
 		}
 
-	ERR_load_crypto_strings();
 	if(!app_passwd(bio_err, passargin, NULL, &passin, NULL)) {
 		BIO_printf(bio_err, "Error getting password\n");
 		goto end;
@@ -303,6 +292,5 @@ end:
 	BIO_free_all(out);
 	EVP_PKEY_free(pkey);
 	if(passin) OPENSSL_free(passin);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}

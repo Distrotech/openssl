@@ -66,28 +66,21 @@
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 
-#undef PROG
-#define PROG	sess_id_main
-
-static const char *sess_id_usage[]={
-"usage: sess_id args\n",
-"\n",
-" -inform arg     - input format - default PEM (DER or PEM)\n",
-" -outform arg    - output format - default PEM (PEM, DER or NSS)\n",
-" -in arg         - input file - default stdin\n",
-" -out arg        - output file - default stdout\n",
-" -text           - print ssl session id details\n",
-" -cert           - output certificate \n",
-" -noout          - no output of encoded session info\n",
-" -context arg    - set the session ID context\n",
-NULL
+const char *sess_id_help[]={
+	"-inform arg      input format - default PEM (DER or PEM)",
+	"-outform arg     output format - default PEM (PEM, DER or NSS)",
+	"-in arg          input file - default stdin",
+	"-out arg         output file - default stdout",
+	"-text            print ssl session id details",
+	"-cert            output certificate ",
+	"-noout           no output of encoded session info",
+	"-context arg     set the session ID context",
+	NULL
 };
 
 static SSL_SESSION *load_sess_id(char *file, int format);
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int sess_id_main(int argc, char **argv)
 	{
 	SSL_SESSION *x=NULL;
 	X509 *peer = NULL;
@@ -96,13 +89,6 @@ int MAIN(int argc, char **argv)
 	int informat,outformat;
 	char *infile=NULL,*outfile=NULL,*context=NULL;
 	int cert=0,noout=0,text=0;
-	const char **pp;
-
-	apps_startup();
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
 
 	informat=FORMAT_PEM;
 	outformat=FORMAT_PEM;
@@ -156,12 +142,11 @@ int MAIN(int argc, char **argv)
 	if (badops)
 		{
 bad:
-		for (pp=sess_id_usage; (*pp != NULL); pp++)
-			BIO_printf(bio_err,"%s",*pp);
+		BIO_printf(bio_err, "usage: sess_id args\n");
+		printhelp(sess_id_help);
 		goto end;
 		}
 
-	ERR_load_crypto_strings();
 	x=load_sess_id(infile,informat);
 	if (x == NULL) { goto end; }
 	peer = SSL_SESSION_get0_peer(x);
@@ -200,30 +185,15 @@ bad:
 
 	if (!noout || text)
 		{
-		out=BIO_new(BIO_s_file());
+		if (outfile == NULL)
+			out = BIO_dup_chain(bio_out);
+		else
+			/* XXX rsalz see switch below; WB() wrong */
+			out = BIO_new_file(outfile, WB(outformat));
 		if (out == NULL)
 			{
 			ERR_print_errors(bio_err);
 			goto end;
-			}
-
-		if (outfile == NULL)
-			{
-			BIO_set_fp(out,stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-			{
-			BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-			out = BIO_push(tmpbio, out);
-			}
-#endif
-			}
-		else
-			{
-			if (BIO_write_filename(out,outfile) <= 0)
-				{
-				perror(outfile);
-				goto end;
-				}
 			}
 		}
 
@@ -276,40 +246,22 @@ bad:
 end:
 	if (out != NULL) BIO_free_all(out);
 	if (x != NULL) SSL_SESSION_free(x);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 
 static SSL_SESSION *load_sess_id(char *infile, int format)
 	{
 	SSL_SESSION *x=NULL;
-	BIO *in=NULL;
-
-	in=BIO_new(BIO_s_file());
-	if (in == NULL)
-		{
-		ERR_print_errors(bio_err);
-		goto end;
-		}
+	BIO *in;
 
 	if (infile == NULL)
-		BIO_set_fp(in,stdin,BIO_NOCLOSE);
+		in = BIO_new_fp(stdin,BIO_NOCLOSE);
 	else
-		{
-		if (BIO_read_filename(in,infile) <= 0)
-			{
-			perror(infile);
-			goto end;
-			}
-		}
+		in = BIO_new_file(infile, RB(format));
 	if 	(format == FORMAT_ASN1)
 		x=d2i_SSL_SESSION_bio(in,NULL);
-	else if (format == FORMAT_PEM)
+	else
 		x=PEM_read_bio_SSL_SESSION(in,NULL,NULL,NULL);
-	else	{
-		BIO_printf(bio_err,"bad input format specified for input crl\n");
-		goto end;
-		}
 	if (x == NULL)
 		{
 		BIO_printf(bio_err,"unable to load SSL_SESSION\n");

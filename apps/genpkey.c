@@ -69,11 +69,23 @@ static int init_keygen_file(BIO *err, EVP_PKEY_CTX **pctx,
 				const char *file, ENGINE *e);
 static int genpkey_cb(EVP_PKEY_CTX *ctx);
 
-#define PROG genpkey_main
-
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+const char* genpkey_help[] = {
+	"-out file          output file",
+	"-outform X         output format (DER or PEM)",
+	"-pass arg          output file pass phrase source",
+	"-<cipher>          use cipher <cipher> to encrypt the key",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e          use engine e, possibly a hardware device.",
+#endif
+	"-paramfile file    parameters file",
+	"-algorithm alg     the public key algorithm",
+	"-pkeyopt opt:value set the public key algorithm option <opt>",
+	"                   to value <value>",
+	"-genparam          generate parameters, not key",
+	"-text              print the in text",
+	NULL
+};
+int genpkey_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL;
 	char **args, *outfile = NULL;
@@ -90,16 +102,8 @@ int MAIN(int argc, char **argv)
 
 	int do_param = 0;
 
-	if (bio_err == NULL)
-		bio_err = BIO_new_fp (stderr, BIO_NOCLOSE);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
-
 	outformat=FORMAT_PEM;
 
-	ERR_load_crypto_strings();
-	OpenSSL_add_all_algorithms();
 	args = argv + 1;
 	while (!badarg && *args && *args[0] == '-')
 		{
@@ -198,19 +202,7 @@ int MAIN(int argc, char **argv)
 		bad:
 		BIO_printf(bio_err, "Usage: genpkey [options]\n");
 		BIO_printf(bio_err, "where options may be\n");
-		BIO_printf(bio_err, "-out file          output file\n");
-		BIO_printf(bio_err, "-outform X         output format (DER or PEM)\n");
-		BIO_printf(bio_err, "-pass arg          output file pass phrase source\n");
-		BIO_printf(bio_err, "-<cipher>          use cipher <cipher> to encrypt the key\n");
-#ifndef OPENSSL_NO_ENGINE
-		BIO_printf(bio_err, "-engine e          use engine e, possibly a hardware device.\n");
-#endif
-		BIO_printf(bio_err, "-paramfile file    parameters file\n");
-		BIO_printf(bio_err, "-algorithm alg     the public key algorithm\n");
-		BIO_printf(bio_err, "-pkeyopt opt:value set the public key algorithm option <opt>\n"
-				            "                   to value <value>\n");
-		BIO_printf(bio_err, "-genparam          generate parameters, not key\n");
-		BIO_printf(bio_err, "-text              print the in text\n");
+		printhelp(genpkey_help);
 		BIO_printf(bio_err, "NB: options order may be important!  See the manual page.\n");
 		goto end;
 		}

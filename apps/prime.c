@@ -52,13 +52,17 @@
 #include "apps.h"
 #include <openssl/bn.h>
 
+const char* prime_help[] = {
+	"-bits n     size of number in bits",
+	"-hex        hex",
+	"-checks n   number of checks",
+	"-generate   generate a prime",
+	"-safe       when used with -generate, generate a safe prime",
+	NULL
+};
 
-#undef PROG
-#define PROG prime_main
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int prime_main(int argc, char **argv)
     {
     int hex=0;
     int checks=20;
@@ -66,13 +70,8 @@ int MAIN(int argc, char **argv)
     int bits=0;
     int safe=0;
     BIGNUM *bn=NULL;
-    BIO *bio_out;
+    BIO *out;
 
-    apps_startup();
-
-    if (bio_err == NULL)
-	if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-	    BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
 
     --argc;
     ++argv;
@@ -109,16 +108,7 @@ int MAIN(int argc, char **argv)
 	goto bad;
 	}
 
-    if ((bio_out=BIO_new(BIO_s_file())) != NULL)
-	{
-	BIO_set_fp(bio_out,stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-	    {
-	    BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-	    bio_out = BIO_push(tmpbio, bio_out);
-	    }
-#endif
-	}
+    out = BIO_dup_chain(bio_out);
 
     if(generate)
 	{
@@ -132,7 +122,7 @@ int MAIN(int argc, char **argv)
 	bn=BN_new();
 	BN_generate_prime_ex(bn,bits,safe,NULL,NULL,NULL);
 	s=hex ? BN_bn2hex(bn) : BN_bn2dec(bn);
-	BIO_printf(bio_out,"%s\n",s);
+	BIO_printf(out,"%s\n",s);
 	OPENSSL_free(s);
 	}
     else
@@ -142,19 +132,18 @@ int MAIN(int argc, char **argv)
 	else
 	    BN_dec2bn(&bn,argv[0]);
 
-	BN_print(bio_out,bn);
-	BIO_printf(bio_out," is %sprime\n",
+	BN_print(out,bn);
+	BIO_printf(out," is %sprime\n",
 		   BN_is_prime_ex(bn,checks,NULL,NULL) ? "" : "not ");
 	}
 
     BN_free(bn);
-    BIO_free_all(bio_out);
+    BIO_free_all(out);
 
     return 0;
 
     bad:
     BIO_printf(bio_err,"options are\n");
-    BIO_printf(bio_err,"%-14s hex\n","-hex");
-    BIO_printf(bio_err,"%-14s number of checks\n","-checks <n>");
+    printhelp(prime_help);
     return 1;
     }

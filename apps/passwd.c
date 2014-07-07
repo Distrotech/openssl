@@ -23,9 +23,6 @@
 #endif
 
 
-#undef PROG
-#define PROG passwd_main
-
 
 static unsigned const char cov_2char[64]={
 	/* from crypto/des/fcrypt.c */
@@ -43,21 +40,26 @@ static int do_passwd(int passed_salt, char **salt_p, char **salt_malloc_p,
 	char *passwd, BIO *out, int quiet, int table, int reverse,
 	size_t pw_maxlen, int usecrypt, int use1, int useapr1);
 
-/* -crypt        - standard Unix password algorithm (default)
- * -1            - MD5-based password algorithm
- * -apr1         - MD5-based password algorithm, Apache variant
- * -salt string  - salt
- * -in file      - read passwords from file
- * -stdin        - read passwords from stdin
- * -noverify     - never verify when reading password from terminal
- * -quiet        - no warnings
- * -table        - format output as table
- * -reverse      - switch table columns
- */
+const char* passwd_help[] = {
+#ifndef OPENSSL_NO_DES
+	"-crypt             standard Unix password algorithm (default)",
+#endif
+#ifndef NO_MD5CRYPT_1
+	"-1                 MD5-based password algorithm",
+	"-apr1              MD5-based password algorithm, Apache variant",
+#endif
+	"-salt string       use provided salt",
+	"-in file           read passwords from file",
+	"-stdin             read passwords from stdin",
+	"-noverify          never verify when reading password from terminal",
+	"-quiet             no warnings",
+	"-table             format output as table",
+	"-reverse           switch table columns",
+	NULL
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+};
+		
+int passwd_main(int argc, char **argv)
 	{
 	int ret = 1;
 	char *infile = NULL;
@@ -73,24 +75,7 @@ int MAIN(int argc, char **argv)
 	int usecrypt = 0, use1 = 0, useapr1 = 0;
 	size_t pw_maxlen = 0;
 
-	apps_startup();
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
-
-	if (!load_config(bio_err, NULL))
-		goto err;
-	out = BIO_new(BIO_s_file());
-	if (out == NULL)
-		goto err;
-	BIO_set_fp(out, stdout, BIO_NOCLOSE | BIO_FP_TEXT);
-#ifdef OPENSSL_SYS_VMS
-	{
-	BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-	out = BIO_push(tmpbio, out);
-	}
-#endif
+	out = BIO_dup_chain(bio_out);
 
 	badopt = 0, opt_done = 0;
 	i = 0;
@@ -166,44 +151,27 @@ int MAIN(int argc, char **argv)
 	if (use1 || useapr1) badopt = 1;
 #endif
 
+	if (infile && in_stdin)
+		{
+		BIO_printf(bio_err, "Can't combine -in and -stdin\n");
+		goto err;
+		}
 	if (badopt) 
 		{
 		BIO_printf(bio_err, "Usage: passwd [options] [passwords]\n");
 		BIO_printf(bio_err, "where options are\n");
-#ifndef OPENSSL_NO_DES
-		BIO_printf(bio_err, "-crypt             standard Unix password algorithm (default)\n");
-#endif
-#ifndef NO_MD5CRYPT_1
-		BIO_printf(bio_err, "-1                 MD5-based password algorithm\n");
-		BIO_printf(bio_err, "-apr1              MD5-based password algorithm, Apache variant\n");
-#endif
-		BIO_printf(bio_err, "-salt string       use provided salt\n");
-		BIO_printf(bio_err, "-in file           read passwords from file\n");
-		BIO_printf(bio_err, "-stdin             read passwords from stdin\n");
-		BIO_printf(bio_err, "-noverify          never verify when reading password from terminal\n");
-		BIO_printf(bio_err, "-quiet             no warnings\n");
-		BIO_printf(bio_err, "-table             format output as table\n");
-		BIO_printf(bio_err, "-reverse           switch table columns\n");
-		
+		printhelp(passwd_help);
 		goto err;
 		}
 
-	if ((infile != NULL) || in_stdin)
+	if (infile == NULL)
+		in = BIO_new_fp(stdin, BIO_NOCLOSE);
+	else
+		in = BIO_new_file(infile, "r");
+	if (in == NULL)
 		{
-		in = BIO_new(BIO_s_file());
-		if (in == NULL)
-			goto err;
-		if (infile != NULL)
-			{
-			assert(in_stdin == 0);
-			if (BIO_read_filename(in, infile) <= 0)
-				goto err;
-			}
-		else
-			{
-			assert(in_stdin);
-			BIO_set_fp(in, stdin, BIO_NOCLOSE);
-			}
+		ERR_print_errors(bio_err);
+		goto err;
 		}
 	
 	if (usecrypt)
@@ -291,8 +259,7 @@ err:
 		BIO_free(in);
 	if (out)
 		BIO_free_all(out);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 
 
@@ -504,9 +471,9 @@ err:
 	}
 #else
 
-int MAIN(int argc, char **argv)
+int passwd_main(int argc, char **argv)
 	{
 	fputs("Program not available.\n", stderr)
-	OPENSSL_EXIT(1);
+	return(1);
 	}
 #endif

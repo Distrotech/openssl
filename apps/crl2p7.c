@@ -72,18 +72,19 @@
 #include <openssl/objects.h>
 
 static int add_certs_from_file(STACK_OF(X509) *stack, char *certfile);
-#undef PROG
-#define PROG	crl2pkcs7_main
 
-/* -inform arg	- input format - default PEM (DER or PEM)
- * -outform arg - output format - default PEM
- * -in arg	- input file - default stdin
- * -out arg	- output file - default stdout
- */
+const char* crl2pkcs7_help[] = {
+	"-inform arg    input format - DER or PEM",
+	"-outform arg   output format - DER or PEM",
+	"-in arg        input file",
+	"-out arg       output file",
+	"-certfile arg  certificates file of chain to a trusted CA",
+	"                (can be used more than once)",
+	"-nocrl         no crl to load, just certs from '-certfile'",
+	NULL
+};
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int crl2pkcs7_main(int argc, char **argv)
 	{
 	int i,badops=0;
 	BIO *in=NULL,*out=NULL;
@@ -96,12 +97,6 @@ int MAIN(int argc, char **argv)
 	STACK_OF(X509_CRL) *crl_stack=NULL;
 	STACK_OF(X509) *cert_stack=NULL;
 	int ret=1,nocrl=0;
-
-	apps_startup();
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
 
 	infile=NULL;
 	outfile=NULL;
@@ -164,38 +159,21 @@ int MAIN(int argc, char **argv)
 bad:
 		BIO_printf(bio_err,"%s [options] <infile >outfile\n",prog);
 		BIO_printf(bio_err,"where options are\n");
-		BIO_printf(bio_err," -inform arg    input format - DER or PEM\n");
-		BIO_printf(bio_err," -outform arg   output format - DER or PEM\n");
-		BIO_printf(bio_err," -in arg        input file\n");
-		BIO_printf(bio_err," -out arg       output file\n");
-		BIO_printf(bio_err," -certfile arg  certificates file of chain to a trusted CA\n");
-		BIO_printf(bio_err,"                (can be used more than once)\n");
-		BIO_printf(bio_err," -nocrl         no crl to load, just certs from '-certfile'\n");
+		printhelp(crl2pkcs7_help);
 		ret = 1;
-		goto end;
-		}
-
-	ERR_load_crypto_strings();
-
-	in=BIO_new(BIO_s_file());
-	out=BIO_new(BIO_s_file());
-	if ((in == NULL) || (out == NULL))
-		{
-		ERR_print_errors(bio_err);
 		goto end;
 		}
 
 	if (!nocrl)
 		{
 		if (infile == NULL)
-			BIO_set_fp(in,stdin,BIO_NOCLOSE);
+			in = BIO_new_fp(stdin, BIO_NOCLOSE);
 		else
+			in = BIO_new_file(infile, RB(informat));
+		if (in==NULL)
 			{
-			if (BIO_read_filename(in,infile) <= 0)
-				{
-				perror(infile);
-				goto end;
-				}
+			perror(infile);
+			goto end;
 			}
 
 		if 	(informat == FORMAT_ASN1)
@@ -245,22 +223,13 @@ bad:
 	sk_OPENSSL_STRING_free(certflst);
 
 	if (outfile == NULL)
-		{
-		BIO_set_fp(out,stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-		{
-		BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		out = BIO_push(tmpbio, out);
-		}
-#endif
-		}
+		out = BIO_dup_chain(bio_out);
 	else
+		out=BIO_new_file(outfile, WB(outformat));
+	if (out==NULL)
 		{
-		if (BIO_write_filename(out,outfile) <= 0)
-			{
-			perror(outfile);
-			goto end;
-			}
+		ERR_print_errors(bio_err);
+		goto end;
 		}
 
 	if 	(outformat == FORMAT_ASN1)
@@ -280,12 +249,11 @@ bad:
 	ret=0;
 end:
 	if (in != NULL) BIO_free(in);
-	if (out != NULL) BIO_free_all(out);
+	BIO_free_all(out);
 	if (p7 != NULL) PKCS7_free(p7);
 	if (crl != NULL) X509_CRL_free(crl);
 
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 
 /*
@@ -306,8 +274,8 @@ static int add_certs_from_file(STACK_OF(X509) *stack, char *certfile)
 	STACK_OF(X509_INFO) *sk=NULL;
 	X509_INFO *xi;
 
-	in=BIO_new(BIO_s_file());
-	if ((in == NULL) || (BIO_read_filename(in,certfile) <= 0))
+	in=BIO_new_file(certfile, "r");
+	if (in == NULL)
 		{
 		BIO_printf(bio_err,"error opening the file, %s\n",certfile);
 		goto end;

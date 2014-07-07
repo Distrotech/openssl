@@ -669,14 +669,6 @@ extern char *sys_errlist[]; extern int sys_nerr;
 # define memcmp OPENSSL_memcmp
 #endif
 
-#ifndef OPENSSL_EXIT
-# if defined(MONOLITH) && !defined(OPENSSL_C)
-#  define OPENSSL_EXIT(n) return(n)
-# else
-#  define OPENSSL_EXIT(n) do { EXIT(n); return(n); } while(0)
-# endif
-#endif
-
 /***********************************************/
 
 #define DG_GCC_BUG	/* gcc < 2.6.3 on DGUX */

@@ -62,12 +62,15 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 
-#undef PROG
-#define PROG nseq_main
+const char* nseq_help[] = {
+	"-in file  input file",
+	"-out file output file",
+	"-toseq    output NS Sequence file",
+	NULL
+};
 
-int MAIN(int, char **);
 
-int MAIN(int argc, char **argv)
+int nseq_main(int argc, char **argv)
 {
 	char **args, *infile = NULL, *outfile = NULL;
 	BIO *in = NULL, *out = NULL;
@@ -76,8 +79,7 @@ int MAIN(int argc, char **argv)
 	NETSCAPE_CERT_SEQUENCE *seq = NULL;
 	int i, ret = 1;
 	int badarg = 0;
-	if (bio_err == NULL) bio_err = BIO_new_fp (stderr, BIO_NOCLOSE);
-	ERR_load_crypto_strings();
+
 	args = argv + 1;
 	while (!badarg && *args && *args[0] == '-') {
 		if (!strcmp (*args, "-toseq")) toseq = 1;
@@ -99,10 +101,8 @@ int MAIN(int argc, char **argv)
 		BIO_printf (bio_err, "Netscape certificate sequence utility\n");
 		BIO_printf (bio_err, "Usage nseq [options]\n");
 		BIO_printf (bio_err, "where options are\n");
-		BIO_printf (bio_err, "-in file  input file\n");
-		BIO_printf (bio_err, "-out file output file\n");
-		BIO_printf (bio_err, "-toseq    output NS Sequence file\n");
-		OPENSSL_EXIT(1);
+		printhelp(nseq_help);
+		return(1);
 	}
 
 	if (infile) {
@@ -162,6 +162,6 @@ end:
 	BIO_free_all(out);
 	NETSCAPE_CERT_SEQUENCE_free(seq);
 
-	OPENSSL_EXIT(ret);
+	return(ret);
 }
 

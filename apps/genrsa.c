@@ -79,14 +79,38 @@
 #include <openssl/rand.h>
 
 #define DEFBITS	1024
-#undef PROG
-#define PROG genrsa_main
 
-static int MS_CALLBACK genrsa_cb(int p, int n, BN_GENCB *cb);
+static int genrsa_cb(int p, int n, BN_GENCB *cb);
 
-int MAIN(int, char **);
+const char* genrsa_help[] = {
+	"-des            encrypt the generated key with DES in cbc mode",
+	"-des3           encrypt the generated key with DES in ede cbc mode (168 bit key)",
+#ifndef OPENSSL_NO_IDEA
+	"-idea           encrypt the generated key with IDEA in cbc mode",
+#endif
+#ifndef OPENSSL_NO_SEED
+	"-seed           encrypt PEM output with cbc seed",
+#endif
+#ifndef OPENSSL_NO_AES
+	"-aes128, -aes192, -aes256",
+	"                encrypt PEM output with cbc aes",
+#endif
+#ifndef OPENSSL_NO_CAMELLIA
+	"-camellia128, -camellia192, -camellia256",
+	"                encrypt PEM output with cbc camellia",
+#endif
+	"-out file       output the key to 'file",
+	"-passout arg    output file pass phrase source",
+	"-f4             use F4 (0x10001) for the E value",
+	"-3              use 3 for the E value",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e       use engine e, possibly a hardware device.",
+#endif
+	"-rand file...  load the file(s) into the random number generator",
+	NULL
+};
 
-int MAIN(int argc, char **argv)
+int genrsa_main(int argc, char **argv)
 	{
 	BN_GENCB cb;
 #ifndef OPENSSL_NO_ENGINE
@@ -110,20 +134,7 @@ int MAIN(int argc, char **argv)
 
 	if(!bn) goto err;
 
-	apps_startup();
 	BN_GENCB_set(&cb, genrsa_cb, bio_err);
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
-
-	if (!load_config(bio_err, NULL))
-		goto err;
-	if ((out=BIO_new(BIO_s_file())) == NULL)
-		{
-		BIO_printf(bio_err,"unable to create BIO for output\n");
-		goto err;
-		}
 
 	argv++;
 	argc--;
@@ -197,38 +208,10 @@ int MAIN(int argc, char **argv)
 		{
 bad:
 		BIO_printf(bio_err,"usage: genrsa [args] [numbits]\n");
-		BIO_printf(bio_err," -des            encrypt the generated key with DES in cbc mode\n");
-		BIO_printf(bio_err," -des3           encrypt the generated key with DES in ede cbc mode (168 bit key)\n");
-#ifndef OPENSSL_NO_IDEA
-		BIO_printf(bio_err," -idea           encrypt the generated key with IDEA in cbc mode\n");
-#endif
-#ifndef OPENSSL_NO_SEED
-		BIO_printf(bio_err," -seed\n");
-		BIO_printf(bio_err,"                 encrypt PEM output with cbc seed\n");
-#endif
-#ifndef OPENSSL_NO_AES
-		BIO_printf(bio_err," -aes128, -aes192, -aes256\n");
-		BIO_printf(bio_err,"                 encrypt PEM output with cbc aes\n");
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-		BIO_printf(bio_err," -camellia128, -camellia192, -camellia256\n");
-		BIO_printf(bio_err,"                 encrypt PEM output with cbc camellia\n");
-#endif
-		BIO_printf(bio_err," -out file       output the key to 'file\n");
-		BIO_printf(bio_err," -passout arg    output file pass phrase source\n");
-		BIO_printf(bio_err," -f4             use F4 (0x10001) for the E value\n");
-		BIO_printf(bio_err," -3              use 3 for the E value\n");
-#ifndef OPENSSL_NO_ENGINE
-		BIO_printf(bio_err," -engine e       use engine e, possibly a hardware device.\n");
-#endif
-		BIO_printf(bio_err," -rand file%cfile%c...\n", LIST_SEPARATOR_CHAR, LIST_SEPARATOR_CHAR);
-		BIO_printf(bio_err,"                 load the file (or the files in the directory) into\n");
-		BIO_printf(bio_err,"                 the random number generator\n");
+		printhelp(genrsa_help);
 		goto err;
 		}
 		
-	ERR_load_crypto_strings();
-
 	if(!app_passwd(bio_err, NULL, passargout, NULL, &passout)) {
 		BIO_printf(bio_err, "Error getting password\n");
 		goto err;
@@ -239,22 +222,13 @@ bad:
 #endif
 
 	if (outfile == NULL)
-		{
-		BIO_set_fp(out,stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-		{
-		BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		out = BIO_push(tmpbio, out);
-		}
-#endif
-		}
+		out = BIO_dup_chain(bio_out);
 	else
+		out = BIO_new_file(outfile, "w");
+	if (out == NULL)
 		{
-		if (BIO_write_filename(out,outfile) <= 0)
-			{
-			perror(outfile);
-			goto err;
-			}
+		ERR_print_errors(bio_err);
+		goto err;
 		}
 
 	if (!app_RAND_load_file(NULL, bio_err, 1) && inrand == NULL
@@ -313,11 +287,10 @@ err:
 	if(passout) OPENSSL_free(passout);
 	if (ret != 0)
 		ERR_print_errors(bio_err);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 
-static int MS_CALLBACK genrsa_cb(int p, int n, BN_GENCB *cb)
+static int genrsa_cb(int p, int n, BN_GENCB *cb)
 	{
 	char c='*';
 

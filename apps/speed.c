@@ -84,9 +84,6 @@
 /* 11-Sep-92 Andrew Daviel   Support for Silicon Graphics IRIX added */
 /* 06-Apr-92 Luke Brennan    Support for VMS and add extra signal calls */
 
-#undef PROG
-#define PROG speed_main
-
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -235,6 +232,132 @@ static int do_multi(int multi);
 #define EC_NUM       16
 #define MAX_ECDH_SIZE 256
 
+const char* speed_help[] = {
+#if defined(TIMES) || defined(USE_TOD)
+	"-elapsed        measure time in real time instead of CPU user time",
+#endif
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e       use engine e, possibly a hardware device",
+#endif
+	"-evp e          use EVP e",
+	"-decrypt        time decryption instead of encryption (only EVP)",
+	"-mr             produce machine readable output",
+#ifndef NO_FORK
+	"-multi n        run n benchmarks in parallel.",
+#endif
+#ifndef OPENSSL_NO_MD2
+	"md2  "
+#endif
+#ifndef OPENSSL_NO_MDC2
+	"mdc2  "
+#endif
+#ifndef OPENSSL_NO_MD4
+	"md4  "
+#endif
+#ifndef OPENSSL_NO_MD5
+	"md5  "
+#ifndef OPENSSL_NO_HMAC
+	"hmac  "
+#endif
+#endif
+#ifndef OPENSSL_NO_SHA1
+	"sha1  "
+#endif
+#ifndef OPENSSL_NO_SHA256
+	"sha256  "
+#endif
+#ifndef OPENSSL_NO_SHA512
+	"sha512  "
+#endif
+#ifndef OPENSSL_NO_WHIRLPOOL
+	"whirlpool "
+#endif
+#ifndef OPENSSL_NO_RIPEMD160
+	"rmd160"
+#endif
+	,
+
+#ifndef OPENSSL_NO_IDEA
+	"idea-cbc "
+#endif
+#ifndef OPENSSL_NO_SEED
+	"seed-cbc "
+#endif
+#ifndef OPENSSL_NO_RC2
+	"rc2-cbc  "
+#endif
+#ifndef OPENSSL_NO_RC5
+	"rc5-cbc  "
+#endif
+#ifndef OPENSSL_NO_BF
+	"bf-cbc"
+#endif
+	,
+
+#ifndef OPENSSL_NO_DES
+	"des-cbc  des-ede3 ",
+#endif
+#ifndef OPENSSL_NO_AES
+	"aes-128-cbc aes-192-cbc aes-256-cbc ",
+	"aes-128-ige aes-192-ige aes-256-ige ",
+#endif
+#ifndef OPENSSL_NO_CAMELLIA
+	"camellia-128-cbc camellia-192-cbc camellia-256-cbc ",
+#endif
+#ifndef OPENSSL_NO_RC4
+	"rc4",
+#endif
+
+#ifndef OPENSSL_NO_RSA
+	"rsa512   rsa1024  rsa2048  rsa3072  rsa4096",
+	"rsa7680  rsa15360",
+#endif
+
+#ifndef OPENSSL_NO_DSA
+	"dsa512   dsa1024  dsa2048",
+#endif
+#ifndef OPENSSL_NO_ECDSA
+	"ecdsap160 ecdsap192 ecdsap224 ecdsap256 ecdsap384 ecdsap521",
+	"ecdsak163 ecdsak233 ecdsak283 ecdsak409 ecdsak571",
+	"ecdsab163 ecdsab233 ecdsab283 ecdsab409 ecdsab571",
+	"ecdsa",
+#endif
+#ifndef OPENSSL_NO_ECDH
+	"ecdhp160  ecdhp192  ecdhp224  ecdhp256  ecdhp384  ecdhp521",
+	"ecdhk163  ecdhk233  ecdhk283  ecdhk409  ecdhk571",
+	"ecdhb163  ecdhb233  ecdhb283  ecdhb409  ecdhb571",
+	"ecdh\n"
+#endif
+
+#ifndef OPENSSL_NO_IDEA
+	"idea  "
+#endif
+#ifndef OPENSSL_NO_SEED
+	"seed  "
+#endif
+#ifndef OPENSSL_NO_RC2
+	"rc2  "
+#endif
+#ifndef OPENSSL_NO_DES
+	"des  "
+#endif
+#ifndef OPENSSL_NO_AES
+	"aes  "
+#endif
+#ifndef OPENSSL_NO_CAMELLIA
+	"camellia  "
+#endif
+#ifndef OPENSSL_NO_RSA
+	"rsa   "
+#endif
+#ifndef OPENSSL_NO_BF
+	"blowfish  "
+#endif
+	,
+	"prime-trial-division  prime-coprime",
+	NULL
+};
+
 static const char *names[ALGOR_NUM]={
   "md2","mdc2","md4","md5","hmac(md5)","sha1","rmd160","rc4",
   "des cbc","des ede3","idea cbc","seed cbc",
@@ -359,9 +482,7 @@ static void *KDF1_SHA1(const void *in, size_t inlen, void *out, size_t *outlen)
 
 static void multiblock_speed(const EVP_CIPHER *evp_cipher);
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int speed_main(int argc, char **argv)
 	{
 	unsigned char *buf=NULL,*buf2=NULL;
 	int mret=1;
@@ -505,7 +626,7 @@ int MAIN(int argc, char **argv)
 #define D_PRIME_TRIAL_DIVISION			0
 #define D_PRIME_TRIAL_DIVISION_RETRY	1
 #define D_PRIME_COPRIME					2
-	long prime_c[PRIME_NUM];
+	long prime_c[PRIME_NUM] = {0, 0, 0};
 
 #define	R_DSA_512	0
 #define	R_DSA_1024	1
@@ -648,7 +769,7 @@ int MAIN(int argc, char **argv)
 	usertime=-1;
 #endif
 
-	apps_startup();
+	for (i=0; i<PRIME_NUM; i++) prime_c[i] = 0;
 	memset(results, 0, sizeof(results));
 #ifndef OPENSSL_NO_DSA
 	memset(dsa_key,0,sizeof(dsa_key));
@@ -663,14 +784,6 @@ int MAIN(int argc, char **argv)
 		ecdh_b[i] = NULL;
 		}
 #endif
-
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
 
 #ifndef OPENSSL_NO_RSA
 	memset(rsa_key,0,sizeof(rsa_key));
@@ -1046,147 +1159,7 @@ int MAIN(int argc, char **argv)
 		else
 			{
 			BIO_printf(bio_err,"Error: bad option or value\n");
-			BIO_printf(bio_err,"\n");
-			BIO_printf(bio_err,"Available values:\n");
-#ifndef OPENSSL_NO_MD2
-			BIO_printf(bio_err,"md2      ");
-#endif
-#ifndef OPENSSL_NO_MDC2
-			BIO_printf(bio_err,"mdc2     ");
-#endif
-#ifndef OPENSSL_NO_MD4
-			BIO_printf(bio_err,"md4      ");
-#endif
-#ifndef OPENSSL_NO_MD5
-			BIO_printf(bio_err,"md5      ");
-#ifndef OPENSSL_NO_HMAC
-			BIO_printf(bio_err,"hmac     ");
-#endif
-#endif
-#ifndef OPENSSL_NO_SHA1
-			BIO_printf(bio_err,"sha1     ");
-#endif
-#ifndef OPENSSL_NO_SHA256
-			BIO_printf(bio_err,"sha256   ");
-#endif
-#ifndef OPENSSL_NO_SHA512
-			BIO_printf(bio_err,"sha512   ");
-#endif
-#ifndef OPENSSL_NO_WHIRLPOOL
-			BIO_printf(bio_err,"whirlpool");
-#endif
-#ifndef OPENSSL_NO_RIPEMD160
-			BIO_printf(bio_err,"rmd160");
-#endif
-#if !defined(OPENSSL_NO_MD2) || !defined(OPENSSL_NO_MDC2) || \
-    !defined(OPENSSL_NO_MD4) || !defined(OPENSSL_NO_MD5) || \
-    !defined(OPENSSL_NO_SHA1) || !defined(OPENSSL_NO_RIPEMD160) || \
-    !defined(OPENSSL_NO_WHIRLPOOL)
-			BIO_printf(bio_err,"\n");
-#endif
-
-#ifndef OPENSSL_NO_IDEA
-			BIO_printf(bio_err,"idea-cbc ");
-#endif
-#ifndef OPENSSL_NO_SEED
-			BIO_printf(bio_err,"seed-cbc ");
-#endif
-#ifndef OPENSSL_NO_RC2
-			BIO_printf(bio_err,"rc2-cbc  ");
-#endif
-#ifndef OPENSSL_NO_RC5
-			BIO_printf(bio_err,"rc5-cbc  ");
-#endif
-#ifndef OPENSSL_NO_BF
-			BIO_printf(bio_err,"bf-cbc");
-#endif
-#if !defined(OPENSSL_NO_IDEA) || !defined(OPENSSL_NO_SEED) || !defined(OPENSSL_NO_RC2) || \
-    !defined(OPENSSL_NO_BF) || !defined(OPENSSL_NO_RC5)
-			BIO_printf(bio_err,"\n");
-#endif
-#ifndef OPENSSL_NO_DES
-			BIO_printf(bio_err,"des-cbc  des-ede3 ");
-#endif
-#ifndef OPENSSL_NO_AES
-			BIO_printf(bio_err,"aes-128-cbc aes-192-cbc aes-256-cbc ");
-			BIO_printf(bio_err,"aes-128-ige aes-192-ige aes-256-ige ");
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-			BIO_printf(bio_err,"\n");
-			BIO_printf(bio_err,"camellia-128-cbc camellia-192-cbc camellia-256-cbc ");
-#endif
-#ifndef OPENSSL_NO_RC4
-			BIO_printf(bio_err,"rc4");
-#endif
-			BIO_printf(bio_err,"\n");
-
-#ifndef OPENSSL_NO_RSA
-			BIO_printf(bio_err,"rsa512   rsa1024  rsa2048  rsa3072  rsa4096\n");
-			BIO_printf(bio_err,"rsa7680  rsa15360\n");
-#endif
-
-#ifndef OPENSSL_NO_DSA
-			BIO_printf(bio_err,"dsa512   dsa1024  dsa2048\n");
-#endif
-#ifndef OPENSSL_NO_ECDSA
-			BIO_printf(bio_err,"ecdsap160 ecdsap192 ecdsap224 ecdsap256 ecdsap384 ecdsap521\n");
-			BIO_printf(bio_err,"ecdsak163 ecdsak233 ecdsak283 ecdsak409 ecdsak571\n");
-			BIO_printf(bio_err,"ecdsab163 ecdsab233 ecdsab283 ecdsab409 ecdsab571\n");
-			BIO_printf(bio_err,"ecdsa\n");
-#endif
-#ifndef OPENSSL_NO_ECDH
-			BIO_printf(bio_err,"ecdhp160  ecdhp192  ecdhp224  ecdhp256  ecdhp384  ecdhp521\n");
-			BIO_printf(bio_err,"ecdhk163  ecdhk233  ecdhk283  ecdhk409  ecdhk571\n");
-			BIO_printf(bio_err,"ecdhb163  ecdhb233  ecdhb283  ecdhb409  ecdhb571\n");
-			BIO_printf(bio_err,"ecdh\n");
-#endif
-
-#ifndef OPENSSL_NO_IDEA
-			BIO_printf(bio_err,"idea     ");
-#endif
-#ifndef OPENSSL_NO_SEED
-			BIO_printf(bio_err,"seed     ");
-#endif
-#ifndef OPENSSL_NO_RC2
-			BIO_printf(bio_err,"rc2      ");
-#endif
-#ifndef OPENSSL_NO_DES
-			BIO_printf(bio_err,"des      ");
-#endif
-#ifndef OPENSSL_NO_AES
-			BIO_printf(bio_err,"aes      ");
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-			BIO_printf(bio_err,"camellia ");
-#endif
-#ifndef OPENSSL_NO_RSA
-			BIO_printf(bio_err,"rsa      ");
-#endif
-#ifndef OPENSSL_NO_BF
-			BIO_printf(bio_err,"blowfish");
-#endif
-#if !defined(OPENSSL_NO_IDEA) || !defined(OPENSSL_NO_SEED) || \
-    !defined(OPENSSL_NO_RC2) || !defined(OPENSSL_NO_DES) || \
-    !defined(OPENSSL_NO_RSA) || !defined(OPENSSL_NO_BF) || \
-    !defined(OPENSSL_NO_AES) || !defined(OPENSSL_NO_CAMELLIA)
-			BIO_printf(bio_err,"\n");
-#endif
-			BIO_printf(bio_err,"prime-trial-division  prime-coprime\n");
-
-			BIO_printf(bio_err,"\n");
-			BIO_printf(bio_err,"Available options:\n");
-#if defined(TIMES) || defined(USE_TOD)
-			BIO_printf(bio_err,"-elapsed        measure time in real time instead of CPU user time.\n");
-#endif
-#ifndef OPENSSL_NO_ENGINE
-			BIO_printf(bio_err,"-engine e       use engine e, possibly a hardware device.\n");
-#endif
-			BIO_printf(bio_err,"-evp e          use EVP e.\n");
-			BIO_printf(bio_err,"-decrypt        time decryption instead of encryption (only EVP).\n");
-			BIO_printf(bio_err,"-mr             produce machine readable output.\n");
-#ifndef NO_FORK
-			BIO_printf(bio_err,"-multi n        run n benchmarks in parallel.\n");
-#endif
+			printhelp(speed_help);
 			goto end;
 			}
 		argc--;
@@ -2518,8 +2491,8 @@ show_res:
 #endif
 	if(!mr)
 		{
-		fprintf(stdout,"%s\n",SSLeay_version(SSLEAY_VERSION));
-        fprintf(stdout,"%s\n",SSLeay_version(SSLEAY_BUILT_ON));
+		printf("%s\n",SSLeay_version(SSLEAY_VERSION));
+        	printf("%s\n",SSLeay_version(SSLEAY_BUILT_ON));
 		printf("options:");
 		printf("%s ",BN_options());
 #ifndef OPENSSL_NO_MD2
@@ -2540,38 +2513,38 @@ show_res:
 #ifndef OPENSSL_NO_BF
 		printf("%s ",BF_options());
 #endif
-		fprintf(stdout,"\n%s\n",SSLeay_version(SSLEAY_CFLAGS));
+		printf("\n%s\n",SSLeay_version(SSLEAY_CFLAGS));
 		}
 
 	if (pr_header)
 		{
 		if(mr)
-			fprintf(stdout,"+H");
+			printf("+H");
 		else
 			{
-			fprintf(stdout,"The 'numbers' are in 1000s of bytes per second processed.\n"); 
-			fprintf(stdout,"type        ");
+			printf("The 'numbers' are in 1000s of bytes per second processed.\n"); 
+			printf("type        ");
 			}
 		for (j=0;  j<SIZE_NUM; j++)
-			fprintf(stdout,mr ? ":%d" : "%7d bytes",lengths[j]);
-		fprintf(stdout,"\n");
+			printf(mr ? ":%d" : "%7d bytes",lengths[j]);
+		printf("\n");
 		}
 
 	for (k=0; k<ALGOR_NUM; k++)
 		{
 		if (!doit[k]) continue;
 		if(mr)
-			fprintf(stdout,"+F:%d:%s",k,names[k]);
+			printf("+F:%d:%s",k,names[k]);
 		else
-			fprintf(stdout,"%-13s",names[k]);
+			printf("%-13s",names[k]);
 		for (j=0; j<SIZE_NUM; j++)
 			{
 			if (results[k][j] > 10000 && !mr)
-				fprintf(stdout," %11.2fk",results[k][j]/1e3);
+				printf(" %11.2fk",results[k][j]/1e3);
 			else
-				fprintf(stdout,mr ? ":%.2f" : " %11.2f ",results[k][j]);
+				printf(mr ? ":%.2f" : " %11.2f ",results[k][j]);
 			}
-		fprintf(stdout,"\n");
+		printf("\n");
 		}
 #ifndef OPENSSL_NO_RSA
 	j=1;
@@ -2584,11 +2557,11 @@ show_res:
 			j=0;
 			}
 		if(mr)
-			fprintf(stdout,"+F2:%u:%u:%f:%f\n",
+			printf("+F2:%u:%u:%f:%f\n",
 				k,rsa_bits[k],rsa_results[k][0],
 				rsa_results[k][1]);
 		else
-			fprintf(stdout,"rsa %4u bits %8.6fs %8.6fs %8.1f %8.1f\n",
+			printf("rsa %4u bits %8.6fs %8.6fs %8.1f %8.1f\n",
 				rsa_bits[k],rsa_results[k][0],rsa_results[k][1],
 				1.0/rsa_results[k][0],1.0/rsa_results[k][1]);
 		}
@@ -2604,10 +2577,10 @@ show_res:
 			j=0;
 			}
 		if(mr)
-			fprintf(stdout,"+F3:%u:%u:%f:%f\n",
+			printf("+F3:%u:%u:%f:%f\n",
 				k,dsa_bits[k],dsa_results[k][0],dsa_results[k][1]);
 		else
-			fprintf(stdout,"dsa %4u bits %8.6fs %8.6fs %8.1f %8.1f\n",
+			printf("dsa %4u bits %8.6fs %8.6fs %8.1f %8.1f\n",
 				dsa_bits[k],dsa_results[k][0],dsa_results[k][1],
 				1.0/dsa_results[k][0],1.0/dsa_results[k][1]);
 		}
@@ -2624,12 +2597,11 @@ show_res:
 			}
 
 		if (mr)
-			fprintf(stdout,"+F4:%u:%u:%f:%f\n", 
+			printf("+F4:%u:%u:%f:%f\n", 
 				k, test_curves_bits[k],
 				ecdsa_results[k][0],ecdsa_results[k][1]);
 		else
-			fprintf(stdout,
-				"%4u bit ecdsa (%s) %8.4fs %8.4fs %8.1f %8.1f\n", 
+			printf("%4u bit ecdsa (%s) %8.4fs %8.4fs %8.1f %8.1f\n", 
 				test_curves_bits[k],
 				test_curves_names[k],
 				ecdsa_results[k][0],ecdsa_results[k][1], 
@@ -2649,12 +2621,12 @@ show_res:
 			j=0;
 			}
 		if (mr)
-			fprintf(stdout,"+F5:%u:%u:%f:%f\n",
+			printf("+F5:%u:%u:%f:%f\n",
 				k, test_curves_bits[k],
 				ecdh_results[k][0], 1.0/ecdh_results[k][0]);
 
 		else
-			fprintf(stdout,"%4u bit ecdh (%s) %8.4fs %8.1f\n",
+			printf("%4u bit ecdh (%s) %8.4fs %8.1f\n",
 				test_curves_bits[k],
 				test_curves_names[k],
 				ecdh_results[k][0], 1.0/ecdh_results[k][0]);
@@ -2693,8 +2665,7 @@ end:
 	}
 #endif
 
-	apps_shutdown();
-	OPENSSL_EXIT(mret);
+	return(mret);
 	}
 
 static void print_message(const char *s, long num, int length)

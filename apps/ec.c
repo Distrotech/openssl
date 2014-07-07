@@ -67,23 +67,29 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 
-#undef PROG
-#define PROG	ec_main
+const char* ec_help[] = {
+	"-inform arg     input format - DER or PEM",
+	"-outform arg    output format - DER or PEM",
+	"-in arg         input file",
+	"-passin arg     input file pass phrase source",
+	"-out arg        output file",
+	"-passout arg    output file pass phrase source",
+	"-engine e       use engine e, possibly a hardware device.",
+	"-des            encrypt PEM output, instead of 'des' every other ",
+				"                 cipher supported by OpenSSL can be used",
+	"-text           print the key",
+	"-noout          don't print key out",
+	"-param_out      print the elliptic curve parameters",
+	"-conv_form arg  specifies the point conversion form ",
+	"                possible values: compressed",
+	"                    uncompressed (default) or hybrid",
+	"-param_enc arg  specifies the way the ec parameters are encoded",
+	"                 in the asn1 der encoding",
+	"                 possible values: named_curve (default) or explicit",
+	NULL
+};
 
-/* -inform arg    - input format - default PEM (one of DER, NET or PEM)
- * -outform arg   - output format - default PEM
- * -in arg        - input file - default stdin
- * -out arg       - output file - default stdout
- * -des           - encrypt output if PEM format with DES in cbc mode
- * -text          - print a text version
- * -param_out     - print the elliptic curve parameters
- * -conv_form arg - specifies the point encoding form
- * -param_enc arg - specifies the parameter encoding
- */
-
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int ec_main(int argc, char **argv)
 {
 	int 	ret = 1;
 	EC_KEY 	*eckey = NULL;
@@ -100,15 +106,6 @@ int MAIN(int argc, char **argv)
 	int	new_form = 0;
 	int	asn1_flag = OPENSSL_EC_NAMED_CURVE;
 	int 	new_asn1_flag = 0;
-
-	apps_startup();
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err, stderr, BIO_NOCLOSE|BIO_FP_TEXT);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
 
 	engine = NULL;
 	infile = NULL;
@@ -209,46 +206,9 @@ int MAIN(int argc, char **argv)
 bad:
 		BIO_printf(bio_err, "%s [options] <infile >outfile\n", prog);
 		BIO_printf(bio_err, "where options are\n");
-		BIO_printf(bio_err, " -inform arg     input format - "
-				"DER or PEM\n");
-		BIO_printf(bio_err, " -outform arg    output format - "
-				"DER or PEM\n");
-		BIO_printf(bio_err, " -in arg         input file\n");
-		BIO_printf(bio_err, " -passin arg     input file pass "
-				"phrase source\n");
-		BIO_printf(bio_err, " -out arg        output file\n");
-		BIO_printf(bio_err, " -passout arg    output file pass "
-				"phrase source\n");
-		BIO_printf(bio_err, " -engine e       use engine e, "
-				"possibly a hardware device.\n");
-		BIO_printf(bio_err, " -des            encrypt PEM output, "
-				"instead of 'des' every other \n"
-				"                 cipher "
-				"supported by OpenSSL can be used\n");
-		BIO_printf(bio_err, " -text           print the key\n");
-		BIO_printf(bio_err, " -noout          don't print key out\n");
-		BIO_printf(bio_err, " -param_out      print the elliptic "
-				"curve parameters\n");
-		BIO_printf(bio_err, " -conv_form arg  specifies the "
-				"point conversion form \n");
-		BIO_printf(bio_err, "                 possible values:"
-				" compressed\n");
-		BIO_printf(bio_err, "                                 "
-				" uncompressed (default)\n");
-		BIO_printf(bio_err, "                                  "
-				" hybrid\n");
-		BIO_printf(bio_err, " -param_enc arg  specifies the way"
-				" the ec parameters are encoded\n");
-		BIO_printf(bio_err, "                 in the asn1 der "
-				"encoding\n");
-		BIO_printf(bio_err, "                 possible values:"
-				" named_curve (default)\n");
-		BIO_printf(bio_err,"                                  "
-				"explicit\n");
+		printhelp(ec_help);
 		goto end;
 		}
-
-	ERR_load_crypto_strings();
 
 #ifndef OPENSSL_NO_ENGINE
         setup_engine(bio_err, engine, 0);
@@ -260,23 +220,14 @@ bad:
 		goto end;
 		}
 
-	in = BIO_new(BIO_s_file());
-	out = BIO_new(BIO_s_file());
-	if ((in == NULL) || (out == NULL))
+	if (infile == NULL)
+		in = BIO_new_fp(stdin, BIO_NOCLOSE);
+	else
+		in = BIO_new_file(infile, RB(informat));
+	if (in == NULL)
 		{
 		ERR_print_errors(bio_err);
 		goto end;
-		}
-
-	if (infile == NULL)
-		BIO_set_fp(in, stdin, BIO_NOCLOSE);
-	else
-		{
-		if (BIO_read_filename(in, infile) <= 0)
-			{
-			perror(infile);
-			goto end;
-			}
 		}
 
 	BIO_printf(bio_err, "read EC key\n");
@@ -309,22 +260,13 @@ bad:
 		}
 
 	if (outfile == NULL)
-		{
-		BIO_set_fp(out, stdout, BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-			{
-			BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-			out = BIO_push(tmpbio, out);
-			}
-#endif
-		}
+		out = BIO_new_fp(stdout, BIO_NOCLOSE);
 	else
+		out = BIO_new_file(outfile, WB(outformat));
+	if (out == NULL)
 		{
-		if (BIO_write_filename(out, outfile) <= 0)
-			{
-			perror(outfile);
-			goto end;
-			}
+		ERR_print_errors(bio_err);
+		goto end;
 		}
 
 	group = EC_KEY_get0_group(eckey);
@@ -359,7 +301,7 @@ bad:
 		else 
 			i = i2d_ECPrivateKey_bio(out, eckey);
 		} 
-	else if (outformat == FORMAT_PEM) 
+	else
 		{
 		if (param_out)
 			i = PEM_write_bio_ECPKParameters(out, group);
@@ -369,12 +311,6 @@ bad:
 			i = PEM_write_bio_ECPrivateKey(out, eckey, enc,
 						NULL, 0, NULL, passout);
 		} 
-	else 
-		{
-		BIO_printf(bio_err, "bad output format specified for "
-			"outfile\n");
-		goto end;
-		}
 
 	if (!i)
 		{
@@ -394,8 +330,7 @@ end:
 		OPENSSL_free(passin);
 	if (passout)
 		OPENSSL_free(passout);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 }
 #else /* !OPENSSL_NO_EC */
 

@@ -70,9 +70,6 @@
 
 #include "apps.h"
 
-#undef PROG
-#define PROG srp_main
-
 #define BASE_SECTION	"srp"
 #define CONFIG_FILE "openssl.cnf"
 
@@ -81,23 +78,23 @@
 #define ENV_DATABASE		"srpvfile"
 #define ENV_DEFAULT_SRP		"default_srp"
 
-static char *srp_usage[]={
-"usage: srp [args] [user] \n",
-"\n",
-" -verbose        Talk a lot while doing things\n",
-" -config file    A config file\n",
-" -name arg       The particular srp definition to use\n",
-" -srpvfile arg   The srp verifier file name\n",
-" -add            add an user and srp verifier\n",
-" -modify         modify the srp verifier of an existing user\n",
-" -delete         delete user from verifier file\n",
-" -list           list user\n",
-" -gn arg         g and N values to be used for new verifier\n",
-" -userinfo arg   additional info to be set for user\n",
-" -passin arg     input file pass phrase source\n",
-" -passout arg    output file pass phrase source\n",
+const char *srp_help[]={
+	"-verbose        Talk a lot while doing things",
+	"-config file    A config file",
+	"-name arg       The particular srp definition to use",
+	"-srpvfile arg   The srp verifier file name",
+	"-add            add an user and srp verifier",
+	"-modify         modify the srp verifier of an existing user",
+	"-delete         delete user from verifier file",
+	"-list           list user",
+	"-gn arg         g and N values to be used for new verifier",
+	"-userinfo arg   additional info to be set for user",
+	"-passin arg     input file pass phrase source",
+	"-passout arg    output file pass phrase source",
+	/* XXX rsalz; has LIST_SEP_CHAR */
+	"-rand file...   load the file(s) into the random number generator",
 #ifndef OPENSSL_NO_ENGINE
-" -engine e         - use engine e, possibly a hardware device.\n",
+	"-engine e       use engine e, possibly a hardware device.",
 #endif
 NULL
 };
@@ -114,8 +111,6 @@ static char *section=NULL;
 #define VERBOSE if (verbose) 
 #define VVERBOSE if (verbose>1) 
 
-
-int MAIN(int, char **);
 
 static int get_index(CA_DB *db, char* id, char type)
 	{
@@ -267,7 +262,7 @@ static char *srp_create_user(char *user, char **srp_verifier,
 	return gNid;
 	}
 
-int MAIN(int argc, char **argv)
+int srp_main(int argc, char **argv)
 	{
 	int add_user = 0;
 	int list_user= 0;
@@ -308,14 +303,9 @@ EF_PROTECT_BELOW=1;
 EF_ALIGNMENT=0;
 #endif
 
-	apps_startup();
 
 	conf = NULL;
 	section = NULL;
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
 
 	argc--;
 	argv++;
@@ -411,16 +401,10 @@ bad:
 
 	if (badops)
 		{
-		for (pp=srp_usage; (*pp != NULL); pp++)
-			BIO_printf(bio_err,"%s",*pp);
-
-		BIO_printf(bio_err," -rand file%cfile%c...\n", LIST_SEPARATOR_CHAR, LIST_SEPARATOR_CHAR);
-		BIO_printf(bio_err,"                 load the file (or the files in the directory) into\n");
-		BIO_printf(bio_err,"                 the random number generator\n");
+		BIO_printf(bio_err, "usage: srp [args] [user] \n");
+		printhelp(srp_help);
 		goto err;
 		}
-
-	ERR_load_crypto_strings();
 
 #ifndef OPENSSL_NO_ENGINE
 	setup_engine(bio_err, engine, 0);
@@ -476,9 +460,6 @@ bad:
 			OPENSSL_free(tofree);
 			tofree = NULL;
 			}
-
-		if (!load_config(bio_err, conf))
-			goto err;
 
 	/* Lets get the config section we are using */
 		if (section == NULL)
@@ -748,8 +729,7 @@ err:
 	if (db) free_index(db);
 
 	OBJ_cleanup();
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 
 

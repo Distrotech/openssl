@@ -202,7 +202,7 @@ typedef unsigned int u_int;
 #endif
 
 #ifndef OPENSSL_NO_RSA
-static RSA MS_CALLBACK *tmp_rsa_cb(SSL *s, int is_export, int keylength);
+static RSA *tmp_rsa_cb(SSL *s, int is_export, int keylength);
 #endif
 static int not_resumable_sess_cb(SSL *s, int is_forward_secure);
 static int sv_body(char *hostname, int s, int stype, unsigned char *context);
@@ -220,9 +220,7 @@ static void free_sessions(void);
 static DH *load_dh_param(const char *dhfile);
 #endif
 
-#ifdef MONOLITH
 static void s_server_init(void);
-#endif
 
 /* static int load_CA(SSL_CTX *ctx, char *file);*/
 
@@ -235,8 +233,6 @@ static int accept_socket= -1;
 #ifndef OPENSSL_NO_TLSEXT
 #define TEST_CERT2	"server2.pem"
 #endif
-#undef PROG
-#define PROG		s_server_main
 
 extern int verify_depth, verify_return_error, verify_quiet;
 
@@ -292,6 +288,123 @@ static BIO *serverinfo_in = NULL;
 static const char *s_serverinfo_file = NULL;
 
 #endif
+
+const char* s_server_help[]={
+	"-accept port   TCP/IP port to accept on (default is " PORT_STR ")",
+	"-unix path     unix domain socket to accept on",
+	"-unlink        for -unix, unlink existing socket first",
+	"-context arg   set session ID context",
+	"-verify arg    turn on peer certificate verification",
+	"-Verify arg    turn on peer certificate verification, must have a cert.",
+	"-cert arg      certificate file to use (default is ", TEST_CERT ")",
+	"-naccept arg   terminate after 'arg' connections",
+#ifndef OPENSSL_NO_TLSEXT
+	"-serverinfo arg  PEM serverinfo file for certificate",
+	"-auth           send and receive RFC 5878 TLS auth extensions and supplemental data",
+	"-auth_require_reneg  do not send TLS auth extensions until renegotiation",
+#endif
+	"-no_resumption_on_reneg  set SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION flag",
+	"-crl_check     check the peer certificate has not been revoked by its CA.",
+	"               the CRL(s) are appended to the certificate file",
+	"-crl_check_all check the peer certificate has not been revoked by its CA",
+	"               or any other CRL in the CA chain. CRL(s) are appened to the",
+	"               the certificate file.",
+	"-certform arg  certificate format (PEM or DER) PEM default",
+	"-key arg       private Key file to use, in cert file if",
+	"               not specified (default is " TEST_CERT ")",
+	"-keyform arg   key format (PEM, DER or ENGINE) PEM default",
+	"-pass arg      private key file pass phrase source",
+	"-dcert arg     second certificate file to use (usually for DSA)",
+	"-dcertform x   second certificate format (PEM or DER) PEM default",
+	"-dkey arg      second private key file to use (usually for DSA)",
+	"-dkeyform arg  second key format (PEM, DER or ENGINE) PEM default",
+	"-dpass arg     second private key file pass phrase source",
+	"-dhparam arg   DH parameter file to use, in cert file if not specified",
+	"               or a default set of parameters is used",
+#ifndef OPENSSL_NO_ECDH
+	"-named_curve arg  elliptic curve name to use for ephemeral ECDH keys",
+	"               use \"openssl ecparam -list_curves\" for all names" \
+	"               (default is nistp256).",
+#endif
+#ifdef FIONBIO
+	"-nbio          use non-blocking IO",
+#endif
+	"-nbio_test     test with the non-blocking test bio",
+	"-crlf          convert LF from terminal into CRLF",
+	"-debug         print more output",
+	"-msg           show protocol messages",
+	"-state         print the SSL states",
+	"-CApath arg    PEM format directory of CA's",
+	"-CAfile arg    PEM format file of CA's",
+	"-trusted_first use locally trusted CA's first when building trust chain",
+	"-nocert        don't use any certificates (Anon-DH)",
+	"-cipher arg    play with 'openssl ciphers' to see what goes here",
+	"-serverpref    use server's cipher preferences",
+	"-quiet         no server output",
+	"-no_tmp_rsa    do not generate a tmp RSA key",
+#ifndef OPENSSL_NO_PSK
+	"-psk_hint arg  PSK identity hint to use",
+	"-psk arg       PSK in hex (without 0x)",
+# ifndef OPENSSL_NO_JPAKE
+	"-jpake arg     JPAKE secret to use",
+# endif
+#endif
+#ifndef OPENSSL_NO_SRP
+	"-srpvfile file the verifier file for SRP",
+	"-srpuserseed string  a seed string for a default user salt",
+#endif
+	"-ssl2         just talk SSLv2",
+	"-ssl3         just talk SSLv3",
+	"-tls1_2       just talk TLSv1.2",
+	"-tls1_1       just talk TLSv1.1",
+	"-tls1         just talk TLSv1",
+	"-dtls1        just talk DTLSv1",
+	"-dtls1_2      just talk DTLSv1.2",
+	"-timeout      enable timeouts",
+	"-mtu          set link layer MTU",
+	"-chain        read a certificate chain",
+	"-no_ssl2      just disable SSLv2",
+	"-no_ssl3      just disable SSLv3",
+	"-no_tls1      just disable TLSv1",
+	"-no_tls1_1    just disable TLSv1.1",
+	"-no_tls1_2    just disable TLSv1.2",
+#ifndef OPENSSL_NO_DH
+	"-no_dhe       disable ephemeral DH",
+#endif
+#ifndef OPENSSL_NO_ECDH
+	"-no_ecdhe     disable ephemeral ECDH",
+#endif
+	"-no_resume_ephemeral  disable caching and tickets if ephemeral (EC)DH is used",
+	"-bugs         turn on SSL bug compatibility",
+	"-www          respond to a 'GET /' with a status page",
+	"-WWW          respond to a 'GET /<path> HTTP/1.0' with file ./<path>",
+	"-HTTP         respond to a 'GET /<path> HTTP/1.0' with file ./<path>",
+        "              with the assumption it contains a complete HTTP response",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine id    initialise and use the specified engine",
+#endif
+	"-id_prefix arg  generate SSL/TLS session IDs prefixed by arg",
+	"-rand file... load the file(s) into the random number generator",
+#ifndef OPENSSL_NO_TLSEXT
+	"-servername host  servername for HostName TLS extension",
+	"-servername_fatal on mismatch send fatal alert (default warning alert)",
+	"-cert2 arg    certificate file to use for servername",
+	"              (default is ", TEST_CERT2 ")",
+	"-key2 arg     private Key file to use for servername, in cert file if",
+	"              not specified (default is " TEST_CERT2 ")",
+	"-tlsextdebug  hex dump of all TLS extensions received",
+	"-no_ticket    disable use of RFC4507bis session tickets",
+	"-legacy_renegotiation  enable use of legacy renegotiation (dangerous)",
+#ifndef OPENSSL_NO_NEXTPROTONEG
+	"-nextprotoneg arg  set the advertised protocols for the NPN extension (comma-separated list)",
+#endif
+	"-use_srtp profiles offer SRTP key management with a colon-separated profile list",
+	"-alpn arg     set the advertised protocols for the ALPN extension (comma-separated list)",
+#endif
+	"-keymatexport label   export keying material using label",
+	"-keymatexportlen len  export len bytes of keying material (default 20)",
+	NULL
+};
 
 #ifndef OPENSSL_NO_PSK
 static char *psk_identity="Client_identity";
@@ -376,7 +489,7 @@ typedef struct srpsrvparm_st
    (which would normally occur after a worker has finished) and we
    set the user parameters. 
 */
-static int MS_CALLBACK ssl_srp_server_param_cb(SSL *s, int *ad, void *arg)
+static int ssl_srp_server_param_cb(SSL *s, int *ad, void *arg)
 	{
 	srpsrvparm *p = (srpsrvparm *)arg;
 	if (p->login == NULL && p->user == NULL )
@@ -406,7 +519,6 @@ static int MS_CALLBACK ssl_srp_server_param_cb(SSL *s, int *ad, void *arg)
 
 #endif
 
-#ifdef MONOLITH
 static void s_server_init(void)
 	{
 	accept_socket=-1;
@@ -439,130 +551,12 @@ static void s_server_init(void)
 	engine_id=NULL;
 #endif
 	}
-#endif
 
 static void sv_usage(void)
 	{
 	BIO_printf(bio_err,"usage: s_server [args ...]\n");
 	BIO_printf(bio_err,"\n");
-	BIO_printf(bio_err," -accept port  - TCP/IP port to accept on (default is %d)\n",PORT);
-	BIO_printf(bio_err," -unix path    - unix domain socket to accept on\n");
-	BIO_printf(bio_err," -unlink       - for -unix, unlink existing socket first\n");
-	BIO_printf(bio_err," -context arg  - set session ID context\n");
-	BIO_printf(bio_err," -verify arg   - turn on peer certificate verification\n");
-	BIO_printf(bio_err," -Verify arg   - turn on peer certificate verification, must have a cert.\n");
-	BIO_printf(bio_err," -verify_return_error - return verification errors\n");
-	BIO_printf(bio_err," -cert arg     - certificate file to use\n");
-	BIO_printf(bio_err,"                 (default is %s)\n",TEST_CERT);
-	BIO_printf(bio_err," -naccept arg  - terminate after 'arg' connections\n");
-#ifndef OPENSSL_NO_TLSEXT
-	BIO_printf(bio_err," -serverinfo arg - PEM serverinfo file for certificate\n");
-#endif
-    BIO_printf(bio_err," -no_resumption_on_reneg - set SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION flag\n");
-	BIO_printf(bio_err," -crl_check    - check the peer certificate has not been revoked by its CA.\n" \
-	                   "                 The CRL(s) are appended to the certificate file\n");
-	BIO_printf(bio_err," -crl_check_all - check the peer certificate has not been revoked by its CA\n" \
-	                   "                 or any other CRL in the CA chain. CRL(s) are appened to the\n" \
-	                   "                 the certificate file.\n");
-	BIO_printf(bio_err," -certform arg - certificate format (PEM or DER) PEM default\n");
-	BIO_printf(bio_err," -key arg      - Private Key file to use, in cert file if\n");
-	BIO_printf(bio_err,"                 not specified (default is %s)\n",TEST_CERT);
-	BIO_printf(bio_err," -keyform arg  - key format (PEM, DER or ENGINE) PEM default\n");
-	BIO_printf(bio_err," -pass arg     - private key file pass phrase source\n");
-	BIO_printf(bio_err," -dcert arg    - second certificate file to use (usually for DSA)\n");
-	BIO_printf(bio_err," -dcertform x  - second certificate format (PEM or DER) PEM default\n");
-	BIO_printf(bio_err," -dkey arg     - second private key file to use (usually for DSA)\n");
-	BIO_printf(bio_err," -dkeyform arg - second key format (PEM, DER or ENGINE) PEM default\n");
-	BIO_printf(bio_err," -dpass arg    - second private key file pass phrase source\n");
-	BIO_printf(bio_err," -dhparam arg  - DH parameter file to use, in cert file if not specified\n");
-	BIO_printf(bio_err,"                 or a default set of parameters is used\n");
-#ifndef OPENSSL_NO_ECDH
-	BIO_printf(bio_err," -named_curve arg  - Elliptic curve name to use for ephemeral ECDH keys.\n" \
-	                   "                 Use \"openssl ecparam -list_curves\" for all names\n" \
-	                   "                 (default is nistp256).\n");
-#endif
-#ifdef FIONBIO
-	BIO_printf(bio_err," -nbio         - Run with non-blocking IO\n");
-#endif
-	BIO_printf(bio_err," -nbio_test    - test with the non-blocking test bio\n");
-	BIO_printf(bio_err," -crlf         - convert LF from terminal into CRLF\n");
-	BIO_printf(bio_err," -debug        - Print more output\n");
-	BIO_printf(bio_err," -msg          - Show protocol messages\n");
-	BIO_printf(bio_err," -state        - Print the SSL states\n");
-	BIO_printf(bio_err," -CApath arg   - PEM format directory of CA's\n");
-	BIO_printf(bio_err," -CAfile arg   - PEM format file of CA's\n");
-	BIO_printf(bio_err," -trusted_first - Use locally trusted CA's first when building trust chain\n");
-	BIO_printf(bio_err," -nocert       - Don't use any certificates (Anon-DH)\n");
-	BIO_printf(bio_err," -cipher arg   - play with 'openssl ciphers' to see what goes here\n");
-	BIO_printf(bio_err," -serverpref   - Use server's cipher preferences\n");
-	BIO_printf(bio_err," -quiet        - No server output\n");
-	BIO_printf(bio_err," -no_tmp_rsa   - Do not generate a tmp RSA key\n");
-#ifndef OPENSSL_NO_PSK
-	BIO_printf(bio_err," -psk_hint arg - PSK identity hint to use\n");
-	BIO_printf(bio_err," -psk arg      - PSK in hex (without 0x)\n");
-# ifndef OPENSSL_NO_JPAKE
-	BIO_printf(bio_err," -jpake arg    - JPAKE secret to use\n");
-# endif
-#endif
-#ifndef OPENSSL_NO_SRP
-	BIO_printf(bio_err," -srpvfile file      - The verifier file for SRP\n");
-	BIO_printf(bio_err," -srpuserseed string - A seed string for a default user salt.\n");
-#endif
-	BIO_printf(bio_err," -ssl2         - Just talk SSLv2\n");
-	BIO_printf(bio_err," -ssl3         - Just talk SSLv3\n");
-	BIO_printf(bio_err," -tls1_2       - Just talk TLSv1.2\n");
-	BIO_printf(bio_err," -tls1_1       - Just talk TLSv1.1\n");
-	BIO_printf(bio_err," -tls1         - Just talk TLSv1\n");
-	BIO_printf(bio_err," -dtls1        - Just talk DTLSv1\n");
-	BIO_printf(bio_err," -dtls1_2      - Just talk DTLSv1.2\n");
-	BIO_printf(bio_err," -timeout      - Enable timeouts\n");
-	BIO_printf(bio_err," -mtu          - Set link layer MTU\n");
-	BIO_printf(bio_err," -chain        - Read a certificate chain\n");
-	BIO_printf(bio_err," -no_ssl2      - Just disable SSLv2\n");
-	BIO_printf(bio_err," -no_ssl3      - Just disable SSLv3\n");
-	BIO_printf(bio_err," -no_tls1      - Just disable TLSv1\n");
-	BIO_printf(bio_err," -no_tls1_1    - Just disable TLSv1.1\n");
-	BIO_printf(bio_err," -no_tls1_2    - Just disable TLSv1.2\n");
-#ifndef OPENSSL_NO_DH
-	BIO_printf(bio_err," -no_dhe       - Disable ephemeral DH\n");
-#endif
-#ifndef OPENSSL_NO_ECDH
-	BIO_printf(bio_err," -no_ecdhe     - Disable ephemeral ECDH\n");
-#endif
-	BIO_printf(bio_err, "-no_resume_ephemeral - Disable caching and tickets if ephemeral (EC)DH is used\n");
-	BIO_printf(bio_err," -bugs         - Turn on SSL bug compatibility\n");
-	BIO_printf(bio_err," -hack         - workaround for early Netscape code\n");
-	BIO_printf(bio_err," -www          - Respond to a 'GET /' with a status page\n");
-	BIO_printf(bio_err," -WWW          - Respond to a 'GET /<path> HTTP/1.0' with file ./<path>\n");
-	BIO_printf(bio_err," -HTTP         - Respond to a 'GET /<path> HTTP/1.0' with file ./<path>\n");
-        BIO_printf(bio_err,"                 with the assumption it contains a complete HTTP response.\n");
-#ifndef OPENSSL_NO_ENGINE
-	BIO_printf(bio_err," -engine id    - Initialise and use the specified engine\n");
-#endif
-	BIO_printf(bio_err," -id_prefix arg - Generate SSL/TLS session IDs prefixed by 'arg'\n");
-	BIO_printf(bio_err," -rand file%cfile%c...\n", LIST_SEPARATOR_CHAR, LIST_SEPARATOR_CHAR);
-#ifndef OPENSSL_NO_TLSEXT
-	BIO_printf(bio_err," -servername host - servername for HostName TLS extension\n");
-	BIO_printf(bio_err," -servername_fatal - on mismatch send fatal alert (default warning alert)\n");
-	BIO_printf(bio_err," -cert2 arg    - certificate file to use for servername\n");
-	BIO_printf(bio_err,"                 (default is %s)\n",TEST_CERT2);
-	BIO_printf(bio_err," -key2 arg     - Private Key file to use for servername, in cert file if\n");
-	BIO_printf(bio_err,"                 not specified (default is %s)\n",TEST_CERT2);
-	BIO_printf(bio_err," -tlsextdebug  - hex dump of all TLS extensions received\n");
-	BIO_printf(bio_err," -no_ticket    - disable use of RFC4507bis session tickets\n");
-	BIO_printf(bio_err," -legacy_renegotiation - enable use of legacy renegotiation (dangerous)\n");
-# ifndef OPENSSL_NO_NEXTPROTONEG
-	BIO_printf(bio_err," -nextprotoneg arg - set the advertised protocols for the NPN extension (comma-separated list)\n");
-# endif
-        BIO_printf(bio_err," -use_srtp profiles - Offer SRTP key management with a colon-separated profile list\n");
-	BIO_printf(bio_err," -alpn arg  - set the advertised protocols for the ALPN extension (comma-separated list)\n");
-#endif
-	BIO_printf(bio_err," -keymatexport label   - Export keying material using label\n");
-	BIO_printf(bio_err," -keymatexportlen len  - Export len bytes of keying material (default 20)\n");
-	BIO_printf(bio_err," -status           - respond to certificate status requests\n");
-	BIO_printf(bio_err," -status_verbose   - enable status request verbose printout\n");
-	BIO_printf(bio_err," -status_timeout n - status request responder timeout\n");
-	BIO_printf(bio_err," -status_url URL   - status request fallback URL\n");
+	printhelp(s_server_help);
 	}
 
 static int local_argc=0;
@@ -728,7 +722,7 @@ typedef struct tlsextctx_st {
 } tlsextctx;
 
 
-static int MS_CALLBACK ssl_servername_cb(SSL *s, int *ad, void *arg)
+static int ssl_servername_cb(SSL *s, int *ad, void *arg)
 	{
 	tlsextctx * p = (tlsextctx *) arg;
 	const char * servername = SSL_get_servername(s, TLSEXT_NAMETYPE_host_name);
@@ -963,8 +957,6 @@ static int not_resumable_sess_cb(SSL *s, int is_forward_secure)
 	return is_forward_secure;
 	}
 
-int MAIN(int, char **);
-
 #ifndef OPENSSL_NO_JPAKE
 static char *jpake_secret = NULL;
 #define no_jpake !jpake_secret
@@ -972,11 +964,11 @@ static char *jpake_secret = NULL;
 #define no_jpake 1
 #endif
 #ifndef OPENSSL_NO_SRP
-	static srpsrvparm srp_callback_parm;
+static srpsrvparm srp_callback_parm;
 #endif
 static char *srtp_profiles = NULL;
 
-int MAIN(int argc, char *argv[])
+int s_server_main(int argc, char *argv[])
 	{
 	X509_VERIFY_PARAM *vpm = NULL;
 	int badarg = 0;
@@ -1043,16 +1035,7 @@ int MAIN(int argc, char *argv[])
 	local_argc=argc;
 	local_argv=argv;
 
-	apps_startup();
-#ifdef MONOLITH
 	s_server_init();
-#endif
-
-	if (bio_err == NULL)
-		bio_err=BIO_new_fp(stderr,BIO_NOCLOSE);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
 
 	cctx = SSL_CONF_CTX_new();
 	if (!cctx)
@@ -2182,8 +2165,7 @@ end:
 		BIO_free(bio_s_msg);
 		bio_s_msg = NULL;
 		}
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 
 static void print_stats(BIO *bio, SSL_CTX *ssl_ctx)
@@ -3417,7 +3399,7 @@ err:
 	}
 
 #ifndef OPENSSL_NO_RSA
-static RSA MS_CALLBACK *tmp_rsa_cb(SSL *s, int is_export, int keylength)
+static RSA *tmp_rsa_cb(SSL *s, int is_export, int keylength)
 	{
 	BIGNUM *bn = NULL;
 	static RSA *rsa_tmp=NULL;

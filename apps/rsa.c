@@ -71,40 +71,51 @@
 #include <openssl/pem.h>
 #include <openssl/bn.h>
 
-#undef PROG
-#define PROG	rsa_main
 
-/* -inform arg	- input format - default PEM (one of DER, NET or PEM)
- * -outform arg - output format - default PEM
- * -in arg	- input file - default stdin
- * -out arg	- output file - default stdout
- * -des		- encrypt output if PEM format with DES in cbc mode
- * -des3	- encrypt output if PEM format
- * -idea	- encrypt output if PEM format
- * -seed	- encrypt output if PEM format
- * -aes128	- encrypt output if PEM format
- * -aes192	- encrypt output if PEM format
- * -aes256	- encrypt output if PEM format
- * -camellia128 - encrypt output if PEM format
- * -camellia192 - encrypt output if PEM format
- * -camellia256 - encrypt output if PEM format
- * -text	- print a text version
- * -modulus	- print the RSA key modulus
- * -check	- verify key consistency
- * -pubin	- Expect a public key in input file.
- * -pubout	- Output a public key.
- */
+const char* rsa_help[] = {
+	"-inform arg     input format - one of DER NET PEM",
+	"-outform arg    output format - one of DER NET PEM",
+	"-in arg         input file",
+	"-sgckey         Use IIS SGC key format",
+	"-passin arg     input file pass phrase source",
+	"-out arg        output file",
+	"-passout arg    output file pass phrase source",
+	"-des            encrypt PEM output with cbc des",
+	"-des3           encrypt PEM output with ede cbc des using 168 bit key",
+#ifndef OPENSSL_NO_IDEA
+	"-idea           encrypt PEM output with cbc idea",
+#endif
+#ifndef OPENSSL_NO_SEED
+	"-seed           encrypt PEM output with cbc seed",
+#endif
+#ifndef OPENSSL_NO_AES
+	"-aes128, -aes192, -aes256",
+	"                encrypt PEM output with cbc aes",
+#endif
+#ifndef OPENSSL_NO_CAMELLIA
+	"-camellia128, -camellia192, -camellia256",
+	"                encrypt PEM output with cbc camellia",
+#endif
+	"-text           print the key in text",
+	"-noout          don't print key out",
+	"-modulus        print the RSA key modulus",
+	"-check          verify key consistency",
+	"-pubin          expect a public key in input file",
+	"-pubout         output a public key",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e       use engine e, possibly a hardware device.",
+#endif
+	NULL
+};
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int rsa_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL;
 	int ret=1;
 	RSA *rsa=NULL;
 	int i,badops=0, sgckey=0;
 	const EVP_CIPHER *enc=NULL;
-	BIO *out=NULL;
+	BIO *out;
 	int informat,outformat,text=0,check=0,noout=0;
 	int pubin = 0, pubout = 0;
 	char *infile,*outfile,*prog;
@@ -114,17 +125,7 @@ int MAIN(int argc, char **argv)
 	char *engine=NULL;
 #endif
 	int modulus=0;
-
 	int pvk_encr = 2;
-
-	apps_startup();
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
 
 	infile=NULL;
 	outfile=NULL;
@@ -210,44 +211,11 @@ int MAIN(int argc, char **argv)
 	if (badops)
 		{
 bad:
-		BIO_printf(bio_err,"%s [options] <infile >outfile\n",prog);
+		BIO_printf(bio_err,"rsa [options] <infile >outfile\n");
 		BIO_printf(bio_err,"where options are\n");
-		BIO_printf(bio_err," -inform arg     input format - one of DER NET PEM\n");
-		BIO_printf(bio_err," -outform arg    output format - one of DER NET PEM\n");
-		BIO_printf(bio_err," -in arg         input file\n");
-		BIO_printf(bio_err," -sgckey         Use IIS SGC key format\n");
-		BIO_printf(bio_err," -passin arg     input file pass phrase source\n");
-		BIO_printf(bio_err," -out arg        output file\n");
-		BIO_printf(bio_err," -passout arg    output file pass phrase source\n");
-		BIO_printf(bio_err," -des            encrypt PEM output with cbc des\n");
-		BIO_printf(bio_err," -des3           encrypt PEM output with ede cbc des using 168 bit key\n");
-#ifndef OPENSSL_NO_IDEA
-		BIO_printf(bio_err," -idea           encrypt PEM output with cbc idea\n");
-#endif
-#ifndef OPENSSL_NO_SEED
-		BIO_printf(bio_err," -seed           encrypt PEM output with cbc seed\n");
-#endif
-#ifndef OPENSSL_NO_AES
-		BIO_printf(bio_err," -aes128, -aes192, -aes256\n");
-		BIO_printf(bio_err,"                 encrypt PEM output with cbc aes\n");
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-		BIO_printf(bio_err," -camellia128, -camellia192, -camellia256\n");
-		BIO_printf(bio_err,"                 encrypt PEM output with cbc camellia\n");
-#endif
-		BIO_printf(bio_err," -text           print the key in text\n");
-		BIO_printf(bio_err," -noout          don't print key out\n");
-		BIO_printf(bio_err," -modulus        print the RSA key modulus\n");
-		BIO_printf(bio_err," -check          verify key consistency\n");
-		BIO_printf(bio_err," -pubin          expect a public key in input file\n");
-		BIO_printf(bio_err," -pubout         output a public key\n");
-#ifndef OPENSSL_NO_ENGINE
-		BIO_printf(bio_err," -engine e       use engine e, possibly a hardware device.\n");
-#endif
+		printhelp(rsa_help);
 		goto end;
 		}
-
-	ERR_load_crypto_strings();
 
 #ifndef OPENSSL_NO_ENGINE
         e = setup_engine(bio_err, engine, 0);
@@ -262,8 +230,6 @@ bad:
 		BIO_printf(bio_err, "Only private keys can be checked\n");
 		goto end;
 	}
-
-	out=BIO_new(BIO_s_file());
 
 	{
 		EVP_PKEY	*pkey;
@@ -304,22 +270,13 @@ bad:
 		}
 
 	if (outfile == NULL)
-		{
-		BIO_set_fp(out,stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-		{
-		BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		out = BIO_push(tmpbio, out);
-		}
-#endif
-		}
+		out = BIO_dup_chain(bio_out);
 	else
+		out = BIO_new_file(outfile, "w");
+	if (out == NULL)
 		{
-		if (BIO_write_filename(out,outfile) <= 0)
-			{
-			perror(outfile);
-			goto end;
-			}
+		ERR_print_errors(bio_err);
+		goto end;
 		}
 
 	if (text) 
@@ -438,8 +395,7 @@ end:
 	if(rsa != NULL) RSA_free(rsa);
 	if(passin) OPENSSL_free(passin);
 	if(passout) OPENSSL_free(passout);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}
 #else /* !OPENSSL_NO_RSA */
 

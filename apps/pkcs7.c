@@ -68,19 +68,22 @@
 #include <openssl/pkcs7.h>
 #include <openssl/pem.h>
 
-#undef PROG
-#define PROG	pkcs7_main
 
-/* -inform arg	- input format - default PEM (DER or PEM)
- * -outform arg - output format - default PEM
- * -in arg	- input file - default stdin
- * -out arg	- output file - default stdout
- * -print_certs
- */
+const char* pkcs7_help[] = {
+	"-inform arg   input format - DER or PEM",
+	"-outform arg  output format - DER or PEM",
+	"-in arg       input file",
+	"-out arg      output file",
+	"-print_certs  print any certs or crl in the input",
+	"-text         print full details of certificates",
+	"-noout        don't output encoded data",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e     use engine e, possibly a hardware device",
+#endif
+	NULL
+};
 
-int MAIN(int, char **);
-
-int MAIN(int argc, char **argv)
+int pkcs7_main(int argc, char **argv)
 	{
 	PKCS7 *p7=NULL;
 	int i,badops=0;
@@ -92,15 +95,6 @@ int MAIN(int argc, char **argv)
 #ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
 #endif
-
-	apps_startup();
-
-	if (bio_err == NULL)
-		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
 
 	infile=NULL;
 	outfile=NULL;
@@ -162,55 +156,29 @@ int MAIN(int argc, char **argv)
 bad:
 		BIO_printf(bio_err,"%s [options] <infile >outfile\n",prog);
 		BIO_printf(bio_err,"where options are\n");
-		BIO_printf(bio_err," -inform arg   input format - DER or PEM\n");
-		BIO_printf(bio_err," -outform arg  output format - DER or PEM\n");
-		BIO_printf(bio_err," -in arg       input file\n");
-		BIO_printf(bio_err," -out arg      output file\n");
-		BIO_printf(bio_err," -print_certs  print any certs or crl in the input\n");
-		BIO_printf(bio_err," -text         print full details of certificates\n");
-		BIO_printf(bio_err," -noout        don't output encoded data\n");
-#ifndef OPENSSL_NO_ENGINE
-		BIO_printf(bio_err," -engine e     use engine e, possibly a hardware device.\n");
-#endif
+		printhelp(pkcs7_help);
 		ret = 1;
 		goto end;
 		}
-
-	ERR_load_crypto_strings();
 
 #ifndef OPENSSL_NO_ENGINE
         setup_engine(bio_err, engine, 0);
 #endif
 
-	in=BIO_new(BIO_s_file());
-	out=BIO_new(BIO_s_file());
-	if ((in == NULL) || (out == NULL))
+	if (infile == NULL)
+		in = BIO_new_fp(stdin, BIO_NOCLOSE);
+	else
+		in = BIO_new_file(infile, RB(informat));
+	if (in == NULL)
 		{
 		ERR_print_errors(bio_err);
-                goto end;
-                }
-
-	if (infile == NULL)
-		BIO_set_fp(in,stdin,BIO_NOCLOSE);
-	else
-		{
-		if (BIO_read_filename(in,infile) <= 0)
-		if (in == NULL)
-			{
-			perror(infile);
-			goto end;
-			}
+		goto end;
 		}
 
 	if	(informat == FORMAT_ASN1)
 		p7=d2i_PKCS7_bio(in,NULL);
-	else if (informat == FORMAT_PEM)
-		p7=PEM_read_bio_PKCS7(in,NULL,NULL,NULL);
 	else
-		{
-		BIO_printf(bio_err,"bad input format specified for pkcs7 object\n");
-		goto end;
-		}
+		p7=PEM_read_bio_PKCS7(in,NULL,NULL,NULL);
 	if (p7 == NULL)
 		{
 		BIO_printf(bio_err,"unable to load PKCS7 object\n");
@@ -219,22 +187,13 @@ bad:
 		}
 
 	if (outfile == NULL)
-		{
-		BIO_set_fp(out,stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-		{
-		BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		out = BIO_push(tmpbio, out);
-		}
-#endif
-		}
+		out = BIO_dup_chain(bio_out);
 	else
+		out = BIO_new_file(outfile, WB(outformat));
+	if (out == NULL)
 		{
-		if (BIO_write_filename(out,outfile) <= 0)
-			{
-			perror(outfile);
-			goto end;
-			}
+		ERR_print_errors(bio_err);
+		goto end;
 		}
 
 	if (p7_print)
@@ -296,12 +255,8 @@ bad:
 	if(!noout) {
 		if 	(outformat == FORMAT_ASN1)
 			i=i2d_PKCS7_bio(out,p7);
-		else if (outformat == FORMAT_PEM)
+		else
 			i=PEM_write_bio_PKCS7(out,p7);
-		else	{
-			BIO_printf(bio_err,"bad output format specified for outfile\n");
-			goto end;
-			}
 
 		if (!i)
 			{
@@ -315,6 +270,5 @@ end:
 	if (p7 != NULL) PKCS7_free(p7);
 	if (in != NULL) BIO_free(in);
 	if (out != NULL) BIO_free_all(out);
-	apps_shutdown();
-	OPENSSL_EXIT(ret);
+	return(ret);
 	}

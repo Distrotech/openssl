@@ -64,11 +64,30 @@
 #include <openssl/evp.h>
 #include <openssl/pkcs12.h>
 
-#define PROG pkcs8_main
+const char* pkcs8_help[] = {
+	"-in file        input file",
+	"-inform X       input format (DER or PEM)",
+	"-passin arg     input file pass phrase source",
+	"-outform X      output format (DER or PEM)",
+	"-out file       output file",
+	"-passout arg    output file pass phrase source",
+	"-topk8          output PKCS8 file",
+	"-nooct          use (nonstandard) no octet format",
+	"-embed          use (nonstandard) embedded DSA parameters format",
+	"-nsdb           use (nonstandard) DSA Netscape DB format",
+	"-iter count     use count as iteration count",
+	"-noiter         use 1 as iteration count",
+	"-nocrypt        use or expect unencrypted private key",
+	"-v2 alg         use PKCS#5 v2.0 and cipher ",
+	"-v1 obj         use PKCS#5 v1.5 and cipher ",
+#ifndef OPENSSL_NO_ENGINE
+	" -engine e       use engine e, possibly a hardware device.",
+#endif
+	NULL
+};
 
-int MAIN(int, char **);
 
-int MAIN(int argc, char **argv)
+int pkcs8_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL;
 	char **args, *infile = NULL, *outfile = NULL;
@@ -91,16 +110,9 @@ int MAIN(int argc, char **argv)
 	char *engine=NULL;
 #endif
 
-	if (bio_err == NULL) bio_err = BIO_new_fp (stderr, BIO_NOCLOSE);
-
-	if (!load_config(bio_err, NULL))
-		goto end;
-
 	informat=FORMAT_PEM;
 	outformat=FORMAT_PEM;
 
-	ERR_load_crypto_strings();
-	OpenSSL_add_all_algorithms();
 	args = argv + 1;
 	while (!badarg && *args && *args[0] == '-')
 		{
@@ -237,24 +249,7 @@ int MAIN(int argc, char **argv)
 		{
 		BIO_printf(bio_err, "Usage pkcs8 [options]\n");
 		BIO_printf(bio_err, "where options are\n");
-		BIO_printf(bio_err, "-in file        input file\n");
-		BIO_printf(bio_err, "-inform X       input format (DER or PEM)\n");
-		BIO_printf(bio_err, "-passin arg     input file pass phrase source\n");
-		BIO_printf(bio_err, "-outform X      output format (DER or PEM)\n");
-		BIO_printf(bio_err, "-out file       output file\n");
-		BIO_printf(bio_err, "-passout arg    output file pass phrase source\n");
-		BIO_printf(bio_err, "-topk8          output PKCS8 file\n");
-		BIO_printf(bio_err, "-nooct          use (nonstandard) no octet format\n");
-		BIO_printf(bio_err, "-embed          use (nonstandard) embedded DSA parameters format\n");
-		BIO_printf(bio_err, "-nsdb           use (nonstandard) DSA Netscape DB format\n");
-		BIO_printf(bio_err, "-iter count     use count as iteration count\n");
-		BIO_printf(bio_err, "-noiter         use 1 as iteration count\n");
-		BIO_printf(bio_err, "-nocrypt        use or expect unencrypted private key\n");
-		BIO_printf(bio_err, "-v2 alg         use PKCS#5 v2.0 and cipher \"alg\"\n");
-		BIO_printf(bio_err, "-v1 obj         use PKCS#5 v1.5 and cipher \"alg\"\n");
-#ifndef OPENSSL_NO_ENGINE
-		BIO_printf(bio_err," -engine e       use engine e, possibly a hardware device.\n");
-#endif
+		printhelp(pkcs8_help);
 		goto end;
 		}
 
