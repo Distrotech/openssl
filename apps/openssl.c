@@ -293,6 +293,55 @@ static void lock_dbg_cb(int mode, int type, const char *file, int line)
 		}
 	}
 
+BIO* dup_bio_in()
+{
+	return BIO_new_fp(stdin, BIO_NOCLOSE|BIO_FP_TEXT);
+}
+
+BIO* dup_bio_out()
+{
+	BIO* b = BIO_new_fp(stdout, BIO_NOCLOSE|BIO_FP_TEXT);
+#ifdef OPENSSL_SYS_VMS
+	b = BIO_push(BIO_new(BIO_f_linebuffer()), b);
+#endif
+	return b;
+}
+
+void unbuffer(FILE* fp)
+{
+#if defined(_IONBF) && !defined(OPENSSL_NO_SETVBUF_IONBF)
+	setvbuf(fp, NULL, _IONBF, 0);
+#endif
+}
+
+BIO* bio_open_default(const char* filename, const char* mode)
+{
+	BIO* ret = NULL;
+	if (filename) {
+		ret = BIO_new_file(filename, mode);
+		if (ret == NULL) {
+			BIO_printf(bio_err,
+				"Can't open %s for %s, %s\n",
+				filename,
+				*mode == 'r' ? "reading" : "writing",
+				strerror(errno));
+			ERR_print_errors(bio_err);
+		}
+	}
+	else {
+		ret = *mode == 'r' ? dup_bio_in() : dup_bio_out();
+		if (ret == NULL) {
+			BIO_printf(bio_err,
+				"Can't open %s, %s\n",
+				*mode == 'r' ? "stdin" : "stdout",
+				strerror(errno));
+			ERR_print_errors(bio_err);
+		}
+	}
+	return ret;
+}
+
+
 #if defined( OPENSSL_SYS_VMS) && (__INITIAL_POINTER_SIZE == 64)
 # define ARGV _Argv
 #else
@@ -355,11 +404,8 @@ int main(int Argc, char *ARGV[])
 	apps_startup();
 
 	/* Lets load up our environment a little */
-	bio_in = BIO_new_fp(stdin, BIO_NOCLOSE|BIO_FP_TEXT);
-	bio_out = BIO_new_fp(stdout, BIO_NOCLOSE|BIO_FP_TEXT);
-#ifdef OPENSSL_SYS_VMS
-	bio_out = BIO_push(BIO_new(BIO_f_linebuffer()), out);
-#endif
+	bio_in = dup_bio_in();
+	bio_out = dup_bio_out();
 	bio_err = BIO_new_fp(stderr, BIO_NOCLOSE|BIO_FP_TEXT);
 
 	p=getenv("OPENSSL_CONF");
@@ -492,6 +538,7 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 	FUNCTION f,*fp;
 	int i,ret=1,nl;
 	int tp;
+	BIO* out=NULL;
 
 	if ((argc <= 0) || (argv[0] == NULL))
 		{ ret=0; goto end; }
@@ -518,20 +565,14 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 		}
 	else if ((strncmp(argv[0],"no-",3)) == 0)
 		{
-		BIO *bio_stdout = BIO_new_fp(stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-		{
-		BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		bio_stdout = BIO_push(tmpbio, bio_stdout);
-		}
-#endif
+		out = dup_bio_out();
 		f.name=argv[0]+3;
 		ret = (lh_FUNCTION_retrieve(prog,&f) != NULL);
 		if (!ret)
-			BIO_printf(bio_stdout, "%s\n", argv[0]);
+			BIO_printf(out, "%s\n", argv[0]);
 		else
-			BIO_printf(bio_stdout, "%s\n", argv[0]+3);
-		BIO_free_all(bio_stdout);
+			BIO_printf(out, "%s\n", argv[0]+3);
+		BIO_free_all(out);
 		goto end;
 		}
 	else if ((strcmp(argv[0],"quit") == 0) ||
@@ -550,7 +591,6 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 		(strcmp(argv[0],LIST_PUBLIC_KEY_ALGORITHMS) == 0))
 		{
 		int list_type = FUNC_TYPE_CIPHER;
-		BIO *bio_stdout;
 
 		if (strcmp(argv[0],LIST_STANDARD_COMMANDS) == 0)
 			list_type = FUNC_TYPE_GENERAL;
@@ -562,31 +602,25 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 			list_type = FUNC_TYPE_PKEY;
 		else if (strcmp(argv[0],LIST_CIPHER_ALGORITHMS) == 0)
 			list_type = FUNC_TYPE_CIPHER_ALG;
-		bio_stdout = BIO_new_fp(stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-		{
-		BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		bio_stdout = BIO_push(tmpbio, bio_stdout);
-		}
-#endif
+		out = dup_bio_out();
 
 		if (!load_config(bio_err, NULL))
 			goto end;
 
 		if (list_type == FUNC_TYPE_PKEY)
-			list_pkey(bio_stdout);	
+			list_pkey(out);	
 		if (list_type == FUNC_TYPE_MD_ALG)
-			list_md(bio_stdout);	
+			list_md(out);	
 		if (list_type == FUNC_TYPE_CIPHER_ALG)
-			list_cipher(bio_stdout);	
+			list_cipher(out);	
 		else
 			{
 			for (fp=functions; fp->name != NULL; fp++)
 				if (fp->type == list_type)
-					BIO_printf(bio_stdout, "%s\n",
+					BIO_printf(out, "%s\n",
 								fp->name);
 			}
-		BIO_free_all(bio_stdout);
+		BIO_free_all(out);
 		ret=0;
 		goto end;
 		}
@@ -635,6 +669,7 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 		ret=0;
 		}
 end:
+	if (out) BIO_free(out);
 	return(ret);
 	}
 

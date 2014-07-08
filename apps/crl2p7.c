@@ -166,15 +166,9 @@ bad:
 
 	if (!nocrl)
 		{
-		if (infile == NULL)
-			in = BIO_new_fp(stdin, BIO_NOCLOSE);
-		else
-			in = BIO_new_file(infile, RB(informat));
+		in = bio_open_default(infile, RB(informat));
 		if (in==NULL)
-			{
-			perror(infile);
 			goto end;
-			}
 
 		if 	(informat == FORMAT_ASN1)
 			crl=d2i_X509_CRL_bio(in,NULL);
@@ -222,15 +216,9 @@ bad:
 
 	sk_OPENSSL_STRING_free(certflst);
 
-	if (outfile == NULL)
-		out = BIO_dup_chain(bio_out);
-	else
-		out=BIO_new_file(outfile, WB(outformat));
+	out = bio_open_default(outfile, WB(outformat));
 	if (out==NULL)
-		{
-		ERR_print_errors(bio_err);
 		goto end;
-		}
 
 	if 	(outformat == FORMAT_ASN1)
 		i=i2d_PKCS7_bio(out,p7);

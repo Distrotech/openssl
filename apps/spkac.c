@@ -195,22 +195,9 @@ bad:
 		NETSCAPE_SPKI_sign(spki, pkey, EVP_md5());
 		spkstr = NETSCAPE_SPKI_b64_encode(spki);
 
-		if (outfile) out = BIO_new_file(outfile, "w");
-		else {
-			out = BIO_new_fp(stdout, BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-			{
-			    BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-			    out = BIO_push(tmpbio, out);
-			}
-#endif
-		}
-
-		if(!out) {
-			BIO_printf(bio_err, "Error opening output file\n");
-			ERR_print_errors(bio_err);
+		out = bio_open_default(outfile, "w");
+		if(out == NULL)
 			goto end;
-		}
 		BIO_printf(out, "SPKAC=%s\n", spkstr);
 		OPENSSL_free(spkstr);
 		ret = 0;
@@ -219,14 +206,9 @@ bad:
 
 	
 
-	if (infile) in = BIO_new_file(infile, "r");
-	else in = BIO_new_fp(stdin, BIO_NOCLOSE);
-
-	if(!in) {
-		BIO_printf(bio_err, "Error opening input file\n");
-		ERR_print_errors(bio_err);
+	in = bio_open_default(infile, "r");
+	if(in==NULL)
 		goto end;
-	}
 
 	conf = NCONF_new(NULL);
 	i = NCONF_load_bio(conf, in, NULL);
@@ -253,22 +235,9 @@ bad:
 		goto end;
 	}
 
-	if (outfile) out = BIO_new_file(outfile, "w");
-	else {
-		out = BIO_new_fp(stdout, BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-		{
-		    BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		    out = BIO_push(tmpbio, out);
-		}
-#endif
-	}
-
-	if(!out) {
-		BIO_printf(bio_err, "Error opening output file\n");
-		ERR_print_errors(bio_err);
+	out = bio_open_default(outfile, "w");
+	if(out == NULL)
 		goto end;
-	}
 
 	if(!noout) NETSCAPE_SPKI_print(out, spki);
 	pkey = NETSCAPE_SPKI_get_pubkey(spki);

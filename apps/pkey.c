@@ -201,25 +201,9 @@ int pkey_main(int argc, char **argv)
 		goto end;
 		}
 
-	if (outfile)
-		{
-		if (!(out = BIO_new_file (outfile, "wb")))
-			{
-			BIO_printf(bio_err,
-				 "Can't open output file %s\n", outfile);
-			goto end;
-			}
-		}
-	else
-		{
-		out = BIO_new_fp (stdout, BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-			{
-			BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-			out = BIO_push(tmpbio, out);
-			}
-#endif
-		}
+	out = bio_open_default(outfile, "wb");
+	if (out == NULL)
+		goto end;
 
 	if (pubin)
 		pkey = load_pubkey(bio_err, infile, informat, 1,

@@ -1702,12 +1702,12 @@ bad:
 			{
 			bio_s_out=BIO_new(BIO_s_null());
 			if (s_msg && !bio_s_msg)
-				bio_s_msg=BIO_new_fp(stdout,BIO_NOCLOSE);
+				bio_s_msg=dup_bio_out();
 			}
 		else
 			{
 			if (bio_s_out == NULL)
-				bio_s_out=BIO_new_fp(stdout,BIO_NOCLOSE);
+				bio_s_out=dup_bio_out();
 			}
 		}
 

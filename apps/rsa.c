@@ -269,15 +269,9 @@ bad:
 		goto end;
 		}
 
-	if (outfile == NULL)
-		out = BIO_dup_chain(bio_out);
-	else
-		out = BIO_new_file(outfile, "w");
+	out = bio_open_default(outfile, "w");
 	if (out == NULL)
-		{
-		ERR_print_errors(bio_err);
 		goto end;
-		}
 
 	if (text) 
 		if (!RSA_print(out,rsa,0))

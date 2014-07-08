@@ -168,24 +168,12 @@ bad:
         setup_engine(bio_err, engine, 0);
 #endif
 
-	if (infile == NULL)
-		in = BIO_dup_chain(bio_in);
-	else
-		in = BIO_new_file(infile, informat == FORMAT_ASN1 ? "rb":"r");
+	in = bio_open_default(infile, RB(informat));
 	if (in == NULL)
-		{
-		ERR_print_errors(bio_err);
 		goto end;
-		}
-	if (outfile == NULL)
-		out = BIO_dup_chain(bio_out);
-	else
-		out = BIO_new_file(outfile, outformat == FORMAT_ASN1 ? "wb":"w");
+	out = bio_open_default(outfile, WB(outformat));
 	if (out == NULL)
-		{
-		perror(outfile);
 		goto end;
-		}
 
 	if	(informat == FORMAT_ASN1)
 		dh=d2i_DHparams_bio(in,NULL);

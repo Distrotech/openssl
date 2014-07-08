@@ -985,19 +985,9 @@ bad:
 	/*****************************************************************/
 	if (req || gencrl)
 		{
-		if (outfile != NULL)
-			{
-			Sout = BIO_new_file(outfile, "w");
-			if (Sout == NULL)
-				{
-				perror(outfile);
-				goto err;
-				}
-			}
-		else
-			{
-			Sout = BIO_dup_chain(bio_out);
-			}
+		Sout = bio_open_default(outfile, "w");
+		if (Sout == NULL)
+			goto err;
 		}
 
 	if ((md == NULL) && ((md=NCONF_get_string(conf,

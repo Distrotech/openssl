@@ -77,6 +77,22 @@ const char *sess_id_help[]={
 	"-context arg     set the session ID context",
 	NULL
 };
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT,
+	OPT_TEXT, OPT_CERT, OPT_NOOUT, OPT_CONTEXT
+};
+static OPTIONS options[] = {
+	{ "inform", OPT_INFORM, 'F' },
+	{ "outform", OPT_OUTFORM, 'F' },
+	{ "in", OPT_IN, 's' },
+	{ "out", OPT_OUT, 's' },
+	{ "text", OPT_TEXT, '-' },
+	{ "cert", OPT_CERT, '-' },
+	{ "noout", OPT_NOOUT, '-' },
+	{ "context", OPT_CONTEXT, 's' },
+	{ NULL }
+};
 
 static SSL_SESSION *load_sess_id(char *file, int format);
 
@@ -84,67 +100,47 @@ int sess_id_main(int argc, char **argv)
 	{
 	SSL_SESSION *x=NULL;
 	X509 *peer = NULL;
-	int ret=1,i,num,badops=0;
+	int ret=1,i,num=0;
 	BIO *out=NULL;
-	int informat,outformat;
+	int informat=FORMAT_PEM,outformat=FORMAT_PEM;
 	char *infile=NULL,*outfile=NULL,*context=NULL;
 	int cert=0,noout=0,text=0;
 
-	informat=FORMAT_PEM;
-	outformat=FORMAT_PEM;
-
-	argc--;
-	argv++;
-	num=0;
-	while (argc >= 1)
-		{
-		if 	(strcmp(*argv,"-inform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			informat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-outform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outformat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-in") == 0)
-			{
-			if (--argc < 1) goto bad;
-			infile= *(++argv);
-			}
-		else if (strcmp(*argv,"-out") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-text") == 0)
-			text= ++num;
-		else if (strcmp(*argv,"-cert") == 0)
-			cert= ++num;
-		else if (strcmp(*argv,"-noout") == 0)
-			noout= ++num;
-		else if (strcmp(*argv,"-context") == 0)
-		    {
-		    if(--argc < 1) goto bad;
-		    context=*++argv;
-		    }
-		else
-			{
-			BIO_printf(bio_err,"unknown option %s\n",*argv);
-			badops=1;
+	opt_init(argc, argv, options);
+	while ((i = opt_next()) != 0) {
+		switch (i) {
+		default:
+			BIO_printf(bio_err,"Unhandled flag %d\n", i);
+		case OPT_ERR:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(sess_id_help);
+			goto end;
+		case OPT_INFORM:
+			opt_format(opt_arg(), 1, &informat);
 			break;
-			}
-		argc--;
-		argv++;
+		case OPT_OUTFORM:
+			opt_format(opt_arg(), 1, &outformat);
+			break;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUT:
+			outfile = opt_arg();
+			break;
+		case OPT_TEXT:
+			text= ++num;
+			break;
+		case OPT_CERT:
+			cert= ++num;
+			break;
+		case OPT_NOOUT:
+			noout= ++num;
+			break;
+		case OPT_CONTEXT:
+		    context=*++argv;
+		    break;
 		}
 
-	if (badops)
-		{
-bad:
-		BIO_printf(bio_err, "usage: sess_id args\n");
-		printhelp(sess_id_help);
-		goto end;
 		}
 
 	x=load_sess_id(infile,informat);
@@ -185,16 +181,10 @@ bad:
 
 	if (!noout || text)
 		{
-		if (outfile == NULL)
-			out = BIO_dup_chain(bio_out);
-		else
-			/* XXX rsalz see switch below; WB() wrong */
-			out = BIO_new_file(outfile, WB(outformat));
+		/* XXX rsalz see switch below; WB() wrong */
+		out = bio_open_default(outfile, WB(outformat));
 		if (out == NULL)
-			{
-			ERR_print_errors(bio_err);
 			goto end;
-			}
 		}
 
 	if (text)
@@ -252,13 +242,12 @@ end:
 static SSL_SESSION *load_sess_id(char *infile, int format)
 	{
 	SSL_SESSION *x=NULL;
-	BIO *in;
+	BIO *in=NULL;
 
-	if (infile == NULL)
-		in = BIO_new_fp(stdin,BIO_NOCLOSE);
-	else
-		in = BIO_new_file(infile, RB(format));
-	if 	(format == FORMAT_ASN1)
+	in = bio_open_default(infile, RB(format));
+	if (in == NULL)
+		goto end;
+	if  (format == FORMAT_ASN1)
 		x=d2i_SSL_SESSION_bio(in,NULL);
 	else
 		x=PEM_read_bio_SSL_SESSION(in,NULL,NULL,NULL);

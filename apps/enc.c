@@ -385,19 +385,13 @@ bad:
 
 	if (inf == NULL)
 	        {
-#ifndef OPENSSL_NO_SETVBUF_IONBF
-		if (bufsize != NULL)
-			setvbuf(stdin, (char *)NULL, _IONBF, 0);
-#endif /* ndef OPENSSL_NO_SETVBUF_IONBF */
-		in = BIO_new_fp(stdin, BIO_NOCLOSE);
+		unbuffer(stdin);
+		in = dup_bio_in();
 	        }
 	else
-		in = BIO_new_file(inf, "r");
+		in = bio_open_default(inf, "r");
 	if (in == NULL)
-		{
-		ERR_print_errors(bio_err);
 		goto end;
-		}
 
 	if(!str && passarg) {
 		if(!app_passwd(bio_err, passarg, NULL, &pass, NULL)) {
@@ -437,15 +431,9 @@ bad:
 		}
 
 
-	if (outf == NULL)
-		out = BIO_dup_chain(bio_out);
-	else
-		out = BIO_new_file(outf, "w");
+	out = bio_open_default(outf, "w");
 	if (out == NULL)
-		{
-		ERR_print_errors(bio_err);
 		goto end;
-		}
 
 	rbio=in;
 	wbio=out;

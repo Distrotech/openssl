@@ -126,26 +126,26 @@ static int append_buf(char **buf, const char *s, int *size, int step)
 	return 1;
 	}
 
-static int util_flags(BIO *bio_out, unsigned int flags, const char *indent)
+static int util_flags(BIO *out, unsigned int flags, const char *indent)
 	{
 	int started = 0, err = 0;
 	/* Indent before displaying input flags */
-	BIO_printf(bio_out, "%s%s(input flags): ", indent, indent);
+	BIO_printf(out, "%s%s(input flags): ", indent, indent);
 	if(flags == 0)
 		{
-		BIO_printf(bio_out, "<no flags>\n");
+		BIO_printf(out, "<no flags>\n");
 		return 1;
 		}
         /* If the object is internal, mark it in a way that shows instead of
          * having it part of all the other flags, even if it really is. */
 	if(flags & ENGINE_CMD_FLAG_INTERNAL)
 		{
-		BIO_printf(bio_out, "[Internal] ");
+		BIO_printf(out, "[Internal] ");
 		}
 
 	if(flags & ENGINE_CMD_FLAG_NUMERIC)
 		{
-		BIO_printf(bio_out, "NUMERIC");
+		BIO_printf(out, "NUMERIC");
 		started = 1;
 		}
 	/* Now we check that no combinations of the mutually exclusive NUMERIC,
@@ -156,20 +156,20 @@ static int util_flags(BIO *bio_out, unsigned int flags, const char *indent)
 		{
 		if(started)
 			{
-			BIO_printf(bio_out, "|");
+			BIO_printf(out, "|");
 			err = 1;
 			}
-		BIO_printf(bio_out, "STRING");
+		BIO_printf(out, "STRING");
 		started = 1;
 		}
 	if(flags & ENGINE_CMD_FLAG_NO_INPUT)
 		{
 		if(started)
 			{
-			BIO_printf(bio_out, "|");
+			BIO_printf(out, "|");
 			err = 1;
 			}
-		BIO_printf(bio_out, "NO_INPUT");
+		BIO_printf(out, "NO_INPUT");
 		started = 1;
 		}
 	/* Check for unknown flags */
@@ -179,16 +179,16 @@ static int util_flags(BIO *bio_out, unsigned int flags, const char *indent)
 			~ENGINE_CMD_FLAG_INTERNAL;
 	if(flags)
 		{
-		if(started) BIO_printf(bio_out, "|");
-		BIO_printf(bio_out, "<0x%04X>", flags);
+		if(started) BIO_printf(out, "|");
+		BIO_printf(out, "<0x%04X>", flags);
 		}
 	if(err)
-		BIO_printf(bio_out, "  <illegal flags!>");
-	BIO_printf(bio_out, "\n");
+		BIO_printf(out, "  <illegal flags!>");
+	BIO_printf(out, "\n");
 	return 1;
 	}
 
-static int util_verbose(ENGINE *e, int verbose, BIO *bio_out, const char *indent)
+static int util_verbose(ENGINE *e, int verbose, BIO *out, const char *indent)
 	{
 	static const int line_wrap = 78;
 	int num;
@@ -203,7 +203,7 @@ static int util_verbose(ENGINE *e, int verbose, BIO *bio_out, const char *indent
 					0, NULL, NULL)) <= 0))
 		{
 #if 0
-		BIO_printf(bio_out, "%s<no control commands>\n", indent);
+		BIO_printf(out, "%s<no control commands>\n", indent);
 #endif
 		return 1;
 		}
@@ -244,28 +244,28 @@ static int util_verbose(ENGINE *e, int verbose, BIO *bio_out, const char *indent
                         /* Now decide on the output */
                         if(xpos == 0)
                                 /* Do an indent */
-                                xpos = BIO_puts(bio_out, indent);
+                                xpos = BIO_puts(out, indent);
                         else
                                 /* Otherwise prepend a ", " */
-                                xpos += BIO_printf(bio_out, ", ");
+                                xpos += BIO_printf(out, ", ");
                         if(verbose == 1)
                                 {
                                 /* We're just listing names, comma-delimited */
                                 if((xpos > (int)strlen(indent)) &&
 					(xpos + (int)strlen(name) > line_wrap))
                                         {
-                                        BIO_printf(bio_out, "\n");
-                                        xpos = BIO_puts(bio_out, indent);
+                                        BIO_printf(out, "\n");
+                                        xpos = BIO_puts(out, indent);
                                         }
-                                xpos += BIO_printf(bio_out, "%s", name);
+                                xpos += BIO_printf(out, "%s", name);
                                 }
                         else
                                 {
                                 /* We're listing names plus descriptions */
-                                BIO_printf(bio_out, "%s: %s\n", name,
+                                BIO_printf(out, "%s: %s\n", name,
                                         (desc == NULL) ? "<no description>" : desc);
                                 /* ... and sometimes input flags */
-                                if((verbose >= 3) && !util_flags(bio_out, flags,
+                                if((verbose >= 3) && !util_flags(out, flags,
                                         indent))
                                         goto err;
                                 xpos = 0;
@@ -278,7 +278,7 @@ static int util_verbose(ENGINE *e, int verbose, BIO *bio_out, const char *indent
 					num, NULL, NULL);
 		} while(num > 0);
 	if(xpos > 0)
-		BIO_printf(bio_out, "\n");
+		BIO_printf(out, "\n");
 	ret = 1;
 err:
 	if(cmds) sk_OPENSSL_STRING_pop_free(cmds, identity);
@@ -288,13 +288,13 @@ err:
 	}
 
 static void util_do_cmds(ENGINE *e, STACK_OF(OPENSSL_STRING) *cmds,
-			BIO *bio_out, const char *indent)
+			BIO *out, const char *indent)
 	{
 	int loop, res, num = sk_OPENSSL_STRING_num(cmds);
 
 	if(num < 0)
 		{
-		BIO_printf(bio_out, "[Error]: internal stack error\n");
+		BIO_printf(out, "[Error]: internal stack error\n");
 		return;
 		}
 	for(loop = 0; loop < num; loop++)
@@ -313,7 +313,7 @@ static void util_do_cmds(ENGINE *e, STACK_OF(OPENSSL_STRING) *cmds,
 			{
 			if((int)(arg - cmd) > 254)
 				{
-				BIO_printf(bio_out,"[Error]: command name too long\n");
+				BIO_printf(out,"[Error]: command name too long\n");
 				return;
 				}
 			memcpy(buf, cmd, (int)(arg - cmd));
@@ -324,11 +324,11 @@ static void util_do_cmds(ENGINE *e, STACK_OF(OPENSSL_STRING) *cmds,
 				res = 0;
 			}
 		if(res)
-			BIO_printf(bio_out, "[Success]: %s\n", cmd);
+			BIO_printf(out, "[Success]: %s\n", cmd);
 		else
 			{
-			BIO_printf(bio_out, "[Failure]: %s\n", cmd);
-			ERR_print_errors(bio_out);
+			BIO_printf(out, "[Failure]: %s\n", cmd);
+			ERR_print_errors(out);
 			}
 		}
 	}
@@ -342,18 +342,12 @@ int engine_main(int argc, char **argv)
 	STACK_OF(OPENSSL_STRING) *pre_cmds = sk_OPENSSL_STRING_new_null();
 	STACK_OF(OPENSSL_STRING) *post_cmds = sk_OPENSSL_STRING_new_null();
 	int badops=1;
-	BIO *bio_out=NULL;
+	BIO *out=NULL;
 	const char *indent = "     ";
 
 	SSL_load_error_strings();
 
-	bio_out=BIO_new_fp(stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-	{
-	BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-	bio_out = BIO_push(tmpbio, bio_out);
-	}
-#endif
+	out=dup_bio_out();
 
 	argc--;
 	argv++;
@@ -424,11 +418,11 @@ skip_arg_loop:
 			{
 			const char *name = ENGINE_get_name(e);
 			/* Do "id" first, then "name". Easier to auto-parse. */
-			BIO_printf(bio_out, "(%s) %s\n", id, name);
-			util_do_cmds(e, pre_cmds, bio_out, indent);
+			BIO_printf(out, "(%s) %s\n", id, name);
+			util_do_cmds(e, pre_cmds, out, indent);
 			if (strcmp(ENGINE_get_id(e), id) != 0)
 				{
-				BIO_printf(bio_out, "Loaded: (%s) %s\n",
+				BIO_printf(out, "Loaded: (%s) %s\n",
 					ENGINE_get_id(e), ENGINE_get_name(e));
 				}
 			if (list_cap)
@@ -488,28 +482,28 @@ skip_digests:
 						goto end;
 skip_pmeths:
 				if (cap_buf && (*cap_buf != '\0'))
-					BIO_printf(bio_out, " [%s]\n", cap_buf);
+					BIO_printf(out, " [%s]\n", cap_buf);
 
 				OPENSSL_free(cap_buf);
 				}
 			if(test_avail)
 				{
-				BIO_printf(bio_out, "%s", indent);
+				BIO_printf(out, "%s", indent);
 				if (ENGINE_init(e))
 					{
-					BIO_printf(bio_out, "[ available ]\n");
-					util_do_cmds(e, post_cmds, bio_out, indent);
+					BIO_printf(out, "[ available ]\n");
+					util_do_cmds(e, post_cmds, out, indent);
 					ENGINE_finish(e);
 					}
 				else
 					{
-					BIO_printf(bio_out, "[ unavailable ]\n");
+					BIO_printf(out, "[ unavailable ]\n");
 					if(test_avail_noise)
 						ERR_print_errors_fp(stdout);
 					ERR_clear_error();
 					}
 				}
-			if((verbose > 0) && !util_verbose(e, verbose, bio_out, indent))
+			if((verbose > 0) && !util_verbose(e, verbose, out, indent))
 				goto end;
 			ENGINE_free(e);
 			}
@@ -524,7 +518,7 @@ end:
 	sk_OPENSSL_STRING_pop_free(engines, identity);
 	sk_OPENSSL_STRING_pop_free(pre_cmds, identity);
 	sk_OPENSSL_STRING_pop_free(post_cmds, identity);
-	if (bio_out != NULL) BIO_free_all(bio_out);
+	if (out != NULL) BIO_free_all(out);
 	return(ret);
 	}
 #else

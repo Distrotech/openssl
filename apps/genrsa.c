@@ -221,15 +221,9 @@ bad:
         e = setup_engine(bio_err, engine, 0);
 #endif
 
-	if (outfile == NULL)
-		out = BIO_dup_chain(bio_out);
-	else
-		out = BIO_new_file(outfile, "w");
+	out = bio_open_default(outfile, "w");
 	if (out == NULL)
-		{
-		ERR_print_errors(bio_err);
 		goto err;
-		}
 
 	if (!app_RAND_load_file(NULL, bio_err, 1) && inrand == NULL
 		&& !RAND_status())

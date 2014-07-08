@@ -124,28 +124,29 @@ int asn1parse_main(int argc, char **argv)
 	unsigned int length=0;
 	long num,tmplen;
 	BIO *in=NULL,*b64=NULL, *derout = NULL;
-	int informat,indent=0, noout = 0, dump = 0, strictpem = 0;
+	int informat=FORMAT_PEM;
+	int indent=0, noout = 0, dump = 0, strictpem = 0;
 	char *infile=NULL,*str=NULL,*oidfile=NULL, *derfile=NULL, *name=NULL, *header=NULL;
 	char *genstr=NULL, *genconf=NULL;
 	unsigned char *tmpbuf;
+	char *prog;
 	const unsigned char *ctmpbuf;
 	BUF_MEM *buf=NULL;
 	STACK_OF(OPENSSL_STRING) *osk=NULL;
 	ASN1_TYPE *at=NULL;
 
-	informat=FORMAT_PEM;
+	prog = opt_init(argc, argv, options);
 
 	if ((osk=sk_OPENSSL_STRING_new_null()) == NULL)
 		{
-		BIO_printf(bio_err,"Memory allocation failure\n");
+		BIO_printf(bio_err,"%s: Memory allocation failure\n", prog);
 		goto end;
 		}
 
-	opt_init(argc, argv, options);
 	while ((i = opt_next()) != 0) {
 		switch (i) {
 		default:
-			BIO_printf(bio_err,"Unhandled flag %d\n", i);
+			BIO_printf(bio_err,"%s: Unhandled flag %d\n", prog, i);
 		case OPT_ERR:
 			BIO_printf(bio_err,"Valid options are:\n");
 			printhelp(asn1parse_help);
@@ -209,25 +210,10 @@ int asn1parse_main(int argc, char **argv)
 		BIO_free(in);
 		}
 
-	if (infile == NULL)
-		in = BIO_new_fp(stdin, BIO_NOCLOSE);
-	else
-		{
-		in = BIO_new_file(infile, "r");
-		if (in == NULL)
-			{
-			ERR_print_errors(bio_err);
-			goto end;
-			}
-		}
+	if ((in = bio_open_default(infile, "r")) == NULL) goto end;
 
-	if (derfile) {
-		if(!(derout = BIO_new_file(derfile, "wb"))) {
-			BIO_printf(bio_err,"problems opening %s\n",derfile);
-			ERR_print_errors(bio_err);
-			goto end;
-		}
-	}
+	if (derfile && (derout = bio_open_default(derfile, "wb"))==NULL)
+		goto end;
 
 	if(strictpem)
 		{

@@ -143,6 +143,10 @@ extern char *default_config_file;
 extern BIO *bio_in;
 extern BIO *bio_out;
 extern BIO *bio_err;
+BIO* dup_bio_in();
+BIO* dup_bio_out();
+BIO* bio_open_default(const char* filename, const char* mode);
+extern void unbuffer(FILE* fp);
 
 #ifndef OPENSSL_SYS_NETWARE
 #include <signal.h>
@@ -182,7 +186,7 @@ typedef struct options_st {
 } OPTIONS;
 
 extern char* opt_progname(const char *argv0);
-extern void opt_init(int ac, char** av, const OPTIONS* o);
+extern char* opt_init(int ac, char** av, const OPTIONS* o);
 extern int opt_next();
 extern int opt_format(const char *s, int onlyderpem, int* result);
 extern char* opt_arg(void);

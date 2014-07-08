@@ -75,7 +75,7 @@ int passwd_main(int argc, char **argv)
 	int usecrypt = 0, use1 = 0, useapr1 = 0;
 	size_t pw_maxlen = 0;
 
-	out = BIO_dup_chain(bio_out);
+	out = dup_bio_out();
 
 	badopt = 0, opt_done = 0;
 	i = 0;
@@ -164,15 +164,9 @@ int passwd_main(int argc, char **argv)
 		goto err;
 		}
 
-	if (infile == NULL)
-		in = BIO_new_fp(stdin, BIO_NOCLOSE);
-	else
-		in = BIO_new_file(infile, "r");
+	in = bio_open_default(infile, "r");
 	if (in == NULL)
-		{
-		ERR_print_errors(bio_err);
 		goto err;
-		}
 	
 	if (usecrypt)
 		pw_maxlen = 8;

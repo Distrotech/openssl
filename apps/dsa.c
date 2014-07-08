@@ -218,15 +218,9 @@ bad:
 		goto end;
 	}
 
-	if (infile == NULL)
-		in = BIO_new_fp(stdin,BIO_NOCLOSE);
-	else
-		in = BIO_new_file(infile, "r");
+	in = bio_open_default(infile, "r");
 	if (in == NULL)
-		{
-		perror(infile);
 		goto end;
-		}
 
 	BIO_printf(bio_err,"read DSA key\n");
 
@@ -253,15 +247,9 @@ bad:
 		goto end;
 		}
 
-	if (outfile == NULL)
-		out = BIO_dup_chain(bio_out);
-	else
-		out = BIO_new_file(outfile, "w");
+	out = bio_open_default(outfile, "w");
 	if (out == NULL)
-		{
-		ERR_print_errors(bio_err);
 		goto end;
-		}
 
 	if (text) 
 		if (!DSA_print(out,dsa,0))

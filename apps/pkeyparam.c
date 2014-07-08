@@ -72,103 +72,70 @@ const char* pkeyparam_help[] = {
 #endif
 	NULL
 };
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_IN, OPT_OUT, OPT_TEXT, OPT_NOOUT, OPT_ENGINE,
+};
+static OPTIONS options[] = {
+	{ "in", OPT_IN, '<' },
+	{ "out", OPT_OUT, '>' },
+	{ "text", OPT_TEXT, '-' },
+	{ "noout", OPT_NOOUT, '-' },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's' },
+#endif
+	{ NULL }
+};
 
 int pkeyparam_main(int argc, char **argv)
 	{
-	char **args, *infile = NULL, *outfile = NULL;
-	BIO *in = NULL, *out = NULL;
-	int text = 0, noout = 0;
+	char *infile=NULL, *outfile=NULL;
+	BIO *in=NULL, *out=NULL;
+	int text=0, noout=0;
 	EVP_PKEY *pkey=NULL;
-	int badarg = 0;
+	int i,ret=1;
+	char* prog;
 #ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
 #endif
-	int ret = 1;
 
-	args = argv + 1;
-	while (!badarg && *args && *args[0] == '-')
-		{
-		if (!strcmp (*args, "-in"))
-			{
-			if (args[1])
-				{
-				args++;
-				infile = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp (*args, "-out"))
-			{
-			if (args[1])
-				{
-				args++;
-				outfile = *args;
-				}
-			else badarg = 1;
-			}
-#ifndef OPENSSL_NO_ENGINE
-		else if (strcmp(*args,"-engine") == 0)
-			{
-			if (args[1])
-				{
-				args++;
-				engine = *args;
-				}
-			else badarg = 1;
-			}
-#endif
-
-		else if (strcmp(*args,"-text") == 0)
+	prog = opt_init(argc, argv, options);
+	while ((i = opt_next()) != 0) {
+		switch (i) {
+		default:
+			BIO_printf(bio_err,"%s: Unhandled flag %d\n", prog, i);
+		case OPT_ERR:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(pkeyparam_help);
+			goto end;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUT:
+			outfile=opt_arg();
+			break;
+		case OPT_ENGINE:
+			engine=opt_arg();
+			break;
+		case OPT_TEXT:
 			text=1;
-		else if (strcmp(*args,"-noout") == 0)
+			break;
+		case OPT_NOOUT:
 			noout=1;
-		args++;
+			break;
 		}
-
-	if (badarg)
-		{
-		BIO_printf(bio_err, "Usage pkeyparam [options]\n");
-		BIO_printf(bio_err, "where options are\n");
-		printhelp(pkeyparam_help);
-		return 1;
 		}
 
 #ifndef OPENSSL_NO_ENGINE
         setup_engine(bio_err, engine, 0);
 #endif
 
-	if (infile)
-		{
-		if (!(in = BIO_new_file (infile, "r")))
-			{
-			BIO_printf(bio_err,
-				 "Can't open input file %s\n", infile);
-			goto end;
-			}
-		}
-	else
-		in = BIO_new_fp (stdin, BIO_NOCLOSE);
-
-	if (outfile)
-		{
-		if (!(out = BIO_new_file (outfile, "w")))
-			{
-			BIO_printf(bio_err,
-				 "Can't open output file %s\n", outfile);
-			goto end;
-			}
-		}
-	else
-		{
-		out = BIO_new_fp (stdout, BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-			{
-			BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-			out = BIO_push(tmpbio, out);
-			}
-#endif
-		}
-
+	in = bio_open_default(infile, "r");
+	if (in == NULL)
+		goto end;
+	out = bio_open_default(outfile, "w");
+	if (out == NULL)
+		goto end;
 	pkey = PEM_read_bio_Parameters(in, NULL);
 	if (!pkey)
 		{

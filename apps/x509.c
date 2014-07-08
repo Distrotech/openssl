@@ -216,14 +216,7 @@ int x509_main(int argc, char **argv)
 
 	reqfile=0;
 
-	STDout=BIO_new_fp(stdout,BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-	{
-	BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-	STDout = BIO_push(tmpbio, STDout);
-	}
-#endif
-
+	STDout=dup_bio_out();
 	informat=FORMAT_PEM;
 	outformat=FORMAT_PEM;
 	keyformat=FORMAT_PEM;
@@ -604,15 +597,9 @@ bad:
 			BIO_printf(bio_err,"We need a private key to sign with\n");
 			goto end;
 			}
-		if (infile == NULL)
-			in = BIO_new_fp(stdin,BIO_NOCLOSE|BIO_FP_TEXT);
-		else
-			in = BIO_new_file(infile, "r");
+		in = bio_open_default(infile, "r");
 		if (in == NULL)
-			{
-			ERR_print_errors(bio_err);
 			goto end;
-			}
 		req=PEM_read_bio_X509_REQ(in,NULL,NULL,NULL);
 		BIO_free(in);
 
@@ -698,15 +685,9 @@ bad:
 		OBJ_create("2.99999.3",
 			"SET.ex3","SET x509v3 extension 3");
 
-		if (outfile == NULL)
-			out = BIO_dup_chain(bio_out);
-		else
-			out = BIO_new_file(outfile, "w");
+		out = bio_open_default(outfile, "w");
 		if (out == NULL)
-			{
-			ERR_print_errors(bio_err);
 			goto end;
-			}
 		}
 
 	if (alias) X509_alias_set1(x, (unsigned char *)alias, -1);

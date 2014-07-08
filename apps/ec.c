@@ -220,15 +220,9 @@ bad:
 		goto end;
 		}
 
-	if (infile == NULL)
-		in = BIO_new_fp(stdin, BIO_NOCLOSE);
-	else
-		in = BIO_new_file(infile, RB(informat));
+	in = bio_open_default(infile, RB(informat));
 	if (in == NULL)
-		{
-		ERR_print_errors(bio_err);
 		goto end;
-		}
 
 	BIO_printf(bio_err, "read EC key\n");
 	if (informat == FORMAT_ASN1) 
@@ -259,15 +253,9 @@ bad:
 		goto end;
 		}
 
-	if (outfile == NULL)
-		out = BIO_new_fp(stdout, BIO_NOCLOSE);
-	else
-		out = BIO_new_file(outfile, WB(outformat));
+	out = bio_open_default(outfile, WB(outformat));
 	if (out == NULL)
-		{
-		ERR_print_errors(bio_err);
 		goto end;
-		}
 
 	group = EC_KEY_get0_group(eckey);
 

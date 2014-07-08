@@ -367,35 +367,19 @@ int pkcs12_main(int argc, char **argv)
     CRYPTO_push_info("read files");
 #endif
 
-    if (!infile) in = BIO_new_fp(stdin, BIO_NOCLOSE);
-    else in = BIO_new_file(infile, "rb");
-    if (!in) {
-	    BIO_printf(bio_err, "Error opening input file %s\n",
-						infile ? infile : "<stdin>");
-	    perror (infile);
+    in = bio_open_default(infile, "rb");
+    if (in == NULL)
 	    goto end;
-   }
 
 #ifdef CRYPTO_MDEBUG
     CRYPTO_pop_info();
     CRYPTO_push_info("write files");
 #endif
 
-    if (!outfile) {
-	out = BIO_new_fp(stdout, BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-	{
-	    BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-	    out = BIO_push(tmpbio, out);
-	}
-#endif
-    } else out = BIO_new_file(outfile, "wb");
-    if (!out) {
-	BIO_printf(bio_err, "Error opening output file %s\n",
-						outfile ? outfile : "<stdout>");
-	perror (outfile);
-	goto end;
-    }
+    out = bio_open_default(outfile, "wb");
+    if (out == NULL)
+	    goto end;
+
     if (twopass) {
 #ifdef CRYPTO_MDEBUG
     CRYPTO_push_info("read MAC password");
