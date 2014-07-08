@@ -70,51 +70,58 @@ const char* errstr_help[] = {
 	"-stats    print internal hashtable statistics (long!)",
 	NULL
 };
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_STATS
+};
+static OPTIONS options[] = {
+	{ "stats", OPT_STATS, '-' },
+	{ NULL }
+};
 
 int errstr_main(int argc, char **argv)
 	{
 	int i,ret=0;
 	char buf[256];
+	char* endptr;
+	char* prog;
 	unsigned long l;
 
 	SSL_load_error_strings();
-
-	if ((argc > 1) && (strcmp(argv[1],"-stats") == 0))
-		{
-		BIO *out = BIO_dup_chain(bio_out);
-		if (out==NULL)
-			{
-			ERR_print_errors(bio_err);
+	prog = opt_init(argc, argv, options);
+	while ((i = opt_next()) != 0) {
+		switch (i) {
+		default:
+			BIO_printf(bio_err,"%s: Unhandled flag %d\n", prog, i);
+		case OPT_ERR:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(errstr_help);
 			return 1;
-			}
-		lh_ERR_STRING_DATA_node_stats_bio(
-					  ERR_get_string_table(), out);
-		lh_ERR_STRING_DATA_stats_bio(ERR_get_string_table(),
-					     out);
-		lh_ERR_STRING_DATA_node_usage_stats_bio(
-					    ERR_get_string_table(),out);
-		BIO_free_all(out);
-		return 0;
+		case OPT_STATS:
+			lh_ERR_STRING_DATA_node_stats_bio(
+				ERR_get_string_table(), bio_out);
+			lh_ERR_STRING_DATA_stats_bio(ERR_get_string_table(),
+				bio_out);
+			lh_ERR_STRING_DATA_node_usage_stats_bio(
+				ERR_get_string_table(), bio_out);
+			return 0;
 		}
-	if ((argc > 1) && argv[1][0] == '-')
-		{
-		BIO_printf(bio_err, "errstr [options] num...\n");
-		BIO_printf(bio_err,"where options are\n");
-		printhelp(errstr_help);
-		ret++;
-		}
+	}
 
-	for (i=1; i<argc; i++)
+	for (argv = opt_rest(); *argv; argv++)
 		{
-		if (sscanf(argv[i],"%lx",&l))
+		l = strtoul(*argv, &endptr, 0);
+		if (*endptr)
 			{
-			ERR_error_string_n(l, buf, sizeof buf);
-			printf("%s\n",buf);
+			BIO_printf(bio_err,
+				"%s: Bad char %c in error code %s\n",
+				prog, *endptr, *argv);
+			ret++;
 			}
 		else
 			{
-			printf("%s: bad error code\n",argv[i]);
-			ret++;
+			ERR_error_string_n(l, buf, sizeof buf);
+			BIO_printf(bio_out, "%s\n", buf);
 			}
 		}
 	return(ret);

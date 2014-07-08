@@ -519,7 +519,7 @@ static char *app_get_pass(BIO *err, char *arg, int keepbio)
 			pwdbio = BIO_push(btmp, pwdbio);
 #endif
 		} else if(!strcmp(arg, "stdin")) {
-			pwdbio = BIO_new_fp(stdin, BIO_NOCLOSE);
+			pwdbio = dup_bio_in();
 			if(!pwdbio) {
 				BIO_printf(err, "Can't open BIO for stdin\n");
 				return NULL;
@@ -690,20 +690,13 @@ X509 *load_cert(BIO *err, const char *file, int format,
 
 	if (file == NULL)
 		{
-#ifdef _IONBF
-# ifndef OPENSSL_NO_SETVBUF_IONBF
-		setvbuf(stdin, NULL, _IONBF, 0);
-# endif /* ndef OPENSSL_NO_SETVBUF_IONBF */
-#endif
-		cert = BIO_new_fp(stdin,BIO_NOCLOSE);
+		unbuffer(stdin);
+		cert = dup_bio_in();
 		}
 	else
-		cert = BIO_new_file(file, RB(format));
+		cert = bio_open_default(file, RB(format));
 	if (cert == NULL)
-		{
-		ERR_print_errors(err);
 		goto end;
-		}
 
 	if 	(format == FORMAT_ASN1)
 		x=d2i_X509_bio(cert,NULL);
@@ -760,16 +753,10 @@ X509_CRL *load_crl(const char *infile, int format)
 		return x;
 		}
 
-	if (infile == NULL)
-		in = BIO_new_fp(stdin,BIO_NOCLOSE);
-	else
-		in = BIO_new_file(infile, RB(format));
+	in = bio_open_default(infile, RB(format));
 	if (in == NULL)
-		{
-		ERR_print_errors(bio_err);
 		goto end;
-		}
-	if 	(format == FORMAT_ASN1)
+	if (format == FORMAT_ASN1)
 		x=d2i_X509_CRL_bio(in,NULL);
 	else if (format == FORMAT_PEM)
 		x=PEM_read_bio_X509_CRL(in,NULL,NULL,NULL);
@@ -825,20 +812,13 @@ EVP_PKEY *load_key(BIO *err, const char *file, int format, int maybe_stdin,
 #endif
 	if (file == NULL && maybe_stdin)
 		{
-#ifdef _IONBF
-# ifndef OPENSSL_NO_SETVBUF_IONBF
-		setvbuf(stdin, NULL, _IONBF, 0);
-# endif /* ndef OPENSSL_NO_SETVBUF_IONBF */
-#endif
-		key = BIO_new_fp(stdin,BIO_NOCLOSE);
+		unbuffer(stdin);
+		key = dup_bio_in();
 		}
 	else
-		key = BIO_new_file(file, RB(format));
+		key = bio_open_default(file, RB(format));
 	if (key == NULL)
-		{
-		ERR_print_errors(err);
 		goto end;
-		}
 	if (format == FORMAT_ASN1)
 		{
 		pkey=d2i_PrivateKey_bio(key, NULL);
@@ -909,22 +889,15 @@ EVP_PKEY *load_pubkey(BIO *err, const char *file, int format, int maybe_stdin,
 #endif
 	if (file == NULL && maybe_stdin)
 		{
-#ifdef _IONBF
-# ifndef OPENSSL_NO_SETVBUF_IONBF
-		setvbuf(stdin, NULL, _IONBF, 0);
-# endif /* ndef OPENSSL_NO_SETVBUF_IONBF */
-#endif
-		key = BIO_new_fp(stdin,BIO_NOCLOSE);
+		unbuffer(stdin);
+		key = dup_bio_in();
 		}
 	else
 		/* XXX rsalz look at all the format types below; RB() is 
 		 * too simple. */
-		key = BIO_new_file(file, RB(format));
+		key = bio_open_default(file, RB(format));
 	if (key == NULL)
-		{
-		ERR_print_errors(err);
 		goto end;
-		}
 	if (format == FORMAT_ASN1)
 		{
 		pkey=d2i_PUBKEY_bio(key, NULL);
@@ -1046,18 +1019,9 @@ static int load_certs_crls(BIO *err, const char *file, int format,
 		return 0;
 		}
 
-	if (file == NULL)
-		bio = BIO_new_fp(stdin,BIO_NOCLOSE);
-	else
-		bio = BIO_new_file(file, "r");
-
+	bio = bio_open_default(file, "r");
 	if (bio == NULL)
-		{
-		BIO_printf(err, "Error opening %s %s\n",
-				desc, file ? file : "stdin");
-		ERR_print_errors(err);
 		return 0;
-		}
 
 	xis = PEM_X509_INFO_read_bio(bio, NULL,
 				(pem_password_cb *)password_callback, &cb_data);
@@ -2397,7 +2361,7 @@ void policies_print(BIO *out, X509_STORE_CTX *ctx)
 	int free_out = 0;
 	if (out == NULL)
 		{
-		out = BIO_new_fp(stderr, BIO_NOCLOSE);
+		out = dup_bio_out();
 		free_out = 1;
 		}
 	tree = X509_STORE_CTX_get0_policy_tree(ctx);

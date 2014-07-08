@@ -103,8 +103,6 @@ static CONF *load_config_file(const char *configfile);
 static int query_command(const char *data, char *digest,
 			 const EVP_MD *md, const char *policy, int no_nonce, 
 			 int cert, const char *in, const char *out, int text);
-static BIO *BIO_open_with_default(const char *file, const char *mode, 
-				  FILE *default_fp);
 static TS_REQ *create_query(BIO *data_bio, char *digest, const EVP_MD *md,
 			    const char *policy, int no_nonce, int cert);
 static int create_digest(BIO *input, char *digest,
@@ -442,7 +440,6 @@ static CONF *load_config_file(const char *configfile)
 /*
  * Query-related method definitions.
  */
-
 static int query_command(const char *data, char *digest, const EVP_MD *md,
 			 const char *policy, int no_nonce, 
 			 int cert, const char *in, const char *out, int text)
@@ -463,7 +460,7 @@ static int query_command(const char *data, char *digest, const EVP_MD *md,
 		{
 		/* Open the file if no explicit digest bytes were specified. */
 		if (!digest 
-		    && !(data_bio = BIO_open_with_default(data, "rb", stdin)))
+		    && !(data_bio = bio_open_default(data, "rb")))
 			goto end;
 		/* Creating the query object. */
 		query = create_query(data_bio, digest, md,
@@ -473,7 +470,7 @@ static int query_command(const char *data, char *digest, const EVP_MD *md,
 	if (query == NULL) goto end;
 
 	/* Write query either in ASN.1 or in text format. */
-	if ((out_bio = BIO_open_with_default(out, "wb", stdout)) == NULL)
+	if ((out_bio = bio_open_default(out, "wb")) == NULL)
 		goto end;
 	if (text)
 		{
@@ -500,14 +497,6 @@ static int query_command(const char *data, char *digest, const EVP_MD *md,
 	TS_REQ_free(query);
 
 	return ret;
-	}
-
-static BIO *BIO_open_with_default(const char *file, const char *mode, 
-				  FILE *default_fp)
-	{
-	return file == NULL ? 
-		BIO_new_fp(default_fp, BIO_NOCLOSE) 
-		: BIO_new_file(file, mode);
 	}
 
 static TS_REQ *create_query(BIO *data_bio, char *digest, const EVP_MD *md,
@@ -694,7 +683,7 @@ static int reply_command(CONF *conf, char *section, char *engine,
 	if (response == NULL) goto end;
 
 	/* Write response either in ASN.1 or text format. */
-	if ((out_bio = BIO_open_with_default(out, "wb", stdout)) == NULL)
+	if ((out_bio = bio_open_default(out, "wb")) == NULL)
 		goto end;
 	if (text)
 		{

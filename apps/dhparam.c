@@ -315,15 +315,9 @@ bad:
 		app_RAND_write_file(NULL, bio_err);
 	} else {
 
-		if (infile == NULL)
-			in = BIO_new_fp(stdin,BIO_NOCLOSE);
-		else
-			in = BIO_new_file(infile, RB(informat));
+		in = bio_open_default(infile, RB(informat));
 		if (in == NULL)
-			{
-			perror(infile);
 			goto end;
-			}
 
 #ifndef OPENSSL_NO_DSA
 		if (dsaparam)
@@ -369,16 +363,9 @@ bad:
 		/* dh != NULL */
 	}
 	
-	if (outfile == NULL)
-		out = BIO_dup_chain(bio_out);
-	else
-		out = BIO_new_file(outfile, "w");
+	out = bio_open_default(outfile, "w");
 	if (out == NULL)
-		{
-		perror(outfile);
 		goto end;
-		}
-
 
 	if (text)
 		{

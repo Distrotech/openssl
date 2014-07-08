@@ -381,19 +381,9 @@ bad:
 				}
 			}
 		}
-	if (outfile == NULL)
-		{
-		out = BIO_dup_chain(bio_out);
-		}
-	else
-		{
-		out=BIO_new_file(outfile, "w");
-		if (out == NULL)
-			{
-			ERR_print_errors(bio_err);
-			goto end;
-			}
-		}
+	out = bio_open_default(outfile, "w");
+	if (out == NULL)
+		goto end;
 
 	if (text) X509_CRL_print(out, x);
 

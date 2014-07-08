@@ -244,7 +244,7 @@ int req_main(int argc, char **argv)
 	BIO *in=NULL,*out=NULL;
 	int informat,outformat,verify=0,noout=0,text=0,keyform=FORMAT_PEM;
 	int nodes=0,kludge=0,newhdr=0,subject=0,pubkey=0;
-	char *infile,*outfile,*keyfile=NULL,*template=NULL,*keyout=NULL;
+	char *infile=NULL,*outfile,*keyfile=NULL,*template=NULL,*keyout=NULL;
 #ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
 #endif
@@ -262,11 +262,9 @@ int req_main(int argc, char **argv)
 	const EVP_MD *md_alg=NULL,*digest=NULL;
 	unsigned long chtype = MBSTRING_ASC;
 
-	req_conf = NULL;
 #ifndef OPENSSL_NO_DES
 	cipher=EVP_des_ede3_cbc();
 #endif
-
 	infile=NULL;
 	outfile=NULL;
 	informat=FORMAT_PEM;
@@ -676,20 +674,12 @@ bad:
 			}
 		
 		if (keyout == NULL)
-			{
 			BIO_printf(bio_err,"writing new private key to stdout\n");
-			out = BIO_dup_chain(bio_out);
-			}
 		else
-			{
 			BIO_printf(bio_err,"writing new private key to '%s'\n",keyout);
-			out = BIO_new_file(keyout, "w");
-			}
+		out = bio_open_default(keyout, "w");
 		if (out == NULL)
-			{
-			ERR_print_errors(bio_err);
 			goto end;
-			}
 
 		p=NCONF_get_string(req_conf,SECTION,"encrypt_rsa_key");
 		if (p == NULL)
@@ -726,15 +716,9 @@ loop:
 		 * request, the kludge 'format' info should not be
 		 * changed. */
 		kludge= -1;
-		if (infile == NULL)
-			in = BIO_new_fp(stdin,BIO_NOCLOSE);
-		else
-			in = BIO_new_file(infile, RB(informat));
+		in = bio_open_default(infile, RB(informat));
 		if (in == NULL)
-			{
-			ERR_print_errors(bio_err);
 			goto end;
-			}
 
 		if	(informat == FORMAT_ASN1)
 			req=d2i_X509_REQ_bio(in,NULL);
@@ -917,17 +901,11 @@ loop:
 		goto end;
 		}
 
-	if (outfile == NULL)
-		out = BIO_dup_chain(bio_out);
-	else if (keyout == NULL || strcmp(outfile, keyout) != 0)
-		out = BIO_new_file(outfile, "w");
-	else
-		out = BIO_new_file(outfile, "a");
+	out = bio_open_default(outfile,
+			keyout != NULL && outfile != NULL &&
+			strcmp(keyout, outfile) == 0 ? "a" : "w");
 	if (out == NULL)
-		{
-		ERR_print_errors(bio_err);
 		goto end;
-		}
 
 	if (pubkey)
 		{

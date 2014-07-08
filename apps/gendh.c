@@ -92,55 +92,63 @@ const char* gendh_help[] = {
 #endif
 	NULL
 };
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_OUT, OPT_2, OPT_5, OPT_ENGINE, OPT_RAND
+};
+static OPTIONS options[] = {
+	{ "out", OPT_OUT, '>' },
+	{ "2", OPT_2, '-' },
+	{ "5", OPT_5, '-' },
+	{ "engine", OPT_ENGINE, 's' },
+	{ "rand", OPT_RAND, 's' },
+	{ NULL }
+};
 
 int gendh_main(int argc, char **argv)
 	{
 	BN_GENCB cb;
 	DH *dh=NULL;
-	int ret=1,num=DEFBITS;
+	int i,ret=1,num=DEFBITS;
 	int g=2;
 	char *outfile=NULL;
 	char *inrand=NULL;
+	BIO *out=NULL;
+	char* prog;
 #ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
 #endif
-	BIO *out=NULL;
 
 	BN_GENCB_set(&cb, dh_cb, bio_err);
-	argv++;
-	argc--;
-	for (;;)
-		{
-		if (argc <= 0) break;
-		if (strcmp(*argv,"-out") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-2") == 0)
-			g=2;
-		else if (strcmp(*argv,"-5") == 0)
-			g=5;
-#ifndef OPENSSL_NO_ENGINE
-		else if (strcmp(*argv,"-engine") == 0)
-			{
-			if (--argc < 1) goto bad;
-			engine= *(++argv);
-			}
-#endif
-		else if (strcmp(*argv,"-rand") == 0)
-			{
-			if (--argc < 1) goto bad;
-			inrand= *(++argv);
-			}
-		else
+	prog = opt_init(argc, argv, options);
+	while ((i = opt_next()) != 0) {
+		switch (i) {
+		default:
+			BIO_printf(bio_err,"%s: Unhandled flag %d\n", prog, i);
+		case OPT_ERR:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(gendh_help);
+			goto end;
+		case OPT_OUT:
+			outfile = opt_arg();
 			break;
-		argv++;
-		argc--;
+		case OPT_2:
+			g=2;
+			break;
+		case OPT_5:
+			g=5;
+			break;
+		case OPT_ENGINE:
+			engine= opt_arg();
+			break;
+		case OPT_RAND:
+			inrand = opt_arg();
+			break;
 		}
-	if ((argc >= 1) && ((sscanf(*argv,"%d",&num) == 0) || (num < 0)))
+	}
+	argv = opt_rest();
+	if (argv[0] != NULL && (sscanf(*argv,"%d",&num) == 0 || num < 0))
 		{
-bad:
 		BIO_printf(bio_err,"usage: gendh [args] [numbits]\n");
 		printhelp(gendh_help);
 		goto end;
@@ -150,15 +158,9 @@ bad:
         setup_engine(bio_err, engine, 0);
 #endif
 
-	if (outfile == NULL)
-		out = BIO_dup_chain(bio_out);
-	else
-		out = BIO_new_file(outfile, "w");
+	out = bio_open_default(outfile, "w");
 	if (out == NULL)
-		{
-		ERR_print_errors(bio_err);
 		goto end;
-		}
 
 	if (!app_RAND_load_file(NULL, bio_err, 1) && inrand == NULL)
 		{
@@ -169,9 +171,9 @@ bad:
 			app_RAND_load_files(inrand));
 
 	BIO_printf(bio_err,"Generating DH parameters, %d bit long safe prime, generator %d\n",num,g);
-	BIO_printf(bio_err,"This is going to take a long time\n");
+	BIO_printf(bio_err,"This is going to take some time\n");
 
-	if(((dh = DH_new()) == NULL) || !DH_generate_parameters_ex(dh, num, g, &cb))
+	if ((dh = DH_new()) == NULL || !DH_generate_parameters_ex(dh, num, g, &cb))
 		goto end;
 		
 	app_RAND_write_file(NULL, bio_err);
@@ -197,9 +199,6 @@ static int dh_cb(int p, int n, BN_GENCB *cb)
 	if (p == 3) c='\n';
 	BIO_write(cb->arg,&c,1);
 	(void)BIO_flush(cb->arg);
-#ifdef LINT
-	p=n;
-#endif
 	return 1;
 	}
 #else /* !OPENSSL_NO_DH */

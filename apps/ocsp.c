@@ -95,6 +95,8 @@
 /* Maximum leeway in validity period: default 5 minutes */
 #define MAX_VALIDITY_PERIOD	(5 * 60)
 
+#define DASH(x) strcmp(x, "-") == 0
+
 static int add_ocsp_cert(OCSP_REQUEST **req, X509 *cert, const EVP_MD *cert_id_md, X509 *issuer,
 				STACK_OF(OCSP_CERTID) *ids);
 static int add_ocsp_serial(OCSP_REQUEST **req, char *serial, const EVP_MD * cert_id_md, X509 *issuer,
@@ -646,28 +648,17 @@ int ocsp_main(int argc, char **argv)
 		goto end;
 		}
 
-	if(outfile) out = BIO_new_file(outfile, "w");
-	else out = BIO_new_fp(stdout, BIO_NOCLOSE);
-
-	if(!out)
-		{
-		BIO_printf(bio_err, "Error opening output file\n");
+	out = bio_open_default(outfile, "w");
+	if(out==NULL)
 		goto end;
-		}
 
 	if (!req && (add_nonce != 2)) add_nonce = 0;
 
 	if (!req && reqin)
 		{
-		if (!strcmp(reqin, "-"))
-			derbio = BIO_new_fp(stdin, BIO_NOCLOSE);
-		else
-			derbio = BIO_new_file(reqin, "rb");
-		if (!derbio)
-			{
-			BIO_printf(bio_err, "Error Opening OCSP request file\n");
+		derbio = bio_open_default(DASH(reqin) ? NULL : reqin, "rb");
+		if (derbio==NULL)
 			goto end;
-			}
 		req = d2i_OCSP_REQUEST_bio(derbio, NULL);
 		BIO_free(derbio);
 		if(!req)
@@ -764,15 +755,9 @@ int ocsp_main(int argc, char **argv)
 
 	if (reqout)
 		{
-		if (!strcmp(reqout, "-"))
-			derbio = BIO_new_fp(stdout, BIO_NOCLOSE);
-		else
-			derbio = BIO_new_file(reqout, "wb");
-		if(!derbio)
-			{
-			BIO_printf(bio_err, "Error opening file %s\n", reqout);
+		derbio = bio_open_default(DASH(reqout) ? NULL : reqout, "wb");
+		if(derbio==NULL)
 			goto end;
-			}
 		i2d_OCSP_REQUEST_bio(derbio, req);
 		BIO_free(derbio);
 		}
@@ -810,15 +795,9 @@ int ocsp_main(int argc, char **argv)
 		}
 	else if (respin)
 		{
-		if (!strcmp(respin, "-"))
-			derbio = BIO_new_fp(stdin, BIO_NOCLOSE);
-		else
-			derbio = BIO_new_file(respin, "rb");
-		if (!derbio)
-			{
-			BIO_printf(bio_err, "Error Opening OCSP response file\n");
+		derbio = bio_open_default(DASH(respin) ? NULL : respin, "rb");
+		if (derbio == NULL)
 			goto end;
-			}
 		resp = d2i_OCSP_RESPONSE_bio(derbio, NULL);
 		BIO_free(derbio);
 		if(!resp)
@@ -838,15 +817,9 @@ int ocsp_main(int argc, char **argv)
 
 	if (respout)
 		{
-		if (!strcmp(respout, "-"))
-			derbio = BIO_new_fp(stdout, BIO_NOCLOSE);
-		else
-			derbio = BIO_new_file(respout, "wb");
-		if(!derbio)
-			{
-			BIO_printf(bio_err, "Error opening file %s\n", respout);
+		derbio = bio_open_default(DASH(respout) ? NULL : respout, "wb");
+		if(derbio==NULL)
 			goto end;
-			}
 		i2d_OCSP_RESPONSE_bio(derbio, resp);
 		BIO_free(derbio);
 		}

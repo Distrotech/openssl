@@ -239,24 +239,12 @@ bad:
 		goto end;
 		}
 
-	if (infile == NULL)
-		in = BIO_new_fp(stdin,BIO_NOCLOSE);
-	else
-		in = BIO_new_file(infile, RB(informat));
+	in = bio_open_default(infile, RB(informat));
 	if (in == NULL)
-		{
-		ERR_print_errors(bio_err);
 		goto end;
-		}
-	if (outfile == NULL)
-		out = BIO_dup_chain(bio_out);
-	else
-		out = BIO_new_file(outfile, WB(outformat));
+	out = bio_open_default(outfile, WB(outformat));
 	if (out == NULL)
-		{
-		ERR_print_errors(bio_err);
 		goto end;
-		}
 
 #ifndef OPENSSL_NO_ENGINE
 	setup_engine(bio_err, engine, 0);

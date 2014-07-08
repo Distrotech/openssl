@@ -593,17 +593,9 @@ int smime_main(int argc, char **argv)
 			goto end;
 		}
 
-	if (infile)
-		{
-		if (!(in = BIO_new_file(infile, inmode)))
-			{
-			BIO_printf (bio_err,
-				 "Can't open input file %s\n", infile);
-			goto end;
-			}
-		}
-	else
-		in = BIO_new_fp(stdin, BIO_NOCLOSE);
+	in = bio_open_default(infile, inmode);
+	if (in == NULL)
+		goto end;
 
 	if (operation & SMIME_IP)
 		{
@@ -635,25 +627,9 @@ int smime_main(int argc, char **argv)
 			}
 		}
 
-	if (outfile)
-		{
-		if (!(out = BIO_new_file(outfile, outmode)))
-			{
-			BIO_printf (bio_err,
-				 "Can't open output file %s\n", outfile);
-			goto end;
-			}
-		}
-	else
-		{
-		out = BIO_new_fp(stdout, BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-		{
-		    BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		    out = BIO_push(tmpbio, out);
-		}
-#endif
-		}
+	out = bio_open_default(outfile, outmode);
+	if (out == NULL)
+		goto end;
 
 	if (operation == SMIME_VERIFY)
 		{

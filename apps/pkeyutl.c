@@ -263,39 +263,13 @@ int pkeyutl_main(int argc, char **argv)
 
 	if (pkey_op != EVP_PKEY_OP_DERIVE)
 		{
-		if(infile)
-			{
-			if(!(in = BIO_new_file(infile, "rb")))
-				{
-				BIO_puts(bio_err,
-					"Error Opening Input File\n");
-				ERR_print_errors(bio_err);	
-				goto end;
-				}
-			}
-		else
-			in = BIO_new_fp(stdin, BIO_NOCLOSE);
-		}
-
-	if(outfile)
-		{
-		if(!(out = BIO_new_file(outfile, "wb")))
-			{
-			BIO_printf(bio_err, "Error Creating Output File\n");
-			ERR_print_errors(bio_err);	
+		in = bio_open_default(infile, "rb");
+		if (in == NULL)
 			goto end;
-			}
 		}
-	else
-		{
-		out = BIO_new_fp(stdout, BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-		{
-		    BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-		    out = BIO_push(tmpbio, out);
-		}
-#endif
-	}
+	out = bio_open_default(outfile, "wb");
+	if (out == NULL)
+		goto end;
 
 	if (sigfile)
 		{

@@ -60,90 +60,95 @@ const char* prime_help[] = {
 	"-safe       when used with -generate, generate a safe prime",
 	NULL
 };
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_HEX, OPT_GENERATE, OPT_BITS, OPT_SAFE, OPT_CHECKS
+};
+static OPTIONS options[] = {
+	{ "hex", OPT_HEX, '-' },
+	{ "generate", OPT_GENERATE, '-' },
+	{ "bits", OPT_BITS, 'p' },
+	{ "safe", OPT_SAFE, '-' },
+	{ "checks", OPT_CHECKS, 'p' },
+	{ NULL }
+};
 
 
 int prime_main(int argc, char **argv)
-    {
-    int hex=0;
-    int checks=20;
-    int generate=0;
-    int bits=0;
-    int safe=0;
-    BIGNUM *bn=NULL;
-    BIO *out;
-
-
-    --argc;
-    ++argv;
-    while (argc >= 1 && **argv == '-')
 	{
-	if(!strcmp(*argv,"-hex"))
-	    hex=1;
-	else if(!strcmp(*argv,"-generate"))
-	    generate=1;
-	else if(!strcmp(*argv,"-bits"))
-	    if(--argc < 1)
-		goto bad;
-	    else
-		bits=atoi(*++argv);
-	else if(!strcmp(*argv,"-safe"))
-	    safe=1;
-	else if(!strcmp(*argv,"-checks"))
-	    if(--argc < 1)
-		goto bad;
-	    else
-		checks=atoi(*++argv);
+	int hex=0;
+	int checks=20;
+	int generate=0;
+	int bits=0;
+	int safe=0;
+	int i;
+	BIGNUM *bn=NULL;
+	char* prog;
+
+	prog = opt_init(argc, argv, options);
+	while ((i = opt_next()) != 0) {
+		switch (i) {
+		default:
+			BIO_printf(bio_err,"%s: Unhandled flag %d\n", prog, i);
+		case OPT_ERR:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(req_help);
+			return 1;
+		case OPT_HEX:
+			hex=1;
+			break;
+		case OPT_GENERATE:
+			generate=1;
+			break;
+		case OPT_BITS:
+			bits=atoi(opt_arg());
+			break;
+		case OPT_SAFE:
+			safe=1;
+			break;
+		case OPT_CHECKS:
+			checks=atoi(opt_arg());
+			break;
+		}
+	}
+	argv = opt_rest();
+
+
+	if (argv[0] == NULL && !generate)
+		{
+		BIO_printf(bio_err,"%s No prime specified\n", prog);
+		return 1;
+		}
+
+	if (generate)
+		{
+		char *s;
+
+		if(!bits)
+			{
+			BIO_printf(bio_err,"Specifiy the number of bits.\n");
+			return 1;
+			}
+		bn=BN_new();
+		BN_generate_prime_ex(bn,bits,safe,NULL,NULL,NULL);
+		s=hex ? BN_bn2hex(bn) : BN_bn2dec(bn);
+		BIO_printf(bio_out,"%s\n",s);
+		OPENSSL_free(s);
+		}
 	else
-	    {
-	    BIO_printf(bio_err,"Unknown option '%s'\n",*argv);
-	    goto bad;
-	    }
-	--argc;
-	++argv;
+		{
+		if(hex)
+			BN_hex2bn(&bn,argv[0]);
+		else
+			BN_dec2bn(&bn,argv[0]);
+
+		BN_print(bio_out,bn);
+		BIO_printf(bio_out," is %sprime\n",
+			   BN_is_prime_ex(bn,checks,NULL,NULL) ? "" : "not ");
+		}
+
+	BN_free(bn);
+
+	return 0;
+
 	}
-
-    if (argv[0] == NULL && !generate)
-	{
-	BIO_printf(bio_err,"No prime specified\n");
-	goto bad;
-	}
-
-    out = BIO_dup_chain(bio_out);
-
-    if(generate)
-	{
-	char *s;
-
-	if(!bits)
-	    {
-	    BIO_printf(bio_err,"Specifiy the number of bits.\n");
-	    return 1;
-	    }
-	bn=BN_new();
-	BN_generate_prime_ex(bn,bits,safe,NULL,NULL,NULL);
-	s=hex ? BN_bn2hex(bn) : BN_bn2dec(bn);
-	BIO_printf(out,"%s\n",s);
-	OPENSSL_free(s);
-	}
-    else
-	{
-	if(hex)
-	    BN_hex2bn(&bn,argv[0]);
-	else
-	    BN_dec2bn(&bn,argv[0]);
-
-	BN_print(out,bn);
-	BIO_printf(out," is %sprime\n",
-		   BN_is_prime_ex(bn,checks,NULL,NULL) ? "" : "not ");
-	}
-
-    BN_free(bn);
-    BIO_free_all(out);
-
-    return 0;
-
-    bad:
-    BIO_printf(bio_err,"options are\n");
-    printhelp(prime_help);
-    return 1;
-    }

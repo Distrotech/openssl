@@ -70,96 +70,72 @@ const char *rand_help[] = {
 	"-base64          base64 encode output",
 	"-hex             hex encode output",
 #ifndef OPENSSL_NO_ENGINE
-	"-engine e        use engine e, possibly a hardware device.",
+	"-engine e        use engine e, possibly a hardware device",
 #endif
 	NULL
+};
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_OUT, OPT_ENGINE, OPT_RAND, OPT_BASE64, OPT_HEX
+};
+static OPTIONS options[] = {
+	{ "out", OPT_OUT, '>' },
+	{ "engine", OPT_ENGINE, 's' },
+	{ "rand", OPT_RAND, 's' },
+	{ "base64", OPT_BASE64, '-' },
+	{ "hex", OPT_HEX, '-' },
+	{ NULL }
 };
 
 
 int rand_main(int argc, char **argv)
 	{
 	int i, r, ret = 1;
-	int badopt;
 	char *outfile = NULL;
 	char *inrand = NULL;
 	int base64 = 0;
 	int hex = 0;
 	BIO *out = NULL;
 	int num = -1;
+	char* prog;
 #ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
 #endif
 
-
-	badopt = 0;
-	i = 0;
-	while (!badopt && argv[++i] != NULL)
-		{
-		if (strcmp(argv[i], "-out") == 0)
-			{
-			if ((argv[i+1] != NULL) && (outfile == NULL))
-				outfile = argv[++i];
-			else
-				badopt = 1;
-			}
-#ifndef OPENSSL_NO_ENGINE
-		else if (strcmp(argv[i], "-engine") == 0)
-			{
-			if ((argv[i+1] != NULL) && (engine == NULL))
-				engine = argv[++i];
-			else
-				badopt = 1;
-			}
-#endif
-		else if (strcmp(argv[i], "-rand") == 0)
-			{
-			if ((argv[i+1] != NULL) && (inrand == NULL))
-				inrand = argv[++i];
-			else
-				badopt = 1;
-			}
-		else if (strcmp(argv[i], "-base64") == 0)
-			{
-			if (!base64)
-				base64 = 1;
-			else
-				badopt = 1;
-			}
-		else if (strcmp(argv[i], "-hex") == 0)
-			{
-			if (!hex)
-				hex = 1;
-			else
-				badopt = 1;
-			}
-		else if (isdigit((unsigned char)argv[i][0]))
-			{
-			if (num < 0)
-				{
-				r = sscanf(argv[i], "%d", &num);
-				if (r == 0 || num < 0)
-					badopt = 1;
-				}
-			else
-				badopt = 1;
-			}
-		else
-			badopt = 1;
+	prog = opt_init(argc, argv, options);
+	while ((i = opt_next()) != 0) {
+		switch (i) {
+		default:
+			BIO_printf(bio_err,"%s: Unhandled flag %d\n", prog, i);
+		case OPT_ERR:
+bad:
+			BIO_printf(bio_err,"Usage: %s [flags] num\n",
+					prog);
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(rand_help);
+			goto end;
+		case OPT_OUT:
+			outfile=opt_arg();
+			break;
+		case OPT_ENGINE:
+			engine = opt_arg();
+			break;
+		case OPT_RAND:
+			inrand = opt_arg();
+			break;
+		case OPT_BASE64:
+			base64=1;
+			break;
+		case OPT_HEX:
+			hex=1;
+			break;
 		}
-
-	if (hex && base64)
-		badopt = 1;
-
-	if (num < 0)
-		badopt = 1;
-	
-	if (badopt) 
-		{
-		BIO_printf(bio_err, "Usage: rand [options] num\n");
-		BIO_printf(bio_err, "where options are\n");
-		printhelp(rand_help);
-		goto err;
-		}
+	}
+	if (opt_num_rest() != 1 || (hex && base64))
+		goto bad;
+	argv = opt_rest();
+	if (sscanf(argv[0], "%d", &num) != 1 || num < 0)
+		goto bad;
 
 #ifndef OPENSSL_NO_ENGINE
         setup_engine(bio_err, engine, 0);
@@ -170,21 +146,15 @@ int rand_main(int argc, char **argv)
 		BIO_printf(bio_err,"%ld semi-random bytes loaded\n",
 			app_RAND_load_files(inrand));
 
-	if (outfile == NULL)
-		out = BIO_dup_chain(bio_out);
-	else
-		out = BIO_new_file(outfile, "w");
+	out = bio_open_default(outfile, "w");
 	if (out == NULL)
-		{
-		ERR_print_errors(bio_err);
-		goto err;
-		}
+		goto end;
 
 	if (base64)
 		{
 		BIO *b64 = BIO_new(BIO_f_base64());
 		if (b64 == NULL)
-			goto err;
+			goto end;
 		out = BIO_push(b64, out);
 		}
 	
@@ -198,7 +168,7 @@ int rand_main(int argc, char **argv)
 			chunk = sizeof buf;
 		r = RAND_bytes(buf, chunk);
 		if (r <= 0)
-			goto err;
+			goto end;
 		if (!hex) 
 			BIO_write(out, buf, chunk);
 		else
@@ -215,7 +185,7 @@ int rand_main(int argc, char **argv)
 	app_RAND_write_file(NULL, bio_err);
 	ret = 0;
 	
-err:
+end:
 	if (out)
 		BIO_free_all(out);
 	return(ret);

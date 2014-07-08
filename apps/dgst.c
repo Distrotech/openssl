@@ -297,18 +297,10 @@ int dgst_main(int argc, char **argv)
 	if(randfile)
 		app_RAND_load_file(randfile, bio_err, 0);
 
-	if(outfile)
-		out = BIO_new_file(outfile, out_bin ? "wb" :"w");
-	else
-		out = BIO_dup_chain(bio_out);
-
+	out = bio_open_default(outfile, out_bin ? "wb" :"w");
 	if (out == NULL)
-		{
-		BIO_printf(bio_err, "Error opening output file %s\n", 
-					outfile ? outfile : "(stdout)");
-		ERR_print_errors(bio_err);
 		goto end;
-	}
+
 	if ((!!mac_name + !!keyfile + !!hmac_key) > 1)
 		{
 		BIO_printf(bio_err, "MAC and Signing key cannot both be specified\n");

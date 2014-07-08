@@ -143,38 +143,47 @@ const char* version_help[] = {
 	"-d          show configuration directory",
 	NULL
 };
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_B, OPT_D, OPT_F, OPT_O, OPT_P, OPT_V, OPT_A
+};
+static OPTIONS optlist[] = {
+	{ "b", OPT_B, '-' },
+	{ "d", OPT_D, '-' },
+	{ "f", OPT_F, '-' },
+	{ "o", OPT_O, '-' },
+	{ "p", OPT_P, '-' },
+	{ "v", OPT_V, '-' },
+	{ "a", OPT_A, '-' },
+	{ NULL }
+};
 
 int version_main(int argc, char **argv)
 	{
 	int i,ret=0;
 	int cflags=0,version=0,date=0,options=0,platform=0,dir=0;
+	char* prog;
 
-
-	if (argc == 1) version=1;
-	for (i=1; i<argc; i++)
-		{
-		if (strcmp(argv[i],"-v") == 0)
-			version=1;	
-		else if (strcmp(argv[i],"-b") == 0)
-			date=1;
-		else if (strcmp(argv[i],"-f") == 0)
-			cflags=1;
-		else if (strcmp(argv[i],"-o") == 0)
-			options=1;
-		else if (strcmp(argv[i],"-p") == 0)
-			platform=1;
-		else if (strcmp(argv[i],"-d") == 0)
-			dir=1;
-		else if (strcmp(argv[i],"-a") == 0)
-			date=version=cflags=options=platform=dir=1;
-		else
-			{
+	prog = opt_init(argc, argv, optlist);
+	while ((i = opt_next()) != 0) {
+		switch (i) {
+		default:
+			BIO_printf(bio_err,"%s: Unhandled flag %d\n", prog, i);
+		case OPT_ERR:
+			BIO_printf(bio_err,"Valid options are:\n");
 			printhelp(version_help);
-			BIO_printf(bio_err,"usage version [options]\n");
-			ret=1;
 			goto end;
-			}
+		case OPT_B: date=1; break;
+		case OPT_D: dir=1; break;
+		case OPT_F: cflags=1; break;
+		case OPT_O: options=1; break;
+		case OPT_P: platform=1; break;
+		case OPT_V: version=1; break;
+		case OPT_A:
+			cflags=version=date=platform=dir=1;
+			break;
 		}
+	}
 
 	if (version)
 		{

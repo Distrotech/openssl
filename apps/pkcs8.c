@@ -266,37 +266,12 @@ int pkcs8_main(int argc, char **argv)
 	if ((pbe_nid == -1) && !cipher)
 		pbe_nid = NID_pbeWithMD5AndDES_CBC;
 
-	if (infile)
-		{
-		if (!(in = BIO_new_file(infile, "rb")))
-			{
-			BIO_printf(bio_err,
-				 "Can't open input file %s\n", infile);
-			goto end;
-			}
-		}
-	else
-		in = BIO_new_fp (stdin, BIO_NOCLOSE);
-
-	if (outfile)
-		{
-		if (!(out = BIO_new_file (outfile, "wb")))
-			{
-			BIO_printf(bio_err,
-				 "Can't open output file %s\n", outfile);
-			goto end;
-			}
-		}
-	else
-		{
-		out = BIO_new_fp (stdout, BIO_NOCLOSE);
-#ifdef OPENSSL_SYS_VMS
-			{
-			BIO *tmpbio = BIO_new(BIO_f_linebuffer());
-			out = BIO_push(tmpbio, out);
-			}
-#endif
-		}
+	in = bio_open_default(infile, "rb");
+	if (in == NULL)
+		goto end;
+	out = bio_open_default(outfile, "wb");
+	if (out == NULL)
+		goto end;
 	if (topk8)
 		{
 		pkey = load_key(bio_err, infile, informat, 1,
