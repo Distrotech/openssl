@@ -56,111 +56,121 @@ const char* passwd_help[] = {
 	"-table             format output as table",
 	"-reverse           switch table columns",
 	NULL
+};
 
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_IN,
+	OPT_NOVERIFY, OPT_QUIET, OPT_TABLE, OPT_REVERSE, OPT_APR1,
+	OPT_1, OPT_CRYPT, OPT_SALT, OPT_STDIN,
+};
+static OPTIONS options[] = {
+	{ "in", OPT_IN, '<' },
+	{ "noverify", OPT_NOVERIFY, '-' },
+	{ "quiet", OPT_QUIET, '-' },
+	{ "table", OPT_TABLE, '-' },
+	{ "reverse", OPT_REVERSE, '-' },
+	{ "apr1", OPT_APR1, '-' },
+	{ "1", OPT_1, '-' },
+	{ "crypt", OPT_CRYPT, '-' },
+	{ "salt", OPT_SALT, 's' },
+	{ "stdin", OPT_STDIN, '-' },
+	{ NULL }
 };
 		
 int passwd_main(int argc, char **argv)
 	{
-	int ret = 1;
-	char *infile = NULL;
-	int in_stdin = 0;
-	int in_noverify = 0;
-	char *salt = NULL, *passwd = NULL, **passwds = NULL;
-	char *salt_malloc = NULL, *passwd_malloc = NULL;
-	size_t passwd_malloc_size = 0;
-	int pw_source_defined = 0;
-	BIO *in = NULL, *out = NULL;
-	int i, badopt, opt_done;
-	int passed_salt = 0, quiet = 0, table = 0, reverse = 0;
-	int usecrypt = 0, use1 = 0, useapr1 = 0;
-	size_t pw_maxlen = 0;
+	int ret=1;
+	char *infile=NULL;
+	int in_stdin=0, in_noverify=0;
+	char *salt=NULL, *passwd=NULL, **passwds=NULL;
+	char *salt_malloc=NULL, *passwd_malloc=NULL;
+	size_t passwd_malloc_size=0;
+	int pw_source_defined=0;
+	BIO *in=NULL, *out=NULL;
+	int passed_salt=0, quiet=0, table=0, reverse=0;
+	int usecrypt=0, use1=0, useapr1=0;
+	size_t pw_maxlen=256;
 
 	out = dup_bio_out();
 
-	badopt = 0, opt_done = 0;
-	i = 0;
-	while (!badopt && !opt_done && argv[++i] != NULL)
-		{
-		if (strcmp(argv[i], "-crypt") == 0)
-			usecrypt = 1;
-		else if (strcmp(argv[i], "-1") == 0)
-			use1 = 1;
-		else if (strcmp(argv[i], "-apr1") == 0)
-			useapr1 = 1;
-		else if (strcmp(argv[i], "-salt") == 0)
-			{
-			if ((argv[i+1] != NULL) && (salt == NULL))
-				{
-				passed_salt = 1;
-				salt = argv[++i];
-				}
-			else
-				badopt = 1;
-			}
-		else if (strcmp(argv[i], "-in") == 0)
-			{
-			if ((argv[i+1] != NULL) && !pw_source_defined)
-				{
-				pw_source_defined = 1;
-				infile = argv[++i];
-				}
-			else
-				badopt = 1;
-			}
-		else if (strcmp(argv[i], "-stdin") == 0)
-			{
-			if (!pw_source_defined)
-				{
-				pw_source_defined = 1;
-				in_stdin = 1;
-				}
-			else
-				badopt = 1;
-			}
-		else if (strcmp(argv[i], "-noverify") == 0)
-			in_noverify = 1;
-		else if (strcmp(argv[i], "-quiet") == 0)
-			quiet = 1;
-		else if (strcmp(argv[i], "-table") == 0)
-			table = 1;
-		else if (strcmp(argv[i], "-reverse") == 0)
-			reverse = 1;
-		else if (argv[i][0] == '-')
-			badopt = 1;
-		else if (!pw_source_defined)
-			/* non-option arguments, use as passwords */
-			{
+	enum options o;
+	char* prog;
+
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+bad:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(passwd_help);
+			goto err;
+		case OPT_IN:
+			if (pw_source_defined)
+				goto bad;
+			infile = opt_arg();
 			pw_source_defined = 1;
-			passwds = &argv[i];
-			opt_done = 1;
-			}
-		else
-			badopt = 1;
+			break;
+		case OPT_NOVERIFY:
+			in_noverify = 1;
+			break;
+		case OPT_QUIET:
+			quiet = 1;
+			break;
+		case OPT_TABLE:
+			table = 1;
+			break;
+		case OPT_REVERSE:
+			reverse = 1;
+			break;
+		case OPT_1:
+			use1 = 1;
+			break;
+		case OPT_APR1:
+			useapr1 = 1;
+			break;
+		case OPT_CRYPT:
+			usecrypt = 1;
+			break;
+		case OPT_SALT:
+			passed_salt = 1;
+			salt = opt_arg();
+			break;
+		case OPT_STDIN:
+			if (pw_source_defined)
+				goto bad;
+			in_stdin = 1;
+			break;
 		}
+	}
 
-	if (!usecrypt && !use1 && !useapr1) /* use default */
+	argv = opt_rest();
+	if (*argv) {
+		if (pw_source_defined)
+			goto bad;
+		pw_source_defined = 1;
+		passwds = argv;
+	}
+
+	if (!usecrypt && !use1 && !useapr1)
+		/* use default */
 		usecrypt = 1;
-	if (usecrypt + use1 + useapr1 > 1) /* conflict */
-		badopt = 1;
+	if (usecrypt + use1 + useapr1 > 1)
+		/* conflict */
+		goto bad;
 
-	/* reject unsupported algorithms */
 #ifdef OPENSSL_NO_DES
-	if (usecrypt) badopt = 1;
+	if (usecrypt)
+		goto bad;
 #endif
 #ifdef NO_MD5CRYPT_1
-	if (use1 || useapr1) badopt = 1;
+	if (use1 || useapr1)
+		goto bad;
 #endif
 
-	if (infile && in_stdin)
-		{
-		BIO_printf(bio_err, "Can't combine -in and -stdin\n");
-		goto err;
-		}
-	if (badopt) 
-		{
-		BIO_printf(bio_err, "Usage: passwd [options] [passwords]\n");
-		BIO_printf(bio_err, "where options are\n");
-		printhelp(passwd_help);
+	if (infile && in_stdin) {
+		BIO_printf(bio_err, "%s: Can't combine -in and -stdin\n", prog);
 		goto err;
 		}
 
