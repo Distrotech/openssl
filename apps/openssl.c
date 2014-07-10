@@ -522,7 +522,7 @@ end:
 
 	apps_shutdown();
 
-	BIO_free_all(bio_in);
+	BIO_free(bio_in);
 	BIO_free_all(bio_out);
 	CRYPTO_mem_leaks(bio_err);
 	BIO_free(bio_err);

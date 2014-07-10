@@ -108,119 +108,135 @@ const char* rsa_help[] = {
 	NULL
 };
 
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_INFORM, OPT_OUTFORM, OPT_ENGINE, OPT_IN, OPT_OUT,
+	OPT_SGCKEY, OPT_PUBIN, OPT_PUBOUT, OPT_PASSOUT, OPT_PASSIN,
+	OPT_RSAPUBKEY_IN, OPT_RSAPUBKEY_OUT, OPT_PVK_STRONG, OPT_PVK_WEAK,
+	OPT_PVK_NONE, OPT_NOOUT, OPT_TEXT, OPT_MODULUS, OPT_CHECK, OPT_CIPHER,
+};
+static OPTIONS options[] = {
+	{ "inform", OPT_INFORM, 'F' },
+	{ "outform", OPT_OUTFORM, 'F' },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's' },
+#endif
+	{ "in", OPT_IN, '<' },
+	{ "out", OPT_OUT, '>' },
+	{ "sgckey", OPT_SGCKEY, '-' },
+	{ "pubin", OPT_PUBIN, '-' },
+	{ "pubout", OPT_PUBOUT, '-' },
+	{ "passout", OPT_PASSOUT, 's' },
+	{ "passin", OPT_PASSIN, 's' },
+	{ "RSAPublicKey_in", OPT_RSAPUBKEY_IN, '-' },
+	{ "RSAPublicKey_out", OPT_RSAPUBKEY_OUT, '-' },
+	{ "pvk-strong", OPT_PVK_STRONG, '-' },
+	{ "pvk-weak", OPT_PVK_WEAK, '-' },
+	{ "pvk-none", OPT_PVK_NONE, '-' },
+	{ "noout", OPT_NOOUT, '-' },
+	{ "text", OPT_TEXT, '-' },
+	{ "modulus", OPT_MODULUS, '-' },
+	{ "check", OPT_CHECK, '-' },
+	{ "cipher", OPT_CIPHER, '-' },
+	{ NULL }
+};
+
 int rsa_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL;
 	int ret=1;
 	RSA *rsa=NULL;
-	int i,badops=0, sgckey=0;
+	int i, sgckey=0;
 	const EVP_CIPHER *enc=NULL;
 	BIO *out;
-	int informat,outformat,text=0,check=0,noout=0;
+	int informat=FORMAT_PEM,outformat=FORMAT_PEM,text=0,check=0,noout=0;
 	int pubin = 0, pubout = 0;
-	char *infile,*outfile,*prog;
-	char *passargin = NULL, *passargout = NULL;
+	char *infile=NULL,*outfile=NULL,*prog;
+	char *passinarg = NULL, *passoutarg = NULL;
 	char *passin = NULL, *passout = NULL;
-#ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
-#endif
 	int modulus=0;
 	int pvk_encr = 2;
+	enum options o;
 
-	infile=NULL;
-	outfile=NULL;
-	informat=FORMAT_PEM;
-	outformat=FORMAT_PEM;
-
-	prog=argv[0];
-	argc--;
-	argv++;
-	while (argc >= 1)
-		{
-		if 	(strcmp(*argv,"-inform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			informat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-outform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outformat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-in") == 0)
-			{
-			if (--argc < 1) goto bad;
-			infile= *(++argv);
-			}
-		else if (strcmp(*argv,"-out") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-passin") == 0)
-			{
-			if (--argc < 1) goto bad;
-			passargin= *(++argv);
-			}
-		else if (strcmp(*argv,"-passout") == 0)
-			{
-			if (--argc < 1) goto bad;
-			passargout= *(++argv);
-			}
-#ifndef OPENSSL_NO_ENGINE
-		else if (strcmp(*argv,"-engine") == 0)
-			{
-			if (--argc < 1) goto bad;
-			engine= *(++argv);
-			}
-#endif
-		else if (strcmp(*argv,"-sgckey") == 0)
-			sgckey=1;
-		else if (strcmp(*argv,"-pubin") == 0)
-			pubin=1;
-		else if (strcmp(*argv,"-pubout") == 0)
-			pubout=1;
-		else if (strcmp(*argv,"-RSAPublicKey_in") == 0)
-			pubin = 2;
-		else if (strcmp(*argv,"-RSAPublicKey_out") == 0)
-			pubout = 2;
-		else if (strcmp(*argv,"-pvk-strong") == 0)
-			pvk_encr=2;
-		else if (strcmp(*argv,"-pvk-weak") == 0)
-			pvk_encr=1;
-		else if (strcmp(*argv,"-pvk-none") == 0)
-			pvk_encr=0;
-		else if (strcmp(*argv,"-noout") == 0)
-			noout=1;
-		else if (strcmp(*argv,"-text") == 0)
-			text=1;
-		else if (strcmp(*argv,"-modulus") == 0)
-			modulus=1;
-		else if (strcmp(*argv,"-check") == 0)
-			check=1;
-		else if (!opt_cipher(opt_unknown(), &enc))
-			{
-			badops=1;
-			break;
-			}
-		argc--;
-		argv++;
-		}
-
-	if (badops)
-		{
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
 bad:
-		BIO_printf(bio_err,"rsa [options] <infile >outfile\n");
-		BIO_printf(bio_err,"where options are\n");
-		printhelp(rsa_help);
-		goto end;
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(rsa_help);
+			goto end;
+		case OPT_INFORM:
+			opt_format(opt_arg(), 1, &informat);
+			break;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUTFORM:
+			opt_format(opt_arg(), 1, &outformat);
+			break;
+		case OPT_OUT:
+			outfile= opt_arg();
+			break;
+		case OPT_PASSIN:
+			passinarg= opt_arg();
+			break;
+		case OPT_PASSOUT:
+			passoutarg= opt_arg();
+			break;
+		case OPT_ENGINE:
+			engine = opt_arg();
+			break;
+		case OPT_SGCKEY:
+			sgckey=1;
+			break;
+		case OPT_PUBIN:
+			pubin=1;
+			break;
+		case OPT_PUBOUT:
+			pubout=1;
+			break;
+		case OPT_RSAPUBKEY_IN:
+			pubin = 2;
+			break;
+		case OPT_RSAPUBKEY_OUT:
+			pubout = 2;
+			break;
+		case OPT_PVK_STRONG:
+			pvk_encr=2;
+			break;
+		case OPT_PVK_WEAK:
+			pvk_encr=1;
+			break;
+		case OPT_PVK_NONE:
+			pvk_encr=0;
+			break;
+		case OPT_NOOUT:
+			noout=1;
+			break;
+		case OPT_TEXT:
+			text=1;
+			break;
+		case OPT_MODULUS:
+			modulus=1;
+			break;
+		case OPT_CHECK:
+			check=1;
+			break;
+		case OPT_CIPHER:
+			if (!opt_cipher(opt_unknown(), &enc))
+				goto bad;
+			break;
 		}
+	}
 
 #ifndef OPENSSL_NO_ENGINE
         e = setup_engine(bio_err, engine, 0);
 #endif
 
-	if(!app_passwd(bio_err, passargin, passargout, &passin, &passout)) {
+	if(!app_passwd(bio_err, passinarg, passoutarg, &passin, &passout)) {
 		BIO_printf(bio_err, "Error getting passwords\n");
 		goto end;
 	}
