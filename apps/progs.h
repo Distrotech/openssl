@@ -9,12 +9,12 @@
 #define FUNC_TYPE_MD_ALG	5
 #define FUNC_TYPE_CIPHER_ALG	6
 
-typedef struct {
+typedef struct function_st {
 	int type;
 	const char *name;
 	int (*func)(int argc,char *argv[]);
 	const char **help;
-	} FUNCTION;
+} FUNCTION;
 
 #ifndef APP_MAIN
 extern FUNCTION functions[];

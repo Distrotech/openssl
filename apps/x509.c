@@ -491,14 +491,10 @@ int x509_main(int argc, char **argv)
 			ocspid= ++num;
 		else if (strcmp(*argv,"-badsig") == 0)
 			badsig = 1;
-		else if ((md_alg=EVP_get_digestbyname(*argv + 1)))
-			{
-			/* ok */
+		else if (opt_md(*argv+1, &md_alg))
 			digest=md_alg;
-			}
 		else
 			{
-			BIO_printf(bio_err,"unknown option %s\n",*argv);
 			badops=1;
 			break;
 			}

@@ -93,17 +93,15 @@ int pkeyparam_main(int argc, char **argv)
 	BIO *in=NULL, *out=NULL;
 	int text=0, noout=0;
 	EVP_PKEY *pkey=NULL;
-	int i,ret=1;
+	int ret=1;
+	enum options o;
 	char* prog;
-#ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
-#endif
 
 	prog = opt_init(argc, argv, options);
-	while ((i = opt_next()) != 0) {
-		switch (i) {
-		default:
-			BIO_printf(bio_err,"%s: Unhandled flag %d\n", prog, i);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
 		case OPT_ERR:
 			BIO_printf(bio_err,"Valid options are:\n");
 			printhelp(pkeyparam_help);
@@ -124,7 +122,7 @@ int pkeyparam_main(int argc, char **argv)
 			noout=1;
 			break;
 		}
-		}
+	}
 
 #ifndef OPENSSL_NO_ENGINE
         setup_engine(bio_err, engine, 0);

@@ -160,13 +160,15 @@ void printhelp(const char** cpp)
 
 static void apps_startup()
 	{
-	do_pipe_sig();
+#ifdef SIGPIPE
+	signal(SIGPIPE, SIG_IGN);
+#endif
 	CRYPTO_malloc_init();
 	ERR_load_crypto_strings();
+	ERR_load_SSL_strings();
 	OpenSSL_add_all_algorithms();
 #ifndef OPENSSL_NO_ENGINE
-	/*ENGINE_load_builtin_engines();
-	 */
+	ENGINE_load_builtin_engines();
 #endif
 	setup_ui_method();
 	}
@@ -178,14 +180,16 @@ static void apps_shutdown()
 	OBJ_cleanup();
 	EVP_cleanup();
 #ifndef OPENSSL_NO_ENGINE
-	/*ENGINE_cleanup();
-	 */
+	ENGINE_cleanup();
 #endif
 	CRYPTO_cleanup_all_ex_data();
 	ERR_remove_thread_state(NULL);
 	RAND_cleanup();
 	ERR_free_strings();
-	zlib_cleanup();
+
+#ifndef OPENSSL_NO_COMP
+	COMP_zlib_cleanup();
+#endif
 	}
 
 static char *make_config_name()

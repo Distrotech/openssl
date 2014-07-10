@@ -11,7 +11,6 @@
 #include <errno.h>
 #include <ctype.h>
 #include <openssl/bio.h>
-
 /* Our state */
 static char** argv;
 static int argc;
@@ -118,13 +117,14 @@ char *opt_init(int ac, char** av, const OPTIONS* o)
 		assert(o->retval > 0);
 		assert(i == 0 || i == '-'
 			|| i == 'n' || i == 'p' || i == 'u'
-			|| i == 's' || i == '<' || i == '>'
+			|| i == 's' || i == '<' || i == '>' || i == '/'
 			|| i == 'f' || i == 'F'
 			);
 
 		/* Make sure there are no duplicates. */
 		for (next = o; (++next)->name; ) {
-			assert(o->retval != next->retval);
+			/* do allow aliases:
+			 * assert(o->retval != next->retval); */
 			assert(strcmp(o->name, next->name) != 0);
 		}
 #endif
@@ -183,6 +183,86 @@ int opt_format(const char *s, int onlyderpem, int* result)
 	return 1;
 }
 
+/* Parse a cipher name, put it in *EVP_CIPHER; return 0 on failure, else 1. */
+int opt_cipher(const char* name, const EVP_CIPHER** cipherp)
+{
+	*cipherp = EVP_get_cipherbyname(name);
+	if (*cipherp)
+		return 1;
+	BIO_printf(bio_err, "%s: Unknown cipher %s\n", prog, name);
+	return 0;
+}
+
+/* Parse message digest name, put it in *EVP_MD; return 0 on failure, else 1. */
+int opt_md(const char* name, const EVP_MD** mdp)
+{
+	*mdp = EVP_get_digestbyname(name);
+	if (*mdp)
+		return 1;
+	BIO_printf(bio_err, "%s: Unknown digest %s\n", prog, name);
+	return 0;
+}
+
+/* See if cp looks like a hex number, in case user left off the 0x */
+static int scanforhex(const char* cp)
+{
+	for (; *cp; cp++)
+		if (isxdigit(*cp)) 
+			return 16;
+	return 0;
+}
+
+/* Parse an int, put it into *result; return 0 on failure, else 1. */
+int opt_int(const char* arg, int* result)
+{
+	const char* fmt = "%d";
+	int base = scanforhex(arg);
+	if (base == 16)
+		fmt = "%x";
+	else if (*arg == '0')
+		fmt = "%o";
+	if (sscanf(arg, fmt, result) != 1) {
+		BIO_printf(bio_err,
+			"%s: Can't parse %s as base-%d number\n",
+			prog, arg, base);
+		return 0;
+	}
+	return 1;
+}
+
+/* Parse a long, put it into *result; return 0 on failure, else 1. */
+int opt_long(const char* arg, long* result)
+{
+	char* endptr;
+	int base = scanforhex(arg);
+
+	*result = strtol(arg, &endptr, base);
+	if (*endptr) {
+		BIO_printf(bio_err,
+			"%s: Bad char %c in number %s\n",
+			prog, *endptr, arg);
+		return 0;
+	}
+	return 1;
+}
+
+/* Parse an unsigned long, put it into *result; return 0 on failure, else 1. */
+int opt_ulong(const char* arg, unsigned long* result)
+{
+	char* endptr;
+	int base = scanforhex(arg);
+
+	*result = strtoul(arg, &endptr, base);
+	if (*endptr)
+		{
+		BIO_printf(bio_err,
+			"%s: Bad char %c in number %s\n",
+			prog, *endptr, arg);
+		return 0;
+		}
+	return 1;
+}
+
 /* Parse the next flag (and value if specified), return 0 if done, -1 on
  * error, otherwise the flag's retval. */
 int opt_next(void)
@@ -191,6 +271,7 @@ int opt_next(void)
 	char* endptr;
 	const OPTIONS* o;
 	int dummy;
+	int base;
 	long val;
 	unsigned long uval;
 
@@ -252,6 +333,13 @@ int opt_next(void)
 		case 's':
 			/* Just a string. */
 			break;
+		case '/':
+			if (app_isdir(arg) >= 0)
+				break;
+			BIO_printf(bio_err,
+				"%s: Not a directory: %s\n",
+				prog, arg);
+			return -1;
 		case '<':
 			/* Input file. */
 			if (access(arg, R_OK) >= 0)
@@ -270,7 +358,8 @@ int opt_next(void)
 			return -1;
 		case 'p':
 		case 'n':
-			val = strtol(arg, &endptr, 0);
+			base = scanforhex(arg);
+			val = strtol(arg, &endptr, base);
 			if (*endptr == '\0') {
 				if (o->valtype == 'p' && val <= 0) {
 					BIO_printf(bio_err,
@@ -285,7 +374,8 @@ int opt_next(void)
 				prog, arg, o->name);
 			return -1;
 		case 'u':
-			uval = strtoul(arg, &endptr, 0);
+			base = scanforhex(arg);
+			uval = strtoul(arg, &endptr, base);
 			if (*endptr == '\0')
 				break;
 			BIO_printf(bio_err,
@@ -345,7 +435,7 @@ int opt_num_rest(void)
 
 #ifdef TEST
 enum options {
-	OPT_ERR=-1, OPT_EOF=0,
+	OPT_ERR=-1, OPT_EOF=0, OPT_NOTUSED,
 	OPT_IN, OPT_INFORM, OPT_OUT, OPT_COUNT, OPT_U, OPT_FLAG,
 	OPT_STR };
 static OPTIONS options[] = {
@@ -362,35 +452,36 @@ static OPTIONS options[] = {
 BIO* bio_err;
 int main(int ac, char **av)
 {
-	int c;
+	enum options c;
 	char** rest;
 
 	bio_err = BIO_new_fp(stderr, BIO_NOCLOSE|BIO_FP_TEXT);
 	opt_init(ac, av, options);
 
-	while ((c = opt_next()) != 0) {
-		if (c == -1)
-			return 1;
+	while ((c = opt_next()) != OPT_EOF) {
 		switch (c) {
-		case 1:
+		case OPT_ERR:
+			printf("Usage error");
+			return -1;
+		case OPT_IN:
 			printf("in %s\n", opt_arg());
 			break;
-		case 2:
+		case OPT_INFORM:
 			printf("inform %s\n", opt_arg());
 			break;
-		case 3:
+		case OPT_OUT:
 			printf("out %s\n", opt_arg());
 			break;
-		case 4:
-			printf("out %s\n", opt_arg());
+		case OPT_COUNT:
+			printf("count %s\n", opt_arg());
 			break;
-		case 5:
+		case OPT_U:
 			printf("u %s\n", opt_arg());
 			break;
-		case 7:
+		case OPT_FLAG:
 			printf("flag\n");
 			break;
-		case 's':
+		case OPT_STR:
 			printf("str %s\n", opt_arg());
 			break;
 		}

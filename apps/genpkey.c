@@ -181,8 +181,7 @@ int genpkey_main(int argc, char **argv)
 			text=1;
 		else
 			{
-			cipher = EVP_get_cipherbyname(*args + 1);
-			if (!cipher)
+			if (!opt_cipher(*args+1, &cipher))
 				{
 				BIO_printf(bio_err, "Unknown cipher %s\n",
 								*args + 1);

@@ -283,13 +283,8 @@ bad:
 		}
 	else if	(informat == FORMAT_ASN1)
 		dsa=d2i_DSAparams_bio(in,NULL);
-	else if (informat == FORMAT_PEM)
-		dsa=PEM_read_bio_DSAparams(in,NULL,NULL,NULL);
 	else
-		{
-		BIO_printf(bio_err,"bad input format specified\n");
-		goto end;
-		}
+		dsa=PEM_read_bio_DSAparams(in,NULL,NULL,NULL);
 	if (dsa == NULL)
 		{
 		BIO_printf(bio_err,"unable to load DSA parameters\n");
@@ -361,12 +356,8 @@ bad:
 		{
 		if 	(outformat == FORMAT_ASN1)
 			i=i2d_DSAparams_bio(out,dsa);
-		else if (outformat == FORMAT_PEM)
+		else
 			i=PEM_write_bio_DSAparams(out,dsa);
-		else	{
-			BIO_printf(bio_err,"bad output format specified for outfile\n");
-			goto end;
-			}
 		if (!i)
 			{
 			BIO_printf(bio_err,"unable to write DSA parameters\n");
@@ -390,13 +381,8 @@ bad:
 			}
 		if 	(outformat == FORMAT_ASN1)
 			i=i2d_DSAPrivateKey_bio(out,dsakey);
-		else if (outformat == FORMAT_PEM)
+		else
 			i=PEM_write_bio_DSAPrivateKey(out,dsakey,NULL,NULL,0,NULL,NULL);
-		else	{
-			BIO_printf(bio_err,"bad output format specified for outfile\n");
-			DSA_free(dsakey);
-			goto end;
-			}
 		DSA_free(dsakey);
 		}
 	if (need_rand)

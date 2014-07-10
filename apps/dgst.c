@@ -239,7 +239,7 @@ int dgst_main(int argc, char **argv)
 			if (!macopts || !sk_OPENSSL_STRING_push(macopts, *(++argv)))
 				break;
 			}
-		else if ((m=EVP_get_digestbyname(&((*argv)[1]))) != NULL)
+		else if (opt_md(opt_unknown(), &m))
 			md=m;
 		else
 			break;

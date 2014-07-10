@@ -105,12 +105,12 @@ int sess_id_main(int argc, char **argv)
 	int informat=FORMAT_PEM,outformat=FORMAT_PEM;
 	char *infile=NULL,*outfile=NULL,*context=NULL;
 	int cert=0,noout=0,text=0;
+	enum options o;
 
 	opt_init(argc, argv, options);
-	while ((i = opt_next()) != 0) {
-		switch (i) {
-		default:
-			BIO_printf(bio_err,"Unhandled flag %d\n", i);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
 		case OPT_ERR:
 			BIO_printf(bio_err,"Valid options are:\n");
 			printhelp(sess_id_help);
@@ -158,7 +158,7 @@ int sess_id_main(int argc, char **argv)
 	    SSL_SESSION_set1_id_context(x, (unsigned char *)context, ctx_len);
 	    }
 
-#ifdef undef
+#if 0
 	/* just testing for memory leaks :-) */
 	{
 	SSL_SESSION *s;

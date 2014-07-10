@@ -89,79 +89,101 @@ const char* ec_help[] = {
 	NULL
 };
 
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_INFORM, OPT_OUTFORM, OPT_ENGINE, OPT_IN, OPT_OUT,
+	OPT_NOOUT, OPT_TEXT, OPT_PARAM_OUT, OPT_PUBIN, OPT_PUBOUT,
+	OPT_PASSIN, OPT_PASSOUT, OPT_PARAM_ENC, OPT_CONV_FORM, OPT_CIPHER,
+};
+static OPTIONS options[] = {
+	{ "inform", OPT_INFORM, 'F' },
+	{ "outform", OPT_OUTFORM, 'F' },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's' },
+#endif
+	{ "in", OPT_IN, '<' },
+	{ "out", OPT_OUT, '>' },
+	{ "noout", OPT_NOOUT, '-' },
+	{ "text", OPT_TEXT, '-' },
+	{ "param_out", OPT_PARAM_OUT, '-' },
+	{ "pubin", OPT_PUBIN, '-' },
+	{ "pubout", OPT_PUBOUT, '-' },
+	{ "passin", OPT_PASSIN, 's' },
+	{ "passout", OPT_PASSOUT, 's' },
+	{ "param_enc", OPT_PARAM_ENC, 's' },
+	{ "conv_form", OPT_CONV_FORM, 's' },
+	{ "", OPT_CIPHER, '-' },
+	{ NULL }
+};
+
 int ec_main(int argc, char **argv)
 {
 	int 	ret = 1;
 	EC_KEY 	*eckey = NULL;
 	const EC_GROUP *group;
-	int 	i, badops = 0;
+	int  i;
 	const EVP_CIPHER *enc = NULL;
 	BIO 	*in = NULL, *out = NULL;
-	int 	informat, outformat, text=0, noout=0;
+	int 	informat=FORMAT_PEM, outformat=FORMAT_PEM, text=0, noout=0;
 	int  	pubin = 0, pubout = 0, param_out = 0;
-	char 	*infile, *outfile, *prog, *engine;
-	char 	*passargin = NULL, *passargout = NULL;
+	char 	*infile=NULL, *outfile=NULL, *prog, *engine=NULL;
+	char 	*passinarg = NULL, *passoutarg = NULL;
 	char 	*passin = NULL, *passout = NULL;
 	point_conversion_form_t form = POINT_CONVERSION_UNCOMPRESSED;
 	int	new_form = 0;
 	int	asn1_flag = OPENSSL_EC_NAMED_CURVE;
 	int 	new_asn1_flag = 0;
+	enum options o;
 
-	engine = NULL;
-	infile = NULL;
-	outfile = NULL;
-	informat = FORMAT_PEM;
-	outformat = FORMAT_PEM;
-
-	prog = argv[0];
-	argc--;
-	argv++;
-	while (argc >= 1)
-		{
-		if (strcmp(*argv,"-inform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			informat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-outform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outformat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-in") == 0)
-			{
-			if (--argc < 1) goto bad;
-			infile= *(++argv);
-			}
-		else if (strcmp(*argv,"-out") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-passin") == 0)
-			{
-			if (--argc < 1) goto bad;
-			passargin= *(++argv);
-			}
-		else if (strcmp(*argv,"-passout") == 0)
-			{
-			if (--argc < 1) goto bad;
-			passargout= *(++argv);
-			}
-		else if (strcmp(*argv, "-engine") == 0)
-			{
-			if (--argc < 1) goto bad;
-			engine= *(++argv);
-			}
-		else if (strcmp(*argv, "-noout") == 0)
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+bad:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(ec_help);
+			goto end;
+		case OPT_INFORM:
+			opt_format(opt_arg(), 1, &informat);
+			break;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUTFORM:
+			opt_format(opt_arg(), 1, &outformat);
+			break;
+		case OPT_OUT:
+			outfile= opt_arg();
+			break;
+		case OPT_NOOUT:
 			noout = 1;
-		else if (strcmp(*argv, "-text") == 0)
+			break;
+		case OPT_TEXT:
 			text = 1;
-		else if (strcmp(*argv, "-conv_form") == 0)
-			{
-			if (--argc < 1)
+			break;
+		case OPT_PARAM_OUT:
+			param_out = 1;
+			break;
+		case OPT_PUBIN:
+			pubin=1;
+			break;
+		case OPT_PUBOUT:
+			pubout=1;
+			break;
+		case OPT_PASSIN:
+			passinarg= opt_arg();
+			break;
+		case OPT_PASSOUT:
+			passoutarg= opt_arg();
+			break;
+		case OPT_ENGINE:
+			engine= opt_arg();
+			break;
+		case OPT_CIPHER:
+			if (!opt_cipher(opt_unknown(), &enc))
 				goto bad;
-			++argv;
+		case OPT_CONV_FORM:
 			new_form = 1;
 			if (strcmp(*argv, "compressed") == 0)
 				form = POINT_CONVERSION_COMPRESSED;
@@ -171,12 +193,8 @@ int ec_main(int argc, char **argv)
 				form = POINT_CONVERSION_HYBRID;
 			else
 				goto bad;
-			}
-		else if (strcmp(*argv, "-param_enc") == 0)
-			{
-			if (--argc < 1)
-				goto bad;
-			++argv;
+			break;
+		case OPT_PARAM_ENC:
 			new_asn1_flag = 1;
 			if (strcmp(*argv, "named_curve") == 0)
 				asn1_flag = OPENSSL_EC_NAMED_CURVE;
@@ -184,37 +202,15 @@ int ec_main(int argc, char **argv)
 				asn1_flag = 0;
 			else
 				goto bad;
-			}
-		else if (strcmp(*argv, "-param_out") == 0)
-			param_out = 1;
-		else if (strcmp(*argv, "-pubin") == 0)
-			pubin=1;
-		else if (strcmp(*argv, "-pubout") == 0)
-			pubout=1;
-		else if ((enc=EVP_get_cipherbyname(&(argv[0][1]))) == NULL)
-			{
-			BIO_printf(bio_err, "unknown option %s\n", *argv);
-			badops=1;
 			break;
-			}
-		argc--;
-		argv++;
 		}
-
-	if (badops)
-		{
-bad:
-		BIO_printf(bio_err, "%s [options] <infile >outfile\n", prog);
-		BIO_printf(bio_err, "where options are\n");
-		printhelp(ec_help);
-		goto end;
-		}
+	}
 
 #ifndef OPENSSL_NO_ENGINE
         setup_engine(bio_err, engine, 0);
 #endif
 
-	if(!app_passwd(bio_err, passargin, passargout, &passin, &passout)) 
+	if(!app_passwd(bio_err, passinarg, passoutarg, &passin, &passout)) 
 		{
 		BIO_printf(bio_err, "Error getting passwords\n");
 		goto end;
@@ -232,20 +228,13 @@ bad:
 		else 
 			eckey = d2i_ECPrivateKey_bio(in, NULL);
 		} 
-	else if (informat == FORMAT_PEM) 
-		{
-		if (pubin) 
-			eckey = PEM_read_bio_EC_PUBKEY(in, NULL, NULL, 
-				NULL);
-		else 
-			eckey = PEM_read_bio_ECPrivateKey(in, NULL, NULL,
-				passin);
-		} 
 	else
 		{
-		BIO_printf(bio_err, "bad input format specified for key\n");
-		goto end;
-		}
+		if (pubin) 
+			eckey = PEM_read_bio_EC_PUBKEY(in, NULL, NULL, NULL);
+		else 
+			eckey = PEM_read_bio_ECPrivateKey(in, NULL, NULL, passin);
+		} 
 	if (eckey == NULL)
 		{
 		BIO_printf(bio_err,"unable to load Key\n");

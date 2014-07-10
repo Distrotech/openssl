@@ -76,6 +76,43 @@ const char *ciphers_help[]={
 	NULL
 };
 
+
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_V, OPT_UPPER_V, OPT_S,
+#ifndef OPENSSL_NO_SSL_TRACE
+	OPT_STDNAME,
+#endif
+#ifndef OPENSSL_NO_SSL2
+	OPT_SSL2,
+#endif
+#ifndef OPENSSL_NO_SSL3
+	OPT_SSL3,
+#endif
+#ifndef OPENSSL_NO_TLS1
+	OPT_TLS1,
+#endif
+};
+static OPTIONS options[] = {
+	{ "v", OPT_V, '-' },
+	{ "V", OPT_UPPER_V, '-' },
+	{ "s", OPT_S, '-' },
+#ifndef OPENSSL_NO_SSL_TRACE
+	{ "stdname", OPT_STDNAME, '-' },
+#endif
+#ifndef OPENSSL_NO_SSL2
+	{ "ssl2", OPT_SSL2, '-' },
+#endif
+#ifndef OPENSSL_NO_SSL3
+	{ "ssl3", OPT_SSL3, '-' },
+#endif
+#ifndef OPENSSL_NO_TLS1
+	{ "tls1", OPT_TLS1, '-' },
+#endif
+	{ NULL }
+};
+
+
 int ciphers_main(int argc, char **argv)
 	{
 	int ret=1,i;
@@ -85,65 +122,65 @@ int ciphers_main(int argc, char **argv)
 	int stdname = 0;
 #endif
 	const char *p;
-	int badops=0;
 	SSL_CTX *ctx=NULL;
 	SSL *ssl=NULL;
 	char *ciphers=NULL;
-	const SSL_METHOD *meth=NULL;
+	const SSL_METHOD *meth=SSLv23_server_method();
 	STACK_OF(SSL_CIPHER) *sk=NULL;
 	char buf[512];
+	enum options o;
+	char* prog;
 
-	meth=SSLv23_server_method();
-
-	argc--;
-	argv++;
-	while (argc >= 1)
-		{
-		if (strcmp(*argv,"-v") == 0)
-			verbose=1;
-		else if (strcmp(*argv,"-V") == 0)
-			verbose=Verbose=1;
-		else if (strcmp(*argv,"-s") == 0)
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+bad:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(ciphers_help);
+			goto end;
+		case OPT_V:
+			verbose = 1;
+			break;
+		case OPT_UPPER_V:
+			verbose = Verbose = 1;
+			break;
+		case OPT_S:
 			use_supported = 1;
+			break;
 #ifndef OPENSSL_NO_SSL_TRACE
-		else if (strcmp(*argv,"-stdname") == 0)
-			stdname=verbose=1;
+		case OPT_STDNAME:
+			stdname = verbose = 1;
+			break;
 #endif
+
 #ifndef OPENSSL_NO_SSL2
-		else if (strcmp(*argv,"-ssl2") == 0)
+		case OPT_SSL2:
 			meth=SSLv2_client_method();
+			break;
 #endif
 #ifndef OPENSSL_NO_SSL3
-		else if (strcmp(*argv,"-ssl3") == 0)
+		case OPT_SSL3:
 			meth=SSLv3_client_method();
+			break;
 #endif
 #ifndef OPENSSL_NO_TLS1
-		else if (strcmp(*argv,"-tls1") == 0)
+		case OPT_TLS1:
 			meth=TLSv1_client_method();
-#endif
-		else if ((strncmp(*argv,"-h",2) == 0) ||
-			 (strcmp(*argv,"-?") == 0))
-			{
-			badops=1;
 			break;
-			}
-		else
-			{
-			ciphers= *argv;
-			}
-		argc--;
-		argv++;
+#endif
 		}
+	}
 
-	if (badops)
-		{
-		BIO_printf(bio_err, "usage: ciphers args\n");
-		printhelp(ciphers_help);
-		goto end;
-		}
+	argv = opt_rest();
+	argc = opt_num_rest();
+	if (argc == 1)
+		ciphers = *argv;
+	else if (argc != 0)
+		goto bad;
 
 	OpenSSL_add_ssl_algorithms();
-
 	ctx=SSL_CTX_new(meth);
 	if (ctx == NULL) goto err;
 	if (ciphers != NULL) {
@@ -172,7 +209,7 @@ int ciphers_main(int argc, char **argv)
 			}
 		BIO_printf(bio_out,"\n");
 		}
-	else /* verbose */
+	else
 		{
 
 		for (i=0; i<sk_SSL_CIPHER_num(sk); i++)
@@ -210,12 +247,9 @@ int ciphers_main(int argc, char **argv)
 		}
 
 	ret=0;
-	if (0)
-		{
+	goto end;
 err:
-		SSL_load_error_strings();
-		ERR_print_errors(bio_err);
-		}
+	ERR_print_errors(bio_err);
 end:
 	if (use_supported && sk)
 		sk_SSL_CIPHER_free(sk);

@@ -69,133 +69,115 @@ const char* pkey_help[] = {
 	"-outform X      output format (DER or PEM)",
 	"-out file       output file",
 	"-passout arg    output file pass phrase source",
+	"-cipher         cipher algorithm to use",
+	"-text           output in plaintext as well",
+	"-text_pub       only output public key components",
+	"-noout          do not output the key",
+	"-pubin          read public key from input (default is private key)",
+	"-pubout         output public key, not private"
 #ifndef OPENSSL_NO_ENGINE
 	"-engine e       use engine e, possibly a hardware device.",
 #endif
 	NULL
 };
 
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_INFORM, OPT_OUTFORM, OPT_PASSIN, OPT_PASSOUT, OPT_ENGINE,
+	OPT_IN, OPT_OUT, OPT_PUBIN, OPT_PUBOUT, OPT_TEXT_PUB,
+	OPT_TEXT, OPT_NOOUT, OPT_MD,
+};
+static OPTIONS options[] = {
+	{ "inform", OPT_INFORM, 'F' },
+	{ "outform", OPT_OUTFORM, 'F' },
+	{ "passin", OPT_PASSIN, 's' },
+	{ "passout", OPT_PASSOUT, 's' },
+	{ "engine", OPT_ENGINE, 's' },
+	{ "in", OPT_IN, '<' },
+	{ "out", OPT_OUT, '>' },
+	{ "pubin", OPT_PUBIN, '-' },
+	{ "pubout", OPT_PUBOUT, '-' },
+	{ "text_pub", OPT_TEXT_PUB, '-' },
+	{ "text", OPT_TEXT, '-' },
+	{ "noout", OPT_NOOUT, '-' },
+	{ "", OPT_MD, '-' },
+	{ NULL }
+};
+
+
 
 int pkey_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL;
-	char **args, *infile = NULL, *outfile = NULL;
-	char *passargin = NULL, *passargout = NULL;
+	char *infile = NULL, *outfile = NULL;
+	char *passinarg = NULL, *passoutarg = NULL;
 	BIO *in = NULL, *out = NULL;
 	const EVP_CIPHER *cipher = NULL;
-	int informat, outformat;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM;
 	int pubin = 0, pubout = 0, pubtext = 0, text = 0, noout = 0;
 	EVP_PKEY *pkey=NULL;
 	char *passin = NULL, *passout = NULL;
-	int badarg = 0;
-#ifndef OPENSSL_NO_ENGINE
-	char *engine=NULL;
-#endif
 	int ret = 1;
+	enum options o;
+	char* prog, *engine=NULL;
 
-	informat=FORMAT_PEM;
-	outformat=FORMAT_PEM;
-
-	args = argv + 1;
-	while (!badarg && *args && *args[0] == '-')
-		{
-		if (!strcmp(*args,"-inform"))
-			{
-			if (args[1])
-				{
-				args++;
-				informat=str2fmt(*args);
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args,"-outform"))
-			{
-			if (args[1])
-				{
-				args++;
-				outformat=str2fmt(*args);
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args,"-passin"))
-			{
-			if (!args[1]) goto bad;
-			passargin= *(++args);
-			}
-		else if (!strcmp(*args,"-passout"))
-			{
-			if (!args[1]) goto bad;
-			passargout= *(++args);
-			}
-#ifndef OPENSSL_NO_ENGINE
-		else if (strcmp(*args,"-engine") == 0)
-			{
-			if (!args[1]) goto bad;
-			engine= *(++args);
-			}
-#endif
-		else if (!strcmp (*args, "-in"))
-			{
-			if (args[1])
-				{
-				args++;
-				infile = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp (*args, "-out"))
-			{
-			if (args[1])
-				{
-				args++;
-				outfile = *args;
-				}
-			else badarg = 1;
-			}
-		else if (strcmp(*args,"-pubin") == 0)
-			{
-			pubin=1;
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+bad:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(pkey_help);
+			goto end;
+		case OPT_INFORM:
+			opt_format(opt_arg(), 1, &informat);
+			break;
+		case OPT_OUTFORM:
+			opt_format(opt_arg(), 1, &outformat);
+			break;
+		case OPT_PASSIN:
+			passinarg = opt_arg();
+			break;
+		case OPT_PASSOUT:
+			passoutarg = opt_arg();
+			break;
+		case OPT_ENGINE:
+			engine = opt_arg();
+			break;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUT:
+			outfile = opt_arg();
+			break;
+		case OPT_PUBIN:
+			pubin=pubout=pubtext=1;
+			break;
+		case OPT_PUBOUT:
 			pubout=1;
-			pubtext=1;
-			}
-		else if (strcmp(*args,"-pubout") == 0)
-			pubout=1;
-		else if (strcmp(*args,"-text_pub") == 0)
-			{
-			pubtext=1;
+			break;
+		case OPT_TEXT_PUB:
+			pubtext=text=1;
+			break;
+		case OPT_TEXT:
 			text=1;
-			}
-		else if (strcmp(*args,"-text") == 0)
-			text=1;
-		else if (strcmp(*args,"-noout") == 0)
+			break;
+		case OPT_NOOUT:
 			noout=1;
-		else
-			{
-			cipher = EVP_get_cipherbyname(*args + 1);
-			if (!cipher)
-				{
-				BIO_printf(bio_err, "Unknown cipher %s\n",
-								*args + 1);
-				badarg = 1;
-				}
-			}
-		args++;
+			break;
+		case OPT_MD:
+			if (!opt_cipher(opt_unknown(), &cipher))
+				goto bad;
 		}
+	}
 
-	if (badarg)
-		{
-		bad:
-		BIO_printf(bio_err, "Usage pkey [options]\n");
-		BIO_printf(bio_err, "where options are\n");
-		printhelp(pkey_help);
-		return 1;
-		}
 
 #ifndef OPENSSL_NO_ENGINE
         e = setup_engine(bio_err, engine, 0);
 #endif
 
-	if (!app_passwd(bio_err, passargin, passargout, &passin, &passout))
+	if (!app_passwd(bio_err, passinarg, passoutarg, &passin, &passout))
 		{
 		BIO_printf(bio_err, "Error getting passwords\n");
 		goto end;

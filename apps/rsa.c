@@ -198,9 +198,8 @@ int rsa_main(int argc, char **argv)
 			modulus=1;
 		else if (strcmp(*argv,"-check") == 0)
 			check=1;
-		else if ((enc=EVP_get_cipherbyname(&(argv[0][1]))) == NULL)
+		else if (!opt_cipher(opt_unknown(), &enc))
 			{
-			BIO_printf(bio_err,"unknown option %s\n",*argv);
 			badops=1;
 			break;
 			}

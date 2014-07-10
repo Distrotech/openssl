@@ -85,84 +85,72 @@ const char* dh_help[] = {
 #endif
 	NULL
 };
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT, OPT_ENGINE,
+	OPT_CHECK, OPT_TEXT, OPT_C, OPT_NOOUT
+};
+static OPTIONS options[] = {
+	{ "inform", OPT_INFORM, 'F' },
+	{ "outform", OPT_OUTFORM, 'F' },
+	{ "in", OPT_IN, '<' },
+	{ "out", OPT_OUT, '>' },
+	{ "engine", OPT_ENGINE, 's' },
+	{ "check", OPT_CHECK, '-' },
+	{ "text", OPT_TEXT, '-' },
+	{ "C", OPT_C, '-' },
+	{ "noout", OPT_NOOUT, '-' },
+	{ NULL }
+};
+
 
 int dh_main(int argc, char **argv)
 	{
 	DH *dh=NULL;
-	int i,badops=0,text=0;
+	int i,text=0;
 	BIO *in=NULL,*out=NULL;
-	int informat,outformat,check=0,noout=0,C=0,ret=1;
-	char *infile,*outfile,*prog;
-#ifndef OPENSSL_NO_ENGINE
-	char *engine;
-#endif
+	int informat=FORMAT_PEM,outformat=FORMAT_PEM,check=0,noout=0,C=0,ret=1;
+	char *infile=NULL,*outfile=NULL,*prog;
+	char *engine=NULL;
+	enum options o;
 
-#ifndef OPENSSL_NO_ENGINE
-	engine=NULL;
-#endif
-	infile=NULL;
-	outfile=NULL;
-	informat=FORMAT_PEM;
-	outformat=FORMAT_PEM;
-
-	prog=argv[0];
-	argc--;
-	argv++;
-	while (argc >= 1)
-		{
-		if 	(strcmp(*argv,"-inform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			informat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-outform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outformat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-in") == 0)
-			{
-			if (--argc < 1) goto bad;
-			infile= *(++argv);
-			}
-		else if (strcmp(*argv,"-out") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outfile= *(++argv);
-			}
-#ifndef OPENSSL_NO_ENGINE
-		else if (strcmp(*argv,"-engine") == 0)
-			{
-			if (--argc < 1) goto bad;
-			engine= *(++argv);
-			}
-#endif
-		else if (strcmp(*argv,"-check") == 0)
-			check=1;
-		else if (strcmp(*argv,"-text") == 0)
-			text=1;
-		else if (strcmp(*argv,"-C") == 0)
-			C=1;
-		else if (strcmp(*argv,"-noout") == 0)
-			noout=1;
-		else
-			{
-			BIO_printf(bio_err,"unknown option %s\n",*argv);
-			badops=1;
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(dh_help);
+			goto end;
+		case OPT_INFORM:
+			opt_format(opt_arg(), 1, &informat);
 			break;
-			}
-		argc--;
-		argv++;
+		case OPT_OUTFORM:
+			opt_format(opt_arg(), 1, &outformat);
+			break;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUT:
+			outfile= opt_arg();
+			break;
+		case OPT_ENGINE:
+			engine = opt_arg();
+			break;
+		case OPT_CHECK:
+			check=1;
+			break;
+		case OPT_TEXT:
+			text=1;
+			break;
+		case OPT_C:
+			C=1;
+			break;
+		case OPT_NOOUT:
+			noout=1;
+			break;
 		}
-
-	if (badops)
-		{
-bad:
-		BIO_printf(bio_err,"%s [options] <infile >outfile\n",prog);
-		BIO_printf(bio_err,"where options are\n");
-		printhelp(dh_help);
-		goto end;
-		}
+	}
 
 #ifndef OPENSSL_NO_ENGINE
         setup_engine(bio_err, engine, 0);
@@ -179,11 +167,6 @@ bad:
 		dh=d2i_DHparams_bio(in,NULL);
 	else if (informat == FORMAT_PEM)
 		dh=PEM_read_bio_DHparams(in,NULL,NULL,NULL);
-	else
-		{
-		BIO_printf(bio_err,"bad input format specified\n");
-		goto end;
-		}
 	if (dh == NULL)
 		{
 		BIO_printf(bio_err,"unable to load DH parameters\n");
@@ -272,12 +255,8 @@ bad:
 		{
 		if 	(outformat == FORMAT_ASN1)
 			i=i2d_DHparams_bio(out,dh);
-		else if (outformat == FORMAT_PEM)
+		else
 			i=PEM_write_bio_DHparams(out,dh);
-		else	{
-			BIO_printf(bio_err,"bad output format specified for outfile\n");
-			goto end;
-			}
 		if (!i)
 			{
 			BIO_printf(bio_err,"unable to write DH parameters\n");

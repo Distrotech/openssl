@@ -87,14 +87,14 @@ int nseq_main(int argc, char **argv)
 	int toseq=0;
 	X509 *x509=NULL;
 	NETSCAPE_CERT_SEQUENCE *seq=NULL;
-	int i, ret=1;
+	enum options o;
+	int ret=1,i;
 	char* prog;
 
 	prog = opt_init(argc, argv, options);
-	while ((i = opt_next()) != 0) {
-		switch (i) {
-		default:
-			BIO_printf(bio_err,"%s: Unhandled flag %d\n", prog, i);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
 		case OPT_ERR:
 			BIO_printf(bio_err,"Valid options are:\n");
 			printhelp(nseq_help);

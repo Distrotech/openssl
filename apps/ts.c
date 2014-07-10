@@ -291,10 +291,8 @@ int ts_main(int argc, char **argv)
 			if (argc-- < 1) goto usage;
 			engine = *++argv;
 			}
-		else if ((md = EVP_get_digestbyname(*argv + 1)) != NULL)
-			{
-			/* empty. */
-			}
+		else if (!opt_md(opt_unknown(), &md))
+			goto usage;
 		else
 			goto usage;
 		}
