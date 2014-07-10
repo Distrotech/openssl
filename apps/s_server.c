@@ -1534,9 +1534,6 @@ bad:
 		}
 #endif
 
-	SSL_load_error_strings();
-	OpenSSL_add_ssl_algorithms();
-
 #ifndef OPENSSL_NO_ENGINE
         e = setup_engine(bio_err, engine_id, 1);
 #endif

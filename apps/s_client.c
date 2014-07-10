@@ -1165,9 +1165,6 @@ bad:
 		}
 #endif
 
-	OpenSSL_add_ssl_algorithms();
-	SSL_load_error_strings();
-
 #if !defined(OPENSSL_NO_TLSEXT) && !defined(OPENSSL_NO_NEXTPROTONEG)
 	next_proto.status = -1;
 	if (next_proto_neg_in)

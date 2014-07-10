@@ -89,32 +89,51 @@ const char *engine_help[] = {
 NULL
 };
 
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_V, OPT_VV, OPT_VVV, OPT_VVVV, OPT_C,
+	OPT_T, OPT_TT, OPT_PRE, OPT_POST,
+};
+static OPTIONS options[] = {
+	{ "v", OPT_V, '-' },
+	{ "vv", OPT_VV, '-' },
+	{ "vvv", OPT_VVV, '-' },
+	{ "vvvv", OPT_VVVV, '-' },
+	{ "c", OPT_C, '-' },
+	{ "t", OPT_T, '-' },
+	{ "tt", OPT_TT, '-' },
+	{ "pre", OPT_PRE, 's' },
+	{ "post", OPT_POST, 's' },
+	{ NULL }
+};
+
+
 static void identity(char *ptr)
-	{
+{
 	return;
-	}
+}
 
 static int append_buf(char **buf, const char *s, int *size, int step)
-	{
+{
 	int l = strlen(s);
 
 	if (*buf == NULL)
-		{
+	{
 		*size = step;
 		*buf = OPENSSL_malloc(*size);
 		if (*buf == NULL)
 			return 0;
 		**buf = '\0';
-		}
+	}
 
 	if (**buf != '\0')
 		l += 2;		/* ", " */
 
 	if (strlen(*buf) + strlen(s) >= (unsigned int)*size)
-		{
+	{
 		*size += step;
 		*buf = OPENSSL_realloc(*buf, *size);
-		}
+	}
 
 	if (*buf == NULL)
 		return 0;
@@ -124,64 +143,64 @@ static int append_buf(char **buf, const char *s, int *size, int step)
 	BUF_strlcat(*buf, s, *size);
 
 	return 1;
-	}
+}
 
 static int util_flags(BIO *out, unsigned int flags, const char *indent)
-	{
+{
 	int started = 0, err = 0;
 	/* Indent before displaying input flags */
 	BIO_printf(out, "%s%s(input flags): ", indent, indent);
 	if(flags == 0)
-		{
+	{
 		BIO_printf(out, "<no flags>\n");
 		return 1;
-		}
-        /* If the object is internal, mark it in a way that shows instead of
-         * having it part of all the other flags, even if it really is. */
+	}
+	/* If the object is internal, mark it in a way that shows instead of
+	 * having it part of all the other flags, even if it really is. */
 	if(flags & ENGINE_CMD_FLAG_INTERNAL)
-		{
+	{
 		BIO_printf(out, "[Internal] ");
-		}
+	}
 
 	if(flags & ENGINE_CMD_FLAG_NUMERIC)
-		{
+	{
 		BIO_printf(out, "NUMERIC");
 		started = 1;
-		}
+	}
 	/* Now we check that no combinations of the mutually exclusive NUMERIC,
 	 * STRING, and NO_INPUT flags have been used. Future flags that can be
 	 * OR'd together with these would need to added after these to preserve
 	 * the testing logic. */
 	if(flags & ENGINE_CMD_FLAG_STRING)
-		{
+	{
 		if(started)
-			{
+		{
 			BIO_printf(out, "|");
 			err = 1;
-			}
+		}
 		BIO_printf(out, "STRING");
 		started = 1;
-		}
+	}
 	if(flags & ENGINE_CMD_FLAG_NO_INPUT)
-		{
+	{
 		if(started)
-			{
+		{
 			BIO_printf(out, "|");
 			err = 1;
-			}
+		}
 		BIO_printf(out, "NO_INPUT");
 		started = 1;
-		}
+	}
 	/* Check for unknown flags */
 	flags = flags & ~ENGINE_CMD_FLAG_NUMERIC &
-			~ENGINE_CMD_FLAG_STRING &
-			~ENGINE_CMD_FLAG_NO_INPUT &
-			~ENGINE_CMD_FLAG_INTERNAL;
+		~ENGINE_CMD_FLAG_STRING &
+		~ENGINE_CMD_FLAG_NO_INPUT &
+		~ENGINE_CMD_FLAG_INTERNAL;
 	if(flags)
-		{
+	{
 		if(started) BIO_printf(out, "|");
 		BIO_printf(out, "<0x%04X>", flags);
-		}
+	}
 	if(err)
 		BIO_printf(out, "  <illegal flags!>");
 	BIO_printf(out, "\n");
@@ -341,67 +360,47 @@ int engine_main(int argc, char **argv)
 	STACK_OF(OPENSSL_STRING) *engines = sk_OPENSSL_STRING_new_null();
 	STACK_OF(OPENSSL_STRING) *pre_cmds = sk_OPENSSL_STRING_new_null();
 	STACK_OF(OPENSSL_STRING) *post_cmds = sk_OPENSSL_STRING_new_null();
-	int badops=1;
-	BIO *out=NULL;
+	BIO *out;
 	const char *indent = "     ";
-
-	SSL_load_error_strings();
+	enum options o;
+	char* prog;
 
 	out=dup_bio_out();
-
-	argc--;
-	argv++;
-	while (argc >= 1)
-		{
-		if (strncmp(*argv,"-v",2) == 0)
-			{
-			if(strspn(*argv + 1, "v") < strlen(*argv + 1))
-				goto skip_arg_loop;
-			if((verbose=strlen(*argv + 1)) > 4)
-				goto skip_arg_loop;
-			}
-		else if (strcmp(*argv,"-c") == 0)
-			list_cap=1;
-		else if (strncmp(*argv,"-t",2) == 0)
-			{
-			test_avail=1;
-			if(strspn(*argv + 1, "t") < strlen(*argv + 1))
-				goto skip_arg_loop;
-			if((test_avail_noise = strlen(*argv + 1) - 1) > 1)
-				goto skip_arg_loop;
-			}
-		else if (strcmp(*argv,"-pre") == 0)
-			{
-			argc--; argv++;
-			if (argc == 0)
-				goto skip_arg_loop;
-			sk_OPENSSL_STRING_push(pre_cmds,*argv);
-			}
-		else if (strcmp(*argv,"-post") == 0)
-			{
-			argc--; argv++;
-			if (argc == 0)
-				goto skip_arg_loop;
-			sk_OPENSSL_STRING_push(post_cmds,*argv);
-			}
-		else if ((strncmp(*argv,"-h",2) == 0) ||
-				(strcmp(*argv,"-?") == 0))
-			goto skip_arg_loop;
-		else
-			sk_OPENSSL_STRING_push(engines,*argv);
-		argc--;
-		argv++;
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(engine_help);
+			goto end;
+		case OPT_VVVV:
+			verbose++;
+		case OPT_VVV:
+			verbose++;
+		case OPT_VV:
+			verbose++;
+		case OPT_V:
+			verbose++;
+			break;
+		case OPT_C:
+			list_cap = 1;
+			break;
+		case OPT_TT:
+			test_avail_noise++;
+		case OPT_T:
+			test_avail++;
+			break;
+		case OPT_PRE:
+			sk_OPENSSL_STRING_push(pre_cmds, opt_arg());
+			break;
+		case OPT_POST:
+			sk_OPENSSL_STRING_push(post_cmds, opt_arg());
+			break;
 		}
-	/* Looks like everything went OK */
-	badops = 0;
-skip_arg_loop:
-
-	if (badops)
-		{
-		BIO_printf(bio_err, "usage: engine opts [engine ...]\n");
-		printhelp(engine_help);
-		goto end;
-		}
+	}
+	for (argv = opt_rest(); *argv; argv++)
+			sk_OPENSSL_STRING_push(engines, *argv);
 
 	if (sk_OPENSSL_STRING_num(engines) == 0)
 		{

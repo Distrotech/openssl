@@ -347,8 +347,6 @@ int s_time_main(int argc, char **argv)
 	if(!set_cert_stuff(tm_ctx,t_cert_file,t_key_file)) 
 		goto end;
 
-	SSL_load_error_strings();
-
 	if ((!SSL_CTX_load_verify_locations(tm_ctx,CAfile,CApath)) ||
 		(!SSL_CTX_set_default_verify_paths(tm_ctx)))
 		{

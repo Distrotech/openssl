@@ -215,7 +215,6 @@ int ocsp_main(int argc, char **argv)
 	int nmin = 0, ndays = -1;
 	const EVP_MD *cert_id_md = NULL, *rsign_md = NULL;
 
-	SSL_load_error_strings();
 	args = argv + 1;
 	reqnames = sk_OPENSSL_STRING_new_null();
 	ids = sk_OCSP_CERTID_new_null();
