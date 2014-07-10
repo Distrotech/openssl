@@ -152,18 +152,6 @@ extern void unbuffer(FILE* fp);
 #include <signal.h>
 #endif
 
-#ifdef SIGPIPE
-#define do_pipe_sig()	signal(SIGPIPE,SIG_IGN)
-#else
-#define do_pipe_sig()
-#endif
-
-#ifdef OPENSSL_NO_COMP
-#define zlib_cleanup() 
-#else
-#define zlib_cleanup() COMP_zlib_cleanup()
-#endif
-
 
 #if defined(OPENSSL_SYSNAME_WIN32) || defined(OPENSSL_SYSNAME_WINCE)
 #  define openssl_fdset(a,b) FD_SET((unsigned int)a, b)
@@ -189,6 +177,11 @@ extern char* opt_progname(const char *argv0);
 extern char* opt_init(int ac, char** av, const OPTIONS* o);
 extern int opt_next();
 extern int opt_format(const char *s, int onlyderpem, int* result);
+extern int opt_int(const char* arg, int* result);
+extern int opt_ulong(const char* arg, unsigned long* result);
+extern int opt_long(const char* arg, long* result);
+extern int opt_cipher(const char* name, const EVP_CIPHER** cipherp);
+extern int opt_md(const char* name, const EVP_MD** mdp);
 extern char* opt_arg(void);
 extern char* opt_unknown(void);
 extern char* opt_reset(void);

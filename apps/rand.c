@@ -90,23 +90,21 @@ static OPTIONS options[] = {
 
 int rand_main(int argc, char **argv)
 	{
-	int i, r, ret = 1;
+	int r, ret = 1;
+	enum options o;
 	char *outfile = NULL;
 	char *inrand = NULL;
 	int base64 = 0;
 	int hex = 0;
 	BIO *out = NULL;
-	int num = -1;
+	int i,num = -1;
 	char* prog;
-#ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
-#endif
 
 	prog = opt_init(argc, argv, options);
-	while ((i = opt_next()) != 0) {
-		switch (i) {
-		default:
-			BIO_printf(bio_err,"%s: Unhandled flag %d\n", prog, i);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
 		case OPT_ERR:
 bad:
 			BIO_printf(bio_err,"Usage: %s [flags] num\n",

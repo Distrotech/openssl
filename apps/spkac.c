@@ -87,92 +87,90 @@ const char* spkac_help[] = {
 	NULL
 };
 
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_NOOUT, OPT_PUBKEY, OPT_VERIFY, OPT_IN, OPT_OUT,
+	OPT_ENGINE, OPT_KEY, OPT_CHALLENGE, OPT_PASSIN, OPT_SPKAC,
+	OPT_SPKSECT,
+};
+static OPTIONS options[] = {
+	{ "noout", OPT_NOOUT, '-' },
+	{ "pubkey", OPT_PUBKEY, '-' },
+	{ "verify", OPT_VERIFY, '-' },
+	{ "in", OPT_IN, '<' },
+	{ "out", OPT_OUT, '>' },
+	{ "engine", OPT_ENGINE, 's' },
+	{ "key", OPT_KEY, '<' },
+	{ "challenge", OPT_CHALLENGE, 's' },
+	{ "passin", OPT_PASSIN, 's' },
+	{ "spkac", OPT_SPKAC, 's' },
+	{ "spksect", OPT_SPKSECT, 's' },
+	{ NULL }
+};
+
 int spkac_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL;
-	int i,badops=0, ret = 1;
+	int i, ret = 1;
 	BIO *in = NULL,*out = NULL;
 	int verify=0,noout=0,pubkey=0;
 	char *infile = NULL,*outfile = NULL,*prog;
-	char *passargin = NULL, *passin = NULL;
+	char *passinarg = NULL, *passin = NULL;
 	const char *spkac = "SPKAC", *spksect = "default";
 	char *spkstr = NULL;
 	char *challenge = NULL, *keyfile = NULL;
 	CONF *conf = NULL;
 	NETSCAPE_SPKI *spki = NULL;
 	EVP_PKEY *pkey = NULL;
-#ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
-#endif
+	enum options o;
 
-	prog=argv[0];
-	argc--;
-	argv++;
-	while (argc >= 1)
-		{
-		if (strcmp(*argv,"-in") == 0)
-			{
-			if (--argc < 1) goto bad;
-			infile= *(++argv);
-			}
-		else if (strcmp(*argv,"-out") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-passin") == 0)
-			{
-			if (--argc < 1) goto bad;
-			passargin= *(++argv);
-			}
-		else if (strcmp(*argv,"-key") == 0)
-			{
-			if (--argc < 1) goto bad;
-			keyfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-challenge") == 0)
-			{
-			if (--argc < 1) goto bad;
-			challenge= *(++argv);
-			}
-		else if (strcmp(*argv,"-spkac") == 0)
-			{
-			if (--argc < 1) goto bad;
-			spkac= *(++argv);
-			}
-		else if (strcmp(*argv,"-spksect") == 0)
-			{
-			if (--argc < 1) goto bad;
-			spksect= *(++argv);
-			}
-#ifndef OPENSSL_NO_ENGINE
-		else if (strcmp(*argv,"-engine") == 0)
-			{
-			if (--argc < 1) goto bad;
-			engine= *(++argv);
-			}
-#endif
-		else if (strcmp(*argv,"-noout") == 0)
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(spkac_help);
+			goto end;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUT:
+			outfile = opt_arg();
+			break;
+		case OPT_NOOUT:
 			noout=1;
-		else if (strcmp(*argv,"-pubkey") == 0)
+			break;
+		case OPT_PUBKEY:
 			pubkey=1;
-		else if (strcmp(*argv,"-verify") == 0)
+			break;
+		case OPT_VERIFY:
 			verify=1;
-		else badops = 1;
-		argc--;
-		argv++;
-		}
+			break;
+		case OPT_PASSIN:
+			passinarg= opt_arg();
+			break;
+		case OPT_KEY:
+			keyfile= opt_arg();
+			break;
+		case OPT_CHALLENGE:
+			challenge= opt_arg();
+			break;
+		case OPT_SPKAC:
+			spkac= opt_arg();
+			break;
+		case OPT_SPKSECT:
+			spksect= opt_arg();
+			break;
+		case OPT_ENGINE:
+			engine= opt_arg();
+			break;
 
-	if (badops)
-		{
-bad:
-		BIO_printf(bio_err,"spkac [options]\n");
-		BIO_printf(bio_err,"where options are\n");
-		printhelp(spkac_help);
-		goto end;
 		}
+	}
 
-	if(!app_passwd(bio_err, passargin, NULL, &passin, NULL)) {
+	if(!app_passwd(bio_err, passinarg, NULL, &passin, NULL)) {
 		BIO_printf(bio_err, "Error getting password\n");
 		goto end;
 	}

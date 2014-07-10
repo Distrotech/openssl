@@ -334,19 +334,9 @@ bad:
 		EC_GROUP_set_point_conversion_form(group, form);
 		}
 	else if (informat == FORMAT_ASN1)
-		{
 		group = d2i_ECPKParameters_bio(in, NULL);
-		}
-	else if (informat == FORMAT_PEM)
-		{
-		group = PEM_read_bio_ECPKParameters(in,NULL,NULL,NULL);
-		}
 	else
-		{
-		BIO_printf(bio_err, "bad input format specified\n");
-		goto end;
-		}
-
+		group = PEM_read_bio_ECPKParameters(in,NULL,NULL,NULL);
 	if (group == NULL)
 		{
 		BIO_printf(bio_err, 

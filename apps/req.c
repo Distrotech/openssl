@@ -113,9 +113,6 @@ const char *req_help[] = {
 	"-verify        verify signature on REQ",
 	"-modulus       RSA modulus",
 	"-nodes         don't encrypt the output key",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e      use engine e, possibly a hardware device",
-#endif
 	"-subject       output the request's subject",
 	"-passin        private key password source",
 	"-key file      use the private key contained in file",
@@ -125,9 +122,6 @@ const char *req_help[] = {
 	"-rand file...  load the file(s) into the random number generator",
 	"-newkey rsa:bits generate a new RSA key of 'bits' in size",
 	"-newkey dsa:file generate a new DSA key, parameters taken from CA in 'file'",
-#ifndef OPENSSL_NO_ECDSA
-	"-newkey ec:file generate a new EC key, parameters taken from CA in 'file'",
-#endif
 	"-[digest]      Digest to sign with (md5, sha1, md2, mdc2, md4)",
 	"-config file   request template file.",
 	"-subj arg      set or modify request subject",
@@ -145,6 +139,12 @@ const char *req_help[] = {
 	"-utf8          input characters are UTF8 (default ASCII)",
 	"-nameopt arg   - various certificate name options",
 	"-reqopt arg    - various request text options",
+#ifndef OPENSSL_NO_ENGINE
+	"-engine e      use engine e, possibly a hardware device",
+#endif
+#ifndef OPENSSL_NO_ECDSA
+	"-newkey ec:file generate a new EC key, parameters taken from CA in 'file'",
+#endif
 	NULL
 };
 enum options {
@@ -162,7 +162,9 @@ enum options {
 static OPTIONS options[] = {
 	{ "inform", OPT_INFORM, 'F' },
 	{ "outform", OPT_OUTFORM, 'F' },
+#ifndef OPENSSL_NO_ENGINE
 	{ "engine", OPT_ENGINE, 's' },
+#endif
 	{ "keygen_engine", OPT_KEYGEN_ENGINE, 's' },
 	{ "key", OPT_KEY, '<' },
 	{ "pubkey", OPT_PUBKEY, '-' },
@@ -239,15 +241,16 @@ int req_main(int argc, char **argv)
 	char *keyalgstr = NULL;
 	STACK_OF(OPENSSL_STRING) *pkeyopts = NULL, *sigopts = NULL;
 	EVP_PKEY *pkey=NULL;
-	int i=0,badops=0,newreq=0,verbose=0,pkey_type=-1;
+	int i=0,newreq=0,verbose=0,pkey_type=-1;
+	enum options o;
 	long newkey = -1;
 	BIO *in=NULL,*out=NULL;
-	int informat,outformat,verify=0,noout=0,text=0,keyform=FORMAT_PEM;
+	int informat=FORMAT_PEM,outformat=FORMAT_PEM,keyform=FORMAT_PEM;
+	int verify=0,noout=0,text=0;
 	int nodes=0,kludge=0,newhdr=0,subject=0,pubkey=0;
-	char *infile=NULL,*outfile,*keyfile=NULL,*template=NULL,*keyout=NULL;
-#ifndef OPENSSL_NO_ENGINE
+	char *infile=NULL,*outfile=NULL,*keyfile=NULL;
+	char *template=NULL,*keyout=NULL;
 	char *engine=NULL;
-#endif
 	char *extensions = NULL;
 	char *req_exts = NULL;
 	const EVP_CIPHER *cipher=NULL;
@@ -265,17 +268,13 @@ int req_main(int argc, char **argv)
 #ifndef OPENSSL_NO_DES
 	cipher=EVP_des_ede3_cbc();
 #endif
-	infile=NULL;
-	outfile=NULL;
-	informat=FORMAT_PEM;
-	outformat=FORMAT_PEM;
 
 	opt_init(argc, argv, options);
-	while ((i = opt_next()) != 0) {
-		switch (i) {
-		default:
-			BIO_printf(bio_err,"Unhandled flag %d\n", i);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
 		case OPT_ERR:
+bad:
 			BIO_printf(bio_err,"Valid options are:\n");
 			printhelp(req_help);
 			goto end;
@@ -410,25 +409,12 @@ int req_main(int argc, char **argv)
 			req_exts = opt_arg();
 			break;
 		case OPT_MD:
-			if ((md_alg=EVP_get_digestbyname(opt_unknown())) != NULL)
-				digest=md_alg;
-			else
-			{
-				BIO_printf(bio_err, "unknown option -%s\n",
-						opt_unknown());
-				badops=1;
-			}
+			if (!opt_md(opt_unknown(), &md_alg))
+				goto bad;
+			digest=md_alg;
 			break;
 		}
 	}
-
-	if (badops)
-		{
-bad:
-		BIO_printf(bio_err,"Where options are\n");
-		printhelp(req_help);
-		goto end;
-		}
 
 	if(!app_passwd(bio_err, passargin, passargout, &passin, &passout)) {
 		BIO_printf(bio_err, "Error getting passwords\n");
@@ -495,9 +481,9 @@ bad:
 		p=NCONF_get_string(req_conf,SECTION,"default_md");
 		if (p == NULL)
 			ERR_clear_error();
-		if (p != NULL)
+		else
 			{
-			if ((md_alg=EVP_get_digestbyname(p)) != NULL)
+			if (opt_md(p, &md_alg))
 				digest=md_alg;
 			}
 		}
@@ -965,13 +951,10 @@ loop:
 		{
 		if 	(outformat == FORMAT_ASN1)
 			i=i2d_X509_REQ_bio(out,req);
-		else if (outformat == FORMAT_PEM) {
-			if(newhdr) i=PEM_write_bio_X509_REQ_NEW(out,req);
-			else i=PEM_write_bio_X509_REQ(out,req);
-		} else {
-			BIO_printf(bio_err,"bad output format specified for outfile\n");
-			goto end;
-			}
+		else  if(newhdr)
+			i=PEM_write_bio_X509_REQ_NEW(out,req);
+		else
+			i=PEM_write_bio_X509_REQ(out,req);
 		if (!i)
 			{
 			BIO_printf(bio_err,"unable to write X509 request\n");
@@ -980,14 +963,10 @@ loop:
 		}
 	if (!noout && x509 && (x509ss != NULL))
 		{
-		if 	(outformat == FORMAT_ASN1)
+		if  (outformat == FORMAT_ASN1)
 			i=i2d_X509_bio(out,x509ss);
-		else if (outformat == FORMAT_PEM)
+		else
 			i=PEM_write_bio_X509(out,x509ss);
-		else	{
-			BIO_printf(bio_err,"bad output format specified for outfile\n");
-			goto end;
-			}
 		if (!i)
 			{
 			BIO_printf(bio_err,"unable to write X509 certificate\n");

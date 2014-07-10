@@ -84,12 +84,25 @@ const char* crl2pkcs7_help[] = {
 	NULL
 };
 
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT, OPT_NOCRL, OPT_CERTFILE,
+};
+static OPTIONS options[] = {
+	{ "inform", OPT_INFORM, 'F' },
+	{ "outform", OPT_OUTFORM, 'F' },
+	{ "in", OPT_IN, '<' },
+	{ "out", OPT_OUT, '>' },
+	{ "nocrl", OPT_NOCRL, '-' },
+	{ "certfile", OPT_CERTFILE, 's' },
+	{ NULL }
+};
+
 int crl2pkcs7_main(int argc, char **argv)
 	{
-	int i,badops=0;
 	BIO *in=NULL,*out=NULL;
-	int informat,outformat;
-	char *infile,*outfile,*prog,*certfile;
+	int i,informat=FORMAT_PEM,outformat=FORMAT_PEM;
+	char *infile=NULL,*outfile=NULL,*prog,*certfile;
 	PKCS7 *p7 = NULL;
 	PKCS7_SIGNED *p7s = NULL;
 	X509_CRL *crl=NULL;
@@ -97,45 +110,34 @@ int crl2pkcs7_main(int argc, char **argv)
 	STACK_OF(X509_CRL) *crl_stack=NULL;
 	STACK_OF(X509) *cert_stack=NULL;
 	int ret=1,nocrl=0;
+	enum options o;
 
-	infile=NULL;
-	outfile=NULL;
-	informat=FORMAT_PEM;
-	outformat=FORMAT_PEM;
-
-	prog=argv[0];
-	argc--;
-	argv++;
-	while (argc >= 1)
-		{
-		if 	(strcmp(*argv,"-inform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			informat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-outform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outformat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-in") == 0)
-			{
-			if (--argc < 1) goto bad;
-			infile= *(++argv);
-			}
-		else if (strcmp(*argv,"-nocrl") == 0)
-			{
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(crl2pkcs7_help);
+			goto end;
+		case OPT_INFORM:
+			opt_format(opt_arg(), 1, &informat);
+			break;
+		case OPT_OUTFORM:
+			opt_format(opt_arg(), 1, &outformat);
+			break;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUT:
+			outfile= opt_arg();
+			break;
+		case OPT_NOCRL:
 			nocrl=1;
-			}
-		else if (strcmp(*argv,"-out") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-certfile") == 0)
-			{
-			if (--argc < 1) goto bad;
-			if(!certflst) certflst = sk_OPENSSL_STRING_new_null();
+			break;
+		case OPT_CERTFILE:
+			if(!certflst)
+				certflst = sk_OPENSSL_STRING_new_null();
 			if (!certflst)
 				goto end;
 			if (!sk_OPENSSL_STRING_push(certflst,*(++argv)))
@@ -143,26 +145,9 @@ int crl2pkcs7_main(int argc, char **argv)
 				sk_OPENSSL_STRING_free(certflst);
 				goto end;
 				}
-			}
-		else
-			{
-			BIO_printf(bio_err,"unknown option %s\n",*argv);
-			badops=1;
 			break;
-			}
-		argc--;
-		argv++;
 		}
-
-	if (badops)
-		{
-bad:
-		BIO_printf(bio_err,"%s [options] <infile >outfile\n",prog);
-		BIO_printf(bio_err,"where options are\n");
-		printhelp(crl2pkcs7_help);
-		ret = 1;
-		goto end;
-		}
+	}
 
 	if (!nocrl)
 		{
@@ -174,10 +159,6 @@ bad:
 			crl=d2i_X509_CRL_bio(in,NULL);
 		else if (informat == FORMAT_PEM)
 			crl=PEM_read_bio_X509_CRL(in,NULL,NULL,NULL);
-		else	{
-			BIO_printf(bio_err,"bad input format specified for input crl\n");
-			goto end;
-			}
 		if (crl == NULL)
 			{
 			BIO_printf(bio_err,"unable to load CRL\n");
@@ -224,10 +205,6 @@ bad:
 		i=i2d_PKCS7_bio(out,p7);
 	else if (outformat == FORMAT_PEM)
 		i=PEM_write_bio_PKCS7(out,p7);
-	else	{
-		BIO_printf(bio_err,"bad output format specified for outfile\n");
-		goto end;
-		}
 	if (!i)
 		{
 		BIO_printf(bio_err,"unable to write pkcs7 object\n");

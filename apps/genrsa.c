@@ -110,109 +110,133 @@ const char* genrsa_help[] = {
 	NULL
 };
 
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_3, OPT_F4, OPT_NON_FIPS_ALLOW, OPT_ENGINE,
+	OPT_OUT, OPT_RAND, OPT_PASSOUT,
+#ifndef OPENSSL_NO_DES
+	OPT_DES, OPT_DES3,
+#endif
+#ifndef OPENSSL_NO_IDEA
+	OPT_IDEA,
+#endif
+#ifndef OPENSSL_NO_SEED
+	OPT_SEED,
+#endif
+#ifndef OPENSSL_NO_AES
+	OPT_AES128, OPT_AES192, OPT_AES256,
+#endif
+#ifndef OPENSSL_NO_CAMELLIA
+	OPT_CAMELLIA128, OPT_CAMELLIA192, OPT_CAMELLIA256,
+#endif
+};
+static OPTIONS options[] = {
+	{ "3", OPT_3, '-' },
+	{ "F4", OPT_F4, '-' },
+	{ "f4", OPT_F4, '-' },
+	{ "non-fips-allow", OPT_NON_FIPS_ALLOW, '-' },
+	{ "out", OPT_OUT, 's' },
+	{ "engine", OPT_ENGINE, 's' },
+	{ "rand", OPT_RAND, 's' },
+	{ "passout", OPT_PASSOUT, 's' },
+	{ NULL }
+};
+
 int genrsa_main(int argc, char **argv)
 	{
 	BN_GENCB cb;
-#ifndef OPENSSL_NO_ENGINE
 	ENGINE *e = NULL;
-#endif
 	int ret=1;
-	int non_fips_allow = 0;
-	int i,num=DEFBITS;
+	int non_fips_allow = 0,i,num=DEFBITS;
 	long l;
 	const EVP_CIPHER *enc=NULL;
 	unsigned long f4=RSA_F4;
-	char *outfile=NULL;
-	char *passargout = NULL, *passout = NULL;
-#ifndef OPENSSL_NO_ENGINE
-	char *engine=NULL;
-#endif
-	char *inrand=NULL;
+	char *outfile=NULL, *passoutarg = NULL, *passout = NULL;
+	char *engine=NULL, *inrand=NULL, *prog;
 	BIO *out=NULL;
-	BIGNUM *bn = BN_new();
 	RSA *rsa = NULL;
+	enum options o;
+	BIGNUM *bn = BN_new();
 
 	if(!bn) goto err;
 
 	BN_GENCB_set(&cb, genrsa_cb, bio_err);
 
-	argv++;
-	argc--;
-	for (;;)
-		{
-		if (argc <= 0) break;
-		if (strcmp(*argv,"-out") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-3") == 0)
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(genrsa_help);
+			goto err;
+		case OPT_3:
 			f4=3;
-		else if (strcmp(*argv,"-F4") == 0 || strcmp(*argv,"-f4") == 0)
+			break;
+		case OPT_F4:
 			f4=RSA_F4;
-#ifndef OPENSSL_NO_ENGINE
-		else if (strcmp(*argv,"-engine") == 0)
-			{
-			if (--argc < 1) goto bad;
-			engine= *(++argv);
-			}
-#endif
-		else if (strcmp(*argv,"-rand") == 0)
-			{
-			if (--argc < 1) goto bad;
-			inrand= *(++argv);
-			}
+			break;
+		case OPT_NON_FIPS_ALLOW:
+			non_fips_allow = 1;
+			break;
+		case OPT_OUT:
+			outfile= opt_arg();
+		case OPT_ENGINE:
+			engine= opt_arg();
+			break;
+		case OPT_RAND:
+			inrand= opt_arg();
+			break;
+		case OPT_PASSOUT:
+			passoutarg= opt_arg();
+			break;
 #ifndef OPENSSL_NO_DES
-		else if (strcmp(*argv,"-des") == 0)
+		case OPT_DES:
 			enc=EVP_des_cbc();
-		else if (strcmp(*argv,"-des3") == 0)
+			break;
+		case OPT_DES3:
 			enc=EVP_des_ede3_cbc();
+			break;
 #endif
 #ifndef OPENSSL_NO_IDEA
-		else if (strcmp(*argv,"-idea") == 0)
+		case OPT_IDEA:
 			enc=EVP_idea_cbc();
+			break;
 #endif
 #ifndef OPENSSL_NO_SEED
-		else if (strcmp(*argv,"-seed") == 0)
+		case OPT_SEED:
 			enc=EVP_seed_cbc();
+			break;
 #endif
 #ifndef OPENSSL_NO_AES
-		else if (strcmp(*argv,"-aes128") == 0)
+		case OPT_AES128:
 			enc=EVP_aes_128_cbc();
-		else if (strcmp(*argv,"-aes192") == 0)
+			break;
+		case OPT_AES192:
 			enc=EVP_aes_192_cbc();
-		else if (strcmp(*argv,"-aes256") == 0)
+			break;
+		case OPT_AES256:
 			enc=EVP_aes_256_cbc();
+			break;
 #endif
 #ifndef OPENSSL_NO_CAMELLIA
-		else if (strcmp(*argv,"-camellia128") == 0)
+		case OPT_CAMELLIA128:
 			enc=EVP_camellia_128_cbc();
-		else if (strcmp(*argv,"-camellia192") == 0)
-			enc=EVP_camellia_192_cbc();
-		else if (strcmp(*argv,"-camellia256") == 0)
-			enc=EVP_camellia_256_cbc();
-#endif
-		else if (strcmp(*argv,"-passout") == 0)
-			{
-			if (--argc < 1) goto bad;
-			passargout= *(++argv);
-			}
-		else if (strcmp(*argv,"-non-fips-allow") == 0)
-			non_fips_allow = 1;
-		else
 			break;
-		argv++;
-		argc--;
+		case OPT_CAMELLIA192:
+			enc=EVP_camellia_192_cbc();
+			break;
+		case OPT_CAMELLIA256:
+			enc=EVP_camellia_256_cbc();
+			break;
+#endif
 		}
-	if ((argc >= 1) && ((sscanf(*argv,"%d",&num) == 0) || (num < 0)))
-		{
-bad:
-		BIO_printf(bio_err,"usage: genrsa [args] [numbits]\n");
-		printhelp(genrsa_help);
+	}
+	argv = opt_rest();
+	if (argv[0] && (!opt_int(argv[0], &num) || num <= 0))
 		goto err;
-		}
-		
-	if(!app_passwd(bio_err, NULL, passargout, NULL, &passout)) {
+
+	if(!app_passwd(bio_err, NULL, passoutarg, NULL, &passout)) {
 		BIO_printf(bio_err, "Error getting password\n");
 		goto err;
 	}

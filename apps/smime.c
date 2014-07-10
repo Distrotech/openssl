@@ -326,13 +326,8 @@ int smime_main(int argc, char **argv)
 			{
 			if (!args[1])
 				goto argerr;
-			sign_md = EVP_get_digestbyname(*++args);
-			if (sign_md == NULL)
-				{
-				BIO_printf(bio_err, "Unknown digest %s\n",
-							*args);
+			if (!opt_md(opt_arg(), &sign_md))
 				goto argerr;
-				}
 			}
 		else if (!strcmp (*args, "-inkey"))
 			{
@@ -412,7 +407,7 @@ int smime_main(int argc, char **argv)
 			}
 		else if (args_verify(&args, NULL, &badarg, bio_err, &vpm))
 			continue;
-		else if ((cipher = EVP_get_cipherbyname(*args + 1)) == NULL)
+		else if (!opt_cipher(*args+1, &cipher))
 			badarg = 1;
 		args++;
 		}

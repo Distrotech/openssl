@@ -293,7 +293,7 @@ int enc_main(int argc, char **argv)
 		else if (strcmp(*argv,"-non-fips-allow") == 0)
 			non_fips_allow = 1;
 		else if	((argv[0][0] == '-') &&
-			((c=EVP_get_cipherbyname(&(argv[0][1]))) != NULL))
+				opt_cipher(opt_unknown(), &c))
 			{
 			cipher=c;
 			}

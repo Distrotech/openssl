@@ -1008,9 +1008,8 @@ bad:
 		md = (char *)OBJ_nid2sn(def_nid);
 		}
 
-	if ((dgst=EVP_get_digestbyname(md)) == NULL)
+	if (!opt_md(md, &dgst))
 		{
-		BIO_printf(bio_err,"%s is an unsupported message digest type\n",md);
 		goto err;
 		}
 

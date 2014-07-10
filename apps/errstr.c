@@ -81,18 +81,16 @@ static OPTIONS options[] = {
 
 int errstr_main(int argc, char **argv)
 	{
-	int i,ret=0;
+	int ret=0;
+	enum options o;
 	char buf[256];
-	char* endptr;
 	char* prog;
 	unsigned long l;
 
-	SSL_load_error_strings();
 	prog = opt_init(argc, argv, options);
-	while ((i = opt_next()) != 0) {
-		switch (i) {
-		default:
-			BIO_printf(bio_err,"%s: Unhandled flag %d\n", prog, i);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
 		case OPT_ERR:
 			BIO_printf(bio_err,"Valid options are:\n");
 			printhelp(errstr_help);
@@ -110,14 +108,8 @@ int errstr_main(int argc, char **argv)
 
 	for (argv = opt_rest(); *argv; argv++)
 		{
-		l = strtoul(*argv, &endptr, 0);
-		if (*endptr)
-			{
-			BIO_printf(bio_err,
-				"%s: Bad char %c in error code %s\n",
-				prog, *endptr, *argv);
+		if (!opt_ulong(*argv, &l))
 			ret++;
-			}
 		else
 			{
 			ERR_error_string_n(l, buf, sizeof buf);

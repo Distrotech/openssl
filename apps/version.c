@@ -160,15 +160,15 @@ static OPTIONS optlist[] = {
 
 int version_main(int argc, char **argv)
 	{
-	int i,ret=0;
+	int ret=0;
 	int cflags=0,version=0,date=0,options=0,platform=0,dir=0;
 	char* prog;
+	enum options o;
 
 	prog = opt_init(argc, argv, optlist);
-	while ((i = opt_next()) != 0) {
-		switch (i) {
-		default:
-			BIO_printf(bio_err,"%s: Unhandled flag %d\n", prog, i);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
 		case OPT_ERR:
 			BIO_printf(bio_err,"Valid options are:\n");
 			printhelp(version_help);

@@ -121,9 +121,10 @@ int gendh_main(int argc, char **argv)
 
 	BN_GENCB_set(&cb, dh_cb, bio_err);
 	prog = opt_init(argc, argv, options);
-	while ((i = opt_next()) != 0) {
+	while ((i = opt_next()) != OPT_EOF) {
 		switch (i) {
 		default:
+		case OPT_EOF:
 			BIO_printf(bio_err,"%s: Unhandled flag %d\n", prog, i);
 		case OPT_ERR:
 			BIO_printf(bio_err,"Valid options are:\n");

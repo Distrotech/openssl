@@ -363,35 +363,22 @@ int pkcs12_main(int argc, char **argv)
 			app_RAND_load_files(inrand));
     }
 
-#ifdef CRYPTO_MDEBUG
-    CRYPTO_push_info("read files");
-#endif
 
     in = bio_open_default(infile, "rb");
     if (in == NULL)
 	    goto end;
 
-#ifdef CRYPTO_MDEBUG
-    CRYPTO_pop_info();
-    CRYPTO_push_info("write files");
-#endif
 
     out = bio_open_default(outfile, "wb");
     if (out == NULL)
 	    goto end;
 
     if (twopass) {
-#ifdef CRYPTO_MDEBUG
-    CRYPTO_push_info("read MAC password");
-#endif
 	if(EVP_read_pw_string (macpass, sizeof macpass, "Enter MAC Password:", export_cert))
 	{
     	    BIO_printf (bio_err, "Can't read Password\n");
     	    goto end;
        	}
-#ifdef CRYPTO_MDEBUG
-    CRYPTO_pop_info();
-#endif
     }
 
     if (export_cert) {
@@ -411,10 +398,6 @@ int pkcs12_main(int argc, char **argv)
 	if (options & NOCERTS)
 		chain = 0;
 
-#ifdef CRYPTO_MDEBUG
-	CRYPTO_push_info("process -export_cert");
-	CRYPTO_push_info("reading private key");
-#endif
 	if (!(options & NOKEYS))
 		{
 		key = load_key(bio_err, keyname ? keyname : infile,
@@ -423,10 +406,6 @@ int pkcs12_main(int argc, char **argv)
 			goto export_end;
 		}
 
-#ifdef CRYPTO_MDEBUG
-	CRYPTO_pop_info();
-	CRYPTO_push_info("reading certs from input");
-#endif
 
 	/* Load in all certs in input file */
 	if(!(options & NOCERTS))
@@ -462,10 +441,6 @@ int pkcs12_main(int argc, char **argv)
 
 		}
 
-#ifdef CRYPTO_MDEBUG
-	CRYPTO_pop_info();
-	CRYPTO_push_info("reading certs from input 2");
-#endif
 
 	/* Add any more certificates asked for */
 	if(certfile)
@@ -480,15 +455,7 @@ int pkcs12_main(int argc, char **argv)
 		sk_X509_free(morecerts);
  		}
 
-#ifdef CRYPTO_MDEBUG
-	CRYPTO_pop_info();
-	CRYPTO_push_info("reading certs from certfile");
-#endif
 
-#ifdef CRYPTO_MDEBUG
-	CRYPTO_pop_info();
-	CRYPTO_push_info("building chain");
-#endif
 
 	/* If chaining get chain from user cert */
 	if (chain) {
@@ -538,10 +505,6 @@ int pkcs12_main(int argc, char **argv)
 	if (add_lmk && key)
 		EVP_PKEY_add1_attr_by_NID(key, NID_LocalKeySet, 0, NULL, -1);
 
-#ifdef CRYPTO_MDEBUG
-	CRYPTO_pop_info();
-	CRYPTO_push_info("reading password");
-#endif
 
 	if(!noprompt &&
 		EVP_read_pw_string(pass, sizeof pass, "Enter Export Password:", 1))
@@ -551,10 +514,6 @@ int pkcs12_main(int argc, char **argv)
         	}
 	if (!twopass) BUF_strlcpy(macpass, pass, sizeof macpass);
 
-#ifdef CRYPTO_MDEBUG
-	CRYPTO_pop_info();
-	CRYPTO_push_info("creating PKCS#12 structure");
-#endif
 
 	p12 = PKCS12_create(cpass, name, key, ucert, certs,
 				key_pbe, cert_pbe, iter, -1, keytype);
@@ -567,40 +526,24 @@ int pkcs12_main(int argc, char **argv)
 
 	if (macalg)
 		{
-		macmd = EVP_get_digestbyname(macalg);
-		if (!macmd)
-			{
-			BIO_printf(bio_err, "Unknown digest algorithm %s\n", 
-						macalg);
-			}
+		if (!opt_md(macalg, &macmd))
+			goto export_end;
 		}
 
 	if (maciter != -1)
 		PKCS12_set_mac(p12, mpass, -1, NULL, 0, maciter, macmd);
 
-#ifdef CRYPTO_MDEBUG
-	CRYPTO_pop_info();
-	CRYPTO_push_info("writing pkcs12");
-#endif
 
 	i2d_PKCS12_bio(out, p12);
 
 	ret = 0;
 
     export_end:
-#ifdef CRYPTO_MDEBUG
-	CRYPTO_pop_info();
-	CRYPTO_pop_info();
-	CRYPTO_push_info("process -export_cert: freeing");
-#endif
 
 	if (key) EVP_PKEY_free(key);
 	if (certs) sk_X509_pop_free(certs, X509_free);
 	if (ucert) X509_free(ucert);
 
-#ifdef CRYPTO_MDEBUG
-	CRYPTO_pop_info();
-#endif
 	goto end;
 	
     }
@@ -610,24 +553,15 @@ int pkcs12_main(int argc, char **argv)
 	goto end;
     }
 
-#ifdef CRYPTO_MDEBUG
-    CRYPTO_push_info("read import password");
-#endif
     if(!noprompt && EVP_read_pw_string(pass, sizeof pass, "Enter Import Password:", 0)) {
 	BIO_printf (bio_err, "Can't read Password\n");
 	goto end;
     }
-#ifdef CRYPTO_MDEBUG
-    CRYPTO_pop_info();
-#endif
 
     if (!twopass) BUF_strlcpy(macpass, pass, sizeof macpass);
 
     if ((options & INFO) && p12->mac) BIO_printf (bio_err, "MAC Iteration %ld\n", p12->mac->iter ? ASN1_INTEGER_get (p12->mac->iter) : 1);
     if(macver) {
-#ifdef CRYPTO_MDEBUG
-    CRYPTO_push_info("verify MAC");
-#endif
 	/* If we enter empty password try no password first */
 	if(!mpass[0] && PKCS12_verify_mac(p12, NULL, 0)) {
 		/* If mac and crypto pass the same set it to NULL too */
@@ -638,29 +572,17 @@ int pkcs12_main(int argc, char **argv)
 	    goto end;
 	}
 	BIO_printf (bio_err, "MAC verified OK\n");
-#ifdef CRYPTO_MDEBUG
-    CRYPTO_pop_info();
-#endif
     }
 
-#ifdef CRYPTO_MDEBUG
-    CRYPTO_push_info("output keys and certificates");
-#endif
     if (!dump_certs_keys_p12 (out, p12, cpass, -1, options, passout)) {
 	BIO_printf(bio_err, "Error outputting keys and certificates\n");
 	ERR_print_errors (bio_err);
 	goto end;
     }
-#ifdef CRYPTO_MDEBUG
-    CRYPTO_pop_info();
-#endif
     ret = 0;
  end:
     if (p12) PKCS12_free(p12);
     if(export_cert || inrand) app_RAND_write_file(NULL, bio_err);
-#ifdef CRYPTO_MDEBUG
-    CRYPTO_remove_all_info();
-#endif
     BIO_free(in);
     BIO_free_all(out);
     if (canames) sk_OPENSSL_STRING_free(canames);
@@ -848,22 +770,10 @@ int cert_load(BIO *in, STACK_OF(X509) *sk)
 	int ret;
 	X509 *cert;
 	ret = 0;
-#ifdef CRYPTO_MDEBUG
-	CRYPTO_push_info("cert_load(): reading one cert");
-#endif
 	while((cert = PEM_read_bio_X509(in, NULL, NULL, NULL))) {
-#ifdef CRYPTO_MDEBUG
-		CRYPTO_pop_info();
-#endif
 		ret = 1;
 		sk_X509_push(sk, cert);
-#ifdef CRYPTO_MDEBUG
-		CRYPTO_push_info("cert_load(): reading one cert");
-#endif
 	}
-#ifdef CRYPTO_MDEBUG
-	CRYPTO_pop_info();
-#endif
 	if(ret) ERR_clear_error();
 	return ret;
 }

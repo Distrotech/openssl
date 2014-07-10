@@ -624,13 +624,13 @@ int ocsp_main(int argc, char **argv)
 			if (args[1])
 				{
 				args++;
-				rsign_md = EVP_get_digestbyname(*args);
+				if (!opt_md(opt_arg(), &rsign_md))
 				if (!rsign_md)
 					badarg = 1;
 				}
 			else badarg = 1;
 			}
-		else if ((cert_id_md = EVP_get_digestbyname((*args)+1))==NULL)
+		else if (!opt_md(opt_unknown(), &cert_id_md))
 			{
 			badarg = 1;
 			}

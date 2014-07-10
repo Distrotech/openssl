@@ -120,7 +120,8 @@ static int do_generate(BIO *bio, char *genstr, char *genconf, BUF_MEM *buf);
 
 int asn1parse_main(int argc, char **argv)
 	{
-	int i,offset=0,ret=1,j;
+	int offset=0,ret=1,j;
+	enum options i;
 	unsigned int length=0;
 	long num,tmplen;
 	BIO *in=NULL,*b64=NULL, *derout = NULL;
@@ -143,10 +144,9 @@ int asn1parse_main(int argc, char **argv)
 		goto end;
 		}
 
-	while ((i = opt_next()) != 0) {
+	while ((i = opt_next()) != OPT_EOF) {
 		switch (i) {
-		default:
-			BIO_printf(bio_err,"%s: Unhandled flag %d\n", prog, i);
+		case OPT_EOF:
 		case OPT_ERR:
 			BIO_printf(bio_err,"Valid options are:\n");
 			printhelp(asn1parse_help);
@@ -200,12 +200,9 @@ int asn1parse_main(int argc, char **argv)
 
 	if (oidfile != NULL)
 		{
-		in = BIO_new_file(oidfile, "r");
+		in = bio_open_default(oidfile, "r");
 		if (in == NULL)
-			{
-			ERR_print_errors(bio_err);
 			goto end;
-			}
 		OBJ_create_objects(in);
 		BIO_free(in);
 		}

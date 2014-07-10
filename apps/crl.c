@@ -67,9 +67,6 @@
 #include <openssl/pem.h>
 
 
-#undef POSTFIX
-#define	POSTFIX	".rvk"
-
 const char *crl_help[]={
 	"-inform arg      input format - default PEM (DER or PEM)",
 	"-outform arg     output format - default PEM",
@@ -91,17 +88,52 @@ const char *crl_help[]={
 	"-nameopt arg     various certificate name options",
 NULL
 };
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_INFORM, OPT_IN, OPT_OUTFORM, OPT_OUT, OPT_KEYFORM, OPT_KEY,
+	OPT_ISSUER, OPT_LASTUPDATE, OPT_NEXTUPDATE, OPT_FINGERPRINT,
+	OPT_CRLNUMBER, OPT_BADSIG, OPT_GENDELTA, OPT_CAPATH, OPT_CAFILE,
+	OPT_VERIFY, OPT_TEXT, OPT_HASH, OPT_HASH_OLD, OPT_NOOUT,
+	OPT_NAMEOPT, OPT_MD
+};
+static OPTIONS options[] = {
+	{ "inform", OPT_INFORM, 'F' },
+	{ "in", OPT_IN, '<' },
+	{ "outform", OPT_OUTFORM, 'F' },
+	{ "out", OPT_OUT, '>' },
+	{ "keyform", OPT_KEYFORM, 'F' },
+	{ "key", OPT_KEY, '<' },
+	{ "issuer", OPT_ISSUER, '-' },
+	{ "lastupdate", OPT_LASTUPDATE, '-' },
+	{ "nextupdate", OPT_NEXTUPDATE, '-' },
+	{ "noout", OPT_NOOUT, '-' },
+	{ "fingerprint", OPT_FINGERPRINT, '-' },
+	{ "crlnumber", OPT_CRLNUMBER, '-' },
+	{ "badsig", OPT_BADSIG, '-' },
+	{ "gendelta", OPT_GENDELTA, '<' },
+	{ "CApath", OPT_CAPATH, '/' },
+	{ "CAfile", OPT_CAFILE, '<' },
+	{ "verify", OPT_VERIFY, '-' },
+	{ "text", OPT_TEXT, '-' },
+	{ "hash", OPT_HASH, '-' },
+	{ "hash_old", OPT_HASH_OLD, '-' },
+	{ "nameopt", OPT_NAMEOPT, 's' },
+	{ "", OPT_MD, '-' },
+	{ NULL }
+};
 
 int crl_main(int argc, char **argv)
 	{
 	unsigned long nmflag = 0;
 	X509_CRL *x=NULL;
 	char *CAfile = NULL, *CApath = NULL;
-	int ret=1,i,num,badops=0,badsig=0;
+	int ret=1,num,badsig=0;
+	enum options o;
 	BIO *out=NULL;
-	int informat,outformat, keyformat;
+	int informat=FORMAT_PEM,outformat=FORMAT_PEM, keyformat=FORMAT_PEM;
 	char *infile=NULL,*outfile=NULL, *crldiff = NULL, *keyfile = NULL;
 	int hash=0,issuer=0,lastupdate=0,nextupdate=0,noout=0,text=0;
+	char* prog;
 #ifndef OPENSSL_NO_MD5
        int hash_old=0;
 #endif
@@ -111,127 +143,96 @@ int crl_main(int argc, char **argv)
 	X509_LOOKUP *lookup = NULL;
 	X509_OBJECT xobj;
 	EVP_PKEY *pkey;
-	int do_ver = 0;
+	int i,do_ver = 0;
 	const EVP_MD *md_alg,*digest=EVP_sha1();
 
-	informat=FORMAT_PEM;
-	outformat=FORMAT_PEM;
-	keyformat=FORMAT_PEM;
-
-	argc--;
-	argv++;
-	num=0;
-	while (argc >= 1)
-		{
-#ifdef undef
-		if	(strcmp(*argv,"-p") == 0)
-			{
-			if (--argc < 1) goto bad;
-			if (!args_from_file(++argv,Nargc,Nargv)) { goto end; }*/
-			}
-#endif
-		if 	(strcmp(*argv,"-inform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			informat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-outform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outformat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-in") == 0)
-			{
-			if (--argc < 1) goto bad;
-			infile= *(++argv);
-			}
-		else if (strcmp(*argv,"-gendelta") == 0)
-			{
-			if (--argc < 1) goto bad;
-			crldiff= *(++argv);
-			}
-		else if (strcmp(*argv,"-key") == 0)
-			{
-			if (--argc < 1) goto bad;
-			keyfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-keyform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			keyformat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-out") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-CApath") == 0)
-			{
-			if (--argc < 1) goto bad;
-			CApath = *(++argv);
-			do_ver = 1;
-			}
-		else if (strcmp(*argv,"-CAfile") == 0)
-			{
-			if (--argc < 1) goto bad;
-			CAfile = *(++argv);
-			do_ver = 1;
-			}
-		else if (strcmp(*argv,"-verify") == 0)
-			do_ver = 1;
-		else if (strcmp(*argv,"-text") == 0)
-			text = 1;
-		else if (strcmp(*argv,"-hash") == 0)
-			hash= ++num;
-#ifndef OPENSSL_NO_MD5
-		else if (strcmp(*argv,"-hash_old") == 0)
-			hash_old= ++num;
-#endif
-		else if (strcmp(*argv,"-nameopt") == 0)
-			{
-			if (--argc < 1) goto bad;
-			if (!set_name_ex(&nmflag, *(++argv))) goto bad;
-			}
-		else if (strcmp(*argv,"-issuer") == 0)
-			issuer= ++num;
-		else if (strcmp(*argv,"-lastupdate") == 0)
-			lastupdate= ++num;
-		else if (strcmp(*argv,"-nextupdate") == 0)
-			nextupdate= ++num;
-		else if (strcmp(*argv,"-noout") == 0)
-			noout= ++num;
-		else if (strcmp(*argv,"-fingerprint") == 0)
-			fingerprint= ++num;
-		else if (strcmp(*argv,"-crlnumber") == 0)
-			crlnumber= ++num;
-		else if (strcmp(*argv,"-badsig") == 0)
-			badsig = 1;
-		else if ((md_alg=EVP_get_digestbyname(*argv + 1)))
-			{
-			/* ok */
-			digest=md_alg;
-			}
-		else
-			{
-			BIO_printf(bio_err,"unknown option %s\n",*argv);
-			badops=1;
-			break;
-			}
-		argc--;
-		argv++;
-		}
-
-	if (badops)
-		{
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
 bad:
-		BIO_printf(bio_err,"crl [options]\n");
-		BIO_printf(bio_err,"where options are\n");
-		printhelp(crl_help);
-		goto end;
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(crl_help);
+			goto end;
+		case OPT_INFORM:
+			opt_format(opt_arg(), 1, &informat);
+			break;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUTFORM:
+			opt_format(opt_arg(), 1, &outformat);
+			break;
+		case OPT_OUT:
+			outfile = opt_arg();
+			break;
+		case OPT_KEYFORM:
+			opt_format(opt_arg(), 1, &keyformat);
+			break;
+		case OPT_KEY:
+			keyfile= opt_arg();
+			break;
+		case OPT_GENDELTA:
+			crldiff= opt_arg();
+			break;
+		case OPT_CAPATH:
+			CApath = opt_arg();
+			do_ver = 1;
+			break;
+		case OPT_CAFILE:
+			CAfile = opt_arg();
+			do_ver = 1;
+			break;
+#ifndef OPENSSL_NO_MD5
+		case OPT_HASH_OLD:
+			hash_old= ++num;
+			break;
+#endif
+		case OPT_VERIFY:
+			do_ver = 1;
+			break;
+		case OPT_TEXT:
+			text = 1;
+			break;
+		case OPT_HASH:
+			hash= ++num;
+			break;
+		case OPT_ISSUER:
+			issuer= ++num;
+			break;
+		case OPT_LASTUPDATE:
+			lastupdate= ++num;
+			break;
+		case OPT_NEXTUPDATE:
+			nextupdate= ++num;
+			break;
+		case OPT_NOOUT:
+			noout= ++num;
+			break;
+		case OPT_FINGERPRINT:
+			fingerprint= ++num;
+			break;
+		case OPT_CRLNUMBER:
+			crlnumber= ++num;
+			break;
+		case OPT_BADSIG:
+			badsig = 1;
+			break;
+		case OPT_NAMEOPT:
+			if (!set_name_ex(&nmflag, opt_arg()))
+				goto bad;
+			break;
+		case OPT_MD:
+			if (!opt_md(opt_unknown(), &md_alg))
+				goto bad;
 		}
+	}
+
 
 	x=load_crl(infile,informat);
-	if (x == NULL) { goto end; }
+	if (x == NULL)
+		goto end;
 
 	if(do_ver) {
 		store = X509_STORE_new();
@@ -398,15 +399,11 @@ bad:
 
 	if 	(outformat == FORMAT_ASN1)
 		i=(int)i2d_X509_CRL_bio(out,x);
-	else if (outformat == FORMAT_PEM)
+	else
 		i=PEM_write_bio_X509_CRL(out,x);
-	else	
-		{
-		BIO_printf(bio_err,"bad output format specified for outfile\n");
-		goto end;
-		}
 	if (!i) { BIO_printf(bio_err,"unable to write CRL\n"); goto end; }
 	ret=0;
+
 end:
 	if (ret != 0)
 		ERR_print_errors(bio_err);

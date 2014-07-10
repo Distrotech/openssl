@@ -83,83 +83,74 @@ const char* pkcs7_help[] = {
 	NULL
 };
 
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT, OPT_NOOUT,
+	OPT_TEXT, OPT_PRINT, OPT_PRINT_CERTS, OPT_ENGINE,
+};
+static OPTIONS options[] = {
+	{ "inform", OPT_INFORM, 'F' },
+	{ "outform", OPT_OUTFORM, 'F' },
+	{ "in", OPT_IN, '<' },
+	{ "out", OPT_OUT, '>' },
+	{ "noout", OPT_NOOUT, '-' },
+	{ "text", OPT_TEXT, '-' },
+	{ "print", OPT_PRINT, '-' },
+	{ "print_certs", OPT_PRINT_CERTS, '-' },
+	{ "engine", OPT_ENGINE, 's' },
+	{ NULL }
+};
+
 int pkcs7_main(int argc, char **argv)
 	{
 	PKCS7 *p7=NULL;
-	int i,badops=0;
+	int i;
 	BIO *in=NULL,*out=NULL;
-	int informat,outformat;
-	char *infile,*outfile,*prog;
+	int informat=FORMAT_PEM,outformat=FORMAT_PEM;
+	char *infile=NULL,*outfile=NULL,*prog;
 	int print_certs=0,text=0,noout=0,p7_print=0;
 	int ret=1;
-#ifndef OPENSSL_NO_ENGINE
+	enum options o;
 	char *engine=NULL;
-#endif
 
-	infile=NULL;
-	outfile=NULL;
-	informat=FORMAT_PEM;
-	outformat=FORMAT_PEM;
 
-	prog=argv[0];
-	argc--;
-	argv++;
-	while (argc >= 1)
-		{
-		if 	(strcmp(*argv,"-inform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			informat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-outform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outformat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-in") == 0)
-			{
-			if (--argc < 1) goto bad;
-			infile= *(++argv);
-			}
-		else if (strcmp(*argv,"-out") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-noout") == 0)
-			noout=1;
-		else if (strcmp(*argv,"-text") == 0)
-			text=1;
-		else if (strcmp(*argv,"-print") == 0)
-			p7_print=1;
-		else if (strcmp(*argv,"-print_certs") == 0)
-			print_certs=1;
-#ifndef OPENSSL_NO_ENGINE
-		else if (strcmp(*argv,"-engine") == 0)
-			{
-			if (--argc < 1) goto bad;
-			engine= *(++argv);
-			}
-#endif
-		else
-			{
-			BIO_printf(bio_err,"unknown option %s\n",*argv);
-			badops=1;
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(pkcs7_help);
+			goto end;
+		case OPT_INFORM:
+			opt_format(opt_arg(), 1, &informat);
 			break;
-			}
-		argc--;
-		argv++;
+		case OPT_OUTFORM:
+			opt_format(opt_arg(), 1, &outformat);
+			break;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUT:
+			outfile = opt_arg();
+			break;
+		case OPT_NOOUT:
+			noout=1;
+			break;
+		case OPT_TEXT:
+			text=1;
+			break;
+		case OPT_PRINT:
+			p7_print=1;
+			break;
+		case OPT_PRINT_CERTS:
+			print_certs=1;
+			break;
+		case OPT_ENGINE:
+			engine= opt_arg();
+			break;
 		}
-
-	if (badops)
-		{
-bad:
-		BIO_printf(bio_err,"%s [options] <infile >outfile\n",prog);
-		BIO_printf(bio_err,"where options are\n");
-		printhelp(pkcs7_help);
-		ret = 1;
-		goto end;
-		}
+	}
 
 #ifndef OPENSSL_NO_ENGINE
         setup_engine(bio_err, engine, 0);
