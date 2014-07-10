@@ -218,37 +218,6 @@ static int c_quiet=0;
 static int c_ign_eof=0;
 static int c_brief=0;
 
-#ifndef OPENSSL_NO_TLSEXT
-
-static unsigned char *generated_supp_data = NULL;
-
-static const unsigned char *most_recent_supplemental_data = NULL;
-static size_t most_recent_supplemental_data_length = 0;
-
-static int server_provided_server_authz = 0;
-static int server_provided_client_authz = 0;
-
-static const unsigned char auth_ext_data[]={TLSEXT_AUTHZDATAFORMAT_dtcp};
-
-static int suppdata_cb(SSL *s, unsigned short supp_data_type,
-		       const unsigned char *in,
-		       unsigned short inlen, int *al,
-		       void *arg);
-
-static int auth_suppdata_generate_cb(SSL *s, unsigned short supp_data_type,
-				     const unsigned char **out,
-				     unsigned short *outlen, int *al, void *arg);
-
-static int authz_tlsext_generate_cb(SSL *s, unsigned short ext_type,
-				    const unsigned char **out, unsigned short *outlen,
-				    int *al, void *arg);
-
-static int authz_tlsext_cb(SSL *s, unsigned short ext_type,
-			   const unsigned char *in,
-			   unsigned short inlen, int *al,
-			   void *arg);
-#endif
-
 const char* s_client_help[] = {
 	"-host host     use -connect instead",
 	"-port port     use -connect instead",
