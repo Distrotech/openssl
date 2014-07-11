@@ -320,29 +320,28 @@ void unbuffer(FILE* fp)
 
 BIO* bio_open_default(const char* filename, const char* mode)
 {
-	BIO* ret = NULL;
+	BIO* ret;
 	if (filename) {
 		ret = BIO_new_file(filename, mode);
-		if (ret == NULL) {
-			BIO_printf(bio_err,
-				"Can't open %s for %s, %s\n",
-				filename,
-				*mode == 'r' ? "reading" : "writing",
-				strerror(errno));
-			ERR_print_errors(bio_err);
-		}
+		if (ret != NULL)
+			return ret;
+		BIO_printf(bio_err,
+			"Can't open %s for %s, %s\n",
+			filename,
+			*mode == 'r' ? "reading" : "writing",
+			strerror(errno));
 	}
 	else {
 		ret = *mode == 'r' ? dup_bio_in() : dup_bio_out();
-		if (ret == NULL) {
-			BIO_printf(bio_err,
-				"Can't open %s, %s\n",
-				*mode == 'r' ? "stdin" : "stdout",
-				strerror(errno));
-			ERR_print_errors(bio_err);
-		}
+		if (ret != NULL)
+			return ret;
+		BIO_printf(bio_err,
+			"Can't open %s, %s\n",
+			*mode == 'r' ? "stdin" : "stdout",
+			strerror(errno));
 	}
-	return ret;
+	ERR_print_errors(bio_err);
+	return NULL;
 }
 
 
