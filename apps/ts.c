@@ -67,27 +67,6 @@
 #include <openssl/ts.h>
 #include <openssl/bn.h>
 
-const char* ts_help[] = {
-	"ts -query [-rand filefile%c...] [-config configfile] "
-		   "[-data file_to_hash] [-digest digest_bytes]"
-		   "[-md2|-md4|-md5|-sha|-sha1|-mdc2|-ripemd160] "
-		   "[-policy object_id] [-no_nonce] [-cert] "
-		   "[-in request.tsq] [-out request.tsq] [-text]",
-	"ts -reply [-config configfile] [-section tsa_section] "
-		   "[-queryfile request.tsq] [-passin password] "
-		   "[-signer tsa_cert.pem] [-inkey private_key.pem] "
-		   "[-chain certs_file.pem] [-policy object_id] "
-		   "[-in response.tsr] [-token_in] "
-		   "[-out response.tsr] [-token_out] [-text] [-engine id]",
-	"ts -verify [-data file_to_hash] [-digest digest_bytes] "
-		"[-queryfile request.tsq] "
-		"-in response.tsr [-token_in] "
-		"-CApath ca_path -CAfile ca_file.pem "
-		"-untrusted cert_file.pem",
-	NULL
-};
-
-
 /* Length of the nonce of the request in bits (must be a multiple of 8). */
 #define	NONCE_LENGTH		64
 
@@ -134,171 +113,175 @@ static TS_VERIFY_CTX *create_verify_ctx(char *data, char *digest,
 static X509_STORE *create_cert_store(char *ca_path, char *ca_file);
 static int verify_cb(int ok, X509_STORE_CTX *ctx);
 
-/* Main function definition. */
+
+const char* ts_help[] = {
+	"ts -query [-rand filefile%c...] [-config configfile] "
+		   "[-data file_to_hash] [-digest digest_bytes]"
+		   "[-md2|-md4|-md5|-sha|-sha1|-mdc2|-ripemd160] "
+		   "[-policy object_id] [-no_nonce] [-cert] "
+		   "[-in request.tsq] [-out request.tsq] [-text]",
+	"ts -reply [-config configfile] [-section tsa_section] "
+		   "[-queryfile request.tsq] [-passin password] "
+		   "[-signer tsa_cert.pem] [-inkey private_key.pem] "
+		   "[-chain certs_file.pem] [-policy object_id] "
+		   "[-in response.tsr] [-token_in] "
+		   "[-out response.tsr] [-token_out] [-text] [-engine id]",
+	"ts -verify [-data file_to_hash] [-digest digest_bytes] "
+		"[-queryfile request.tsq] "
+		"-in response.tsr [-token_in] "
+		"-CApath ca_path -CAfile ca_file.pem "
+		"-untrusted cert_file.pem",
+	NULL
+};
+
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ENGINE, OPT_CONFIG, OPT_SECTION, OPT_QUERY, OPT_DATA,
+	OPT_DIGEST, OPT_RAND, OPT_POLICY, OPT_NO_NONCE, OPT_CERT,
+	OPT_IN, OPT_TOKEN_IN, OPT_OUT, OPT_TOKEN_OUT, OPT_TEXT,
+	OPT_REPLY, OPT_QUERYFILE, OPT_PASSIN, OPT_INKEY, OPT_SIGNER,
+	OPT_CHAIN, OPT_VERIFY, OPT_CAPATH, OPT_CAFILE, OPT_UNTRUSTED,
+	OPT_MD,
+};
+
+static OPTIONS options[] = {
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's' },
+#endif
+	{ "config", OPT_CONFIG, '<' },
+	{ "section", OPT_SECTION, 's' },
+	{ "query", OPT_QUERY, '-' },
+	{ "data", OPT_DATA, 's' },
+	{ "digest", OPT_DIGEST, 's' },
+	{ "rand", OPT_RAND, 's' },
+	{ "policy", OPT_POLICY, 's' },
+	{ "no_nonce", OPT_NO_NONCE, '-' },
+	{ "cert", OPT_CERT, '-' },
+	{ "in", OPT_IN, '<' },
+	{ "token_in", OPT_TOKEN_IN, '-' },
+	{ "out", OPT_OUT, '>' },
+	{ "token_out", OPT_TOKEN_OUT, '-' },
+	{ "text", OPT_TEXT, '-' },
+	{ "reply", OPT_REPLY, '-' },
+	{ "queryfile", OPT_QUERYFILE, '<' },
+	{ "passin", OPT_PASSIN, 's' },
+	{ "inkey", OPT_INKEY, '<' },
+	{ "signer", OPT_SIGNER, 's' },
+	{ "chain", OPT_CHAIN, 's' },
+	{ "verify", OPT_VERIFY, '-' },
+	{ "CApath", OPT_CAPATH, '/' },
+	{ "CAfile", OPT_CAFILE, '<' },
+	{ "untrusted", OPT_UNTRUSTED, '<' },
+	{ "", OPT_MD, '-' },
+	{ NULL }
+};
+
 int ts_main(int argc, char **argv)
 	{
-	int ret = 1;
-	char *configfile = NULL;
-	char *section = NULL;
-	CONF *conf = NULL;
-	enum mode {
-	CMD_NONE, CMD_QUERY, CMD_REPLY, CMD_VERIFY 
-	} mode = CMD_NONE;
-	char *data = NULL;
-	char *digest = NULL;
-	const EVP_MD *md = NULL;
-	char *rnd = NULL;
-	char *policy = NULL;
-	int no_nonce = 0;
-	int cert = 0;
-	char *in = NULL;
-	char *out = NULL;
-	int text = 0;
-	char *queryfile = NULL;
-	char *passin = NULL;	/* Password source. */
-	char *password =NULL;	/* Password itself. */
-	char *inkey = NULL;
-	char *signer = NULL;
-	char *chain = NULL;
-	char *ca_path = NULL;
-	char *ca_file = NULL;
-	char *untrusted = NULL;
-	char *engine = NULL;
-	/* Input is ContentInfo instead of TimeStampResp. */
-	int token_in = 0;	
-	/* Output is ContentInfo instead of TimeStampResp. */
-	int token_out = 0;
+	CONF *conf=NULL;
+	enum options mode = OPT_ERR;
+	char *data=NULL, *digest=NULL, *rnd=NULL, *policy=NULL;
+	const EVP_MD *md=NULL;
+	int ret=1, no_nonce=0, cert=0, text=0;
+	char *configfile=NULL, *section=NULL;
+	char *in=NULL, *out=NULL, *queryfile=NULL, *passin=NULL, *password=NULL;
+	char *inkey=NULL, *signer=NULL, *chain=NULL, *ca_path=NULL;
+	char *ca_file=NULL, *untrusted=NULL, *engine=NULL, * prog;
+	int token_in=0;	/* Input is ContentInfo instead of TimeStampResp. */
+	int token_out=0; /* Output is ContentInfo instead of TimeStampResp. */
+	enum options o;
 
-	for (argc--, argv++; argc > 0; argc--, argv++)
-		{
-		if (strcmp(*argv, "-config") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			configfile = *++argv;
-			}
-		else if (strcmp(*argv, "-section") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			section = *++argv;
-			}
-		else if (strcmp(*argv, "-query") == 0)
-			{
-			if (mode != CMD_NONE) goto usage;
-			mode = CMD_QUERY;
-			}
-		else if (strcmp(*argv, "-data") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			data = *++argv;
-			}
-		else if (strcmp(*argv, "-digest") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			digest = *++argv;
-			}
-		else if (strcmp(*argv, "-rand") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			rnd = *++argv;
-			}
-		else if (strcmp(*argv, "-policy") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			policy = *++argv;
-			}
-		else if (strcmp(*argv, "-no_nonce") == 0)
-			{
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+err:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(ts_help);
+			goto end;
+		case OPT_CONFIG:
+			configfile = opt_arg();
+			break;
+		case OPT_SECTION:
+			section = opt_arg();
+			break;
+		case OPT_QUERY:
+		case OPT_REPLY:
+		case OPT_VERIFY:
+			if (mode != OPT_ERR)
+			    goto err;
+			mode = o;
+			break;
+		case OPT_DATA:
+			data = opt_arg();
+			break;
+		case OPT_DIGEST:
+			digest = opt_arg();
+			break;
+		case OPT_RAND:
+			rnd = opt_arg();
+			break;
+		case OPT_POLICY:
+			policy = opt_arg();
+			break;
+		case OPT_NO_NONCE:
 			no_nonce = 1;
-			}
-		else if (strcmp(*argv, "-cert") == 0)
-			{
+			break;
+		case OPT_CERT:
 			cert = 1;
-			}
-		else if (strcmp(*argv, "-in") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			in = *++argv;
-			}
-		else if (strcmp(*argv, "-token_in") == 0)
-			{
+			break;
+		case OPT_IN:
+			in = opt_arg();
+			break;
+		case OPT_TOKEN_IN:
 			token_in = 1;
-			}
-		else if (strcmp(*argv, "-out") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			out = *++argv;
-			}
-		else if (strcmp(*argv, "-token_out") == 0)
-			{
+			break;
+		case OPT_OUT:
+			out = opt_arg();
+			break;
+		case OPT_TOKEN_OUT:
 			token_out = 1;
-			}
-		else if (strcmp(*argv, "-text") == 0)
-			{
+			break;
+		case OPT_TEXT:
 			text = 1;
-			}
-		else if (strcmp(*argv, "-reply") == 0)
-			{
-			if (mode != CMD_NONE) goto usage;
-			mode = CMD_REPLY;
-			}
-		else if (strcmp(*argv, "-queryfile") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			queryfile = *++argv;
-			}
-		else if (strcmp(*argv, "-passin") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			passin = *++argv;
-			}
-		else if (strcmp(*argv, "-inkey") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			inkey = *++argv;
-			}
-		else if (strcmp(*argv, "-signer") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			signer = *++argv;
-			}
-		else if (strcmp(*argv, "-chain") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			chain = *++argv;
-			}
-		else if (strcmp(*argv, "-verify") == 0)
-			{
-			if (mode != CMD_NONE) goto usage;
-			mode = CMD_VERIFY;
-			}
-		else if (strcmp(*argv, "-CApath") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			ca_path = *++argv;
-			}
-		else if (strcmp(*argv, "-CAfile") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			ca_file = *++argv;
-			}
-		else if (strcmp(*argv, "-untrusted") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			untrusted = *++argv;
-			}
-		else if (strcmp(*argv, "-engine") == 0)
-			{
-			if (argc-- < 1) goto usage;
-			engine = *++argv;
-			}
-		else if (!opt_md(opt_unknown(), &md))
-			goto usage;
-		else
-			goto usage;
+			break;
+		case OPT_QUERYFILE:
+			queryfile = opt_arg();
+			break;
+		case OPT_PASSIN:
+			passin = opt_arg();
+			break;
+		case OPT_INKEY:
+			inkey = opt_arg();
+			break;
+		case OPT_SIGNER:
+			signer = opt_arg();
+			break;
+		case OPT_CHAIN:
+			chain = opt_arg();
+			break;
+		case OPT_CAPATH:
+			ca_path = opt_arg();
+			break;
+		case OPT_CAFILE:
+			ca_file = opt_arg();
+			break;
+		case OPT_UNTRUSTED:
+			untrusted = opt_arg();
+			break;
+		case OPT_ENGINE:
+			engine = opt_arg();
+			break;
+		case OPT_MD:
+			if (!opt_md(opt_unknown(), &md))
+			    goto err;
+			break;
 		}
+	}
 	
 	/* Seed the random number generator if it is going to be used. */
-	if (mode == CMD_QUERY && !no_nonce)
+	if (mode == OPT_QUERY && !no_nonce)
 		{
 		if (!app_RAND_load_file(NULL, bio_err, 1) && rnd == NULL)
 			BIO_printf(bio_err, "warning, not much extra random "
@@ -309,64 +292,60 @@ int ts_main(int argc, char **argv)
 		}
 
 	/* Get the password if required. */
-	if(mode == CMD_REPLY && passin &&
+	if(mode == OPT_REPLY && passin &&
 	   !app_passwd(bio_err, passin, NULL, &password, NULL))
 		{
 		BIO_printf(bio_err,"Error getting password.\n");
-		goto cleanup;
+		goto end;
 		}
 
 	/* Check consistency of parameters and execute 
 	   the appropriate function. */
 	switch (mode)
 		{
-	case CMD_NONE:
-		goto usage;
-	case CMD_QUERY:
+	default:
+	case OPT_ERR:
+		goto err;
+	case OPT_QUERY:
 		/* Data file and message imprint cannot be specified
 		   at the same time. */
 		ret = data != NULL && digest != NULL;
-		if (ret) goto usage;
+		if (ret) goto err;
 		/* Load the config file for possible policy OIDs. */
 		conf = load_config_file(configfile);
 		ret = !query_command(data, digest, md, policy, no_nonce, cert,
 				     in, out, text);
 		break;
-	case CMD_REPLY:
+	case OPT_REPLY:
 		conf = load_config_file(configfile);
 		if (in == NULL)
 			{
 			ret = !(queryfile != NULL && conf != NULL && !token_in);
-			if (ret) goto usage;
+			if (ret) goto err;
 			}
 		else
 			{
 			/* 'in' and 'queryfile' are exclusive. */
 			ret = !(queryfile == NULL);
-			if (ret) goto usage;
+			if (ret) goto err;
 			}
 
 		ret = !reply_command(conf, section, engine, queryfile, 
 				     password, inkey, signer, chain, policy, 
 				     in, token_in, out, token_out, text);
 		break;
-	case CMD_VERIFY:
+	case OPT_VERIFY:
 		ret = !(((queryfile && !data && !digest)
 			 || (!queryfile && data && !digest)
 			 || (!queryfile && !data && digest))
 			&& in != NULL);
-		if (ret) goto usage;
+		if (ret) goto err;
 
 		ret = !verify_command(data, digest, queryfile, in, token_in,
 				      ca_path, ca_file, untrusted);
 		}
 
-	goto cleanup;
-
- usage:
-	BIO_printf(bio_err, "usage:\n");
-	printhelp(ts_help);
- cleanup:
+ end:
 	/* Clean up. */
 	app_RAND_write_file(NULL, bio_err);
 	NCONF_free(conf);

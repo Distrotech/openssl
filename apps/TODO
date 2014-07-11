@@ -43,8 +43,8 @@ X   738 srp.c
 -   758 s_socket.c
     789 openssl.c
     829 smime.c
-    952 pkcs12.c
-   1117 ts.c
+X   952 pkcs12.c
+X  1117 ts.c
    1313 x509.c
    1447 ocsp.c
    1514 cms.c
