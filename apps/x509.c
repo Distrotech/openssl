@@ -84,6 +84,22 @@
 #define	POSTFIX	".srl"
 #define DEF_DAYS	30
 
+static int callb(int ok, X509_STORE_CTX *ctx);
+static int sign (X509 *x, EVP_PKEY *pkey,int days,int clrext, const EVP_MD *digest,
+						CONF *conf, char *section);
+static int x509_certify (X509_STORE *ctx,char *CAfile,const EVP_MD *digest,
+			 X509 *x,X509 *xca,EVP_PKEY *pkey,
+			 STACK_OF(OPENSSL_STRING) *sigopts,
+			 char *serial, int create ,int days, int clrext,
+			 CONF *conf, char *section, ASN1_INTEGER *sno,
+			 int reqfile);
+static int purpose_print(BIO *bio, X509 *cert, X509_PURPOSE *pt);
+
+#ifdef OPENSSL_SSL_DEBUG_BROKEN_PROTOCOL
+static int force_version=2;
+#endif
+
+
 const char *x509_help[]={
 	"-inform arg       input format - default PEM (one of DER, NET or PEM)",
 	"-outform arg      output format - default PEM (one of DER, NET or PEM)",
@@ -152,77 +168,43 @@ const char *x509_help[]={
 	NULL
 };
 
-static int callb(int ok, X509_STORE_CTX *ctx);
-static int sign (X509 *x, EVP_PKEY *pkey,int days,int clrext, const EVP_MD *digest,
-						CONF *conf, char *section);
-static int x509_certify (X509_STORE *ctx,char *CAfile,const EVP_MD *digest,
-			 X509 *x,X509 *xca,EVP_PKEY *pkey,
-			 STACK_OF(OPENSSL_STRING) *sigopts,
-			 char *serial, int create ,int days, int clrext,
-			 CONF *conf, char *section, ASN1_INTEGER *sno);
-static int purpose_print(BIO *bio, X509 *cert, X509_PURPOSE *pt);
-static int reqfile=0;
-#ifdef OPENSSL_SSL_DEBUG_BROKEN_PROTOCOL
-static int force_version=2;
-#endif
-
 int x509_main(int argc, char **argv)
 	{
-	ENGINE *e = NULL;
-	int ret=1;
-	X509_REQ *req=NULL;
+	BIO *out=NULL, *STDout=NULL;
+	STACK_OF(ASN1_OBJECT) *trust=NULL, *reject=NULL;
+	ENGINE *e=NULL;
+	X509_REQ *req=NULL, *rq=NULL;
 	X509 *x=NULL,*xca=NULL;
+	X509_STORE *ctx=NULL;
 	ASN1_OBJECT *objtmp;
-	STACK_OF(OPENSSL_STRING) *sigopts = NULL;
-	EVP_PKEY *Upkey=NULL,*CApkey=NULL, *fkey = NULL;
-	ASN1_INTEGER *sno = NULL;
-	int i,num,badops=0, badsig=0;
-	BIO *out=NULL;
-	BIO *STDout=NULL;
-	STACK_OF(ASN1_OBJECT) *trust = NULL, *reject = NULL;
-	int informat,outformat,keyformat,CAformat,CAkeyformat;
+	STACK_OF(OPENSSL_STRING) *sigopts=NULL;
+	EVP_PKEY *Upkey=NULL,*CApkey=NULL, *fkey=NULL;
+	ASN1_INTEGER *sno=NULL;
 	char *infile=NULL,*outfile=NULL,*keyfile=NULL,*CAfile=NULL;
-	char *CAkeyfile=NULL,*CAserial=NULL;
-	char *fkeyfile=NULL;
-	char *alias=NULL;
+	char *CAkeyfile=NULL,*CAserial=NULL, *fkeyfile=NULL, *alias=NULL;
+	char *extsect=NULL, *extfile=NULL, *passin=NULL, *passargin=NULL;
+	char *checkhost=NULL, *checkemail=NULL, *checkip=NULL;
+	int ret=1, i,num,badops=0, badsig=0;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM, keyformat=FORMAT_PEM;
+	int CAformat=FORMAT_PEM, CAkeyformat=FORMAT_PEM;
 	int text=0,serial=0,subject=0,issuer=0,startdate=0,enddate=0;
-	int next_serial=0;
-	int subject_hash=0,issuer_hash=0,ocspid=0;
+	int next_serial=0, subject_hash=0,issuer_hash=0,ocspid=0;
+	int noout=0,sign_flag=0,CA_flag=0,CA_createserial=0,email=0;
+	int ocsp_uri=0, trustout=0,clrtrust=0,clrreject=0,aliasout=0,clrext=0;
+	int C=0, x509req=0,days=DEF_DAYS,modulus=0,pubkey=0, pprint=0;
+	int fingerprint=0, reqfile=0, need_rand=0, checkend=0,checkoffset=0;
 #ifndef OPENSSL_NO_MD5
 	int subject_hash_old=0,issuer_hash_old=0;
 #endif
-	int noout=0,sign_flag=0,CA_flag=0,CA_createserial=0,email=0;
-	int ocsp_uri=0;
-	int trustout=0,clrtrust=0,clrreject=0,aliasout=0,clrext=0;
-	int C=0;
-	int x509req=0,days=DEF_DAYS,modulus=0,pubkey=0;
-	int pprint = 0;
-	X509_STORE *ctx=NULL;
-	X509_REQ *rq=NULL;
-	int fingerprint=0;
+	const EVP_MD *digest=NULL;
+	CONF *extconf=NULL;
 	char buf[256];
-	const EVP_MD *md_alg,*digest=NULL;
-	CONF *extconf = NULL;
-	char *extsect = NULL, *extfile = NULL, *passin = NULL, *passargin = NULL;
-	int need_rand = 0;
-	int checkend=0,checkoffset=0;
-	unsigned long nmflag = 0, certflag = 0;
-	char *checkhost = NULL;
-	char *checkemail = NULL;
-	char *checkip = NULL;
+	unsigned long nmflag=0, certflag=0;
 #ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
 #endif
 
-	reqfile=0;
-
 	STDout=dup_bio_out();
-	informat=FORMAT_PEM;
-	outformat=FORMAT_PEM;
-	keyformat=FORMAT_PEM;
-	CAformat=FORMAT_PEM;
-	CAkeyformat=FORMAT_PEM;
-
 	ctx=X509_STORE_new();
 	if (ctx == NULL) goto end;
 	X509_STORE_set_verify_cb(ctx,callb);
@@ -491,8 +473,8 @@ int x509_main(int argc, char **argv)
 			ocspid= ++num;
 		else if (strcmp(*argv,"-badsig") == 0)
 			badsig = 1;
-		else if (opt_md(*argv+1, &md_alg))
-			digest=md_alg;
+		else if (opt_md(*argv+1, &digest))
+			;
 		else
 			{
 			badops=1;
@@ -970,7 +952,7 @@ bad:
 				if (!x509_certify(ctx,CAfile,digest,x,xca,
 					CApkey, sigopts,
 					CAserial,CA_createserial,days, clrext,
-					extconf, extsect, sno))
+					extconf, extsect, sno, reqfile))
 					goto end;
 				}
 			else if (x509req == i)
@@ -1141,7 +1123,7 @@ static int x509_certify(X509_STORE *ctx, char *CAfile, const EVP_MD *digest,
 			STACK_OF(OPENSSL_STRING) *sigopts,
 	  		char *serialfile, int create,
 	     		int days, int clrext, CONF *conf, char *section,
-			ASN1_INTEGER *sno)
+			ASN1_INTEGER *sno, int reqfile)
 	{
 	int ret=0;
 	ASN1_INTEGER *bs=NULL;
