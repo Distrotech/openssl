@@ -168,11 +168,114 @@ const char *x509_help[]={
 	NULL
 };
 
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_INFORM, OPT_OUTFORM, OPT_KEYFORM, OPT_REQ, OPT_CAFORM,
+	OPT_CAKEYFORM, OPT_SIGOPT, OPT_DAYS, OPT_PASSIN, OPT_EXTFILE,
+	OPT_EXTENSIONS, OPT_IN, OPT_OUT, OPT_SIGNKEY, OPT_CA,
+	OPT_CAKEY, OPT_CASERIAL, OPT_SET_SERIAL, OPT_FORCE_PUBKEY,
+	OPT_ADDTRUST, OPT_ADDREJECT, OPT_SETALIAS, OPT_CERTOPT, OPT_NAMEOPT,
+	OPT_C, OPT_EMAIL, OPT_OCSP_URI, OPT_SERIAL, OPT_NEXT_SERIAL,
+	OPT_MODULUS, OPT_PUBKEY, OPT_X509TOREQ, OPT_TEXT, OPT_HASH,
+	OPT_ISSUER_HASH, OPT_SUBJECT, OPT_ISSUER, OPT_FINGERPRINT, OPT_DATES,
+	OPT_PURPOSE, OPT_STARTDATE, OPT_ENDDATE, OPT_CHECKEND, OPT_CHECKHOST,
+	OPT_CHECKEMAIL, OPT_CHECKIP, OPT_NOOUT, OPT_TRUSTOUT, OPT_CLRTRUST,
+	OPT_CLRREJECT, OPT_ALIAS, OPT_CACREATESERIAL, OPT_CLREXT, OPT_OCSPID,
+	OPT_BADSIG, OPT_MD, OPT_ENGINE,
+#ifndef OPENSSL_NO_MD5
+	OPT_SUBJECT_HASH_OLD,
+	OPT_ISSUER_HASH_OLD,
+#endif
+#ifdef OPENSSL_SSL_DEBUG_BROKEN_PROTOCOL
+	OPT_FORCE_VERSION,
+#endif
+#if 0
+	/* stay backwards-compatible with 0.9.5; this should go away soon */
+	OPT_OPT_CLREXT,
+#endif
+};
+
+static OPTIONS options[] = {
+	{ "inform", OPT_INFORM, 'F' },
+	{" outform", OPT_OUTFORM, 'F' },
+	{ "keyform", OPT_KEYFORM, 'F' },
+	{ "req", OPT_REQ, '-' },
+	{ "CAform", OPT_CAFORM, 'F' },
+	{ "CAkeyform", OPT_CAKEYFORM, 'F' },
+	{ "sigopt", OPT_SIGOPT, 's' },
+	{ "days", OPT_DAYS, 'p' },
+	{ "passin", OPT_PASSIN, 's' },
+	{ "extfile", OPT_EXTFILE, '<' },
+	{ "extensions", OPT_EXTENSIONS, 's' },
+	{ "in", OPT_IN, '<' },
+	{ "out", OPT_OUT, '>' },
+	{ "signkey", OPT_SIGNKEY, '<' },
+	{ "CA", OPT_CA, '<' },
+	{ "CAkey", OPT_CAKEY, '<' },
+	{ "CAserial", OPT_CASERIAL, '<' },
+	{ "set_serial", OPT_SET_SERIAL, 's' },
+	{ "force_pubkey", OPT_FORCE_PUBKEY, '<' },
+	{ "addtrust", OPT_ADDTRUST, 's' },
+	{ "addreject", OPT_ADDREJECT, 's' },
+	{ "setalias", OPT_SETALIAS, 's' },
+	{ "certopt", OPT_CERTOPT, 's' },
+	{ "nameopt", OPT_NAMEOPT, 's' },
+	{ "C", OPT_C, '-' },
+	{ "email", OPT_EMAIL, '-' },
+	{ "ocsp_uri", OPT_OCSP_URI, '-' },
+	{ "serial", OPT_SERIAL, '-' },
+	{ "next_serial", OPT_NEXT_SERIAL, '-' },
+	{ "modulus", OPT_MODULUS, '-' },
+	{ "pubkey", OPT_PUBKEY, '-' },
+	{ "x509toreq", OPT_X509TOREQ, '-' },
+	{ "text", OPT_TEXT, '-' },
+	{ "hash", OPT_HASH, '-' },
+	{ "subject_hash", OPT_HASH, '-' },
+	{ "issuer_hash", OPT_ISSUER_HASH, '-' },
+	{ "subject", OPT_SUBJECT, '-' },
+	{ "issuer", OPT_ISSUER, '-' },
+	{ "fingerprint", OPT_FINGERPRINT, '-' },
+	{ "dates", OPT_DATES, '-' },
+	{ "purpose", OPT_PURPOSE, '-' },
+	{ "startdate", OPT_STARTDATE, '-' },
+	{ "enddate", OPT_ENDDATE, '-' },
+	{ "checkend", OPT_CHECKEND, 'p' },
+	{ "checkhost", OPT_CHECKHOST, 's' },
+	{ "checkemail", OPT_CHECKEMAIL, 's' },
+	{ "checkip", OPT_CHECKIP, 's' },
+	{ "noout", OPT_NOOUT, '-' },
+	{ "trustout", OPT_TRUSTOUT, '-' },
+	{ "clrtrust", OPT_CLRTRUST, '-' },
+	{ "clrreject", OPT_CLRREJECT, '-' },
+	{ "alias", OPT_ALIAS, '-' },
+	{ "CAcreateserial", OPT_CACREATESERIAL, '-' },
+	{ "clrext", OPT_CLREXT, '-' },
+	{ "ocspid", OPT_OCSPID, '-' },
+	{ "badsig", OPT_BADSIG, '-' },
+	{ "", OPT_MD, '-' },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's' },
+#endif
+#ifndef OPENSSL_NO_MD5
+	{ "subject_hash_old", OPT_SUBJECT_HASH_OLD, '-' },
+	{ "issuer_hash_old", OPT_ISSUER_HASH_OLD, '-' },
+#endif
+#ifdef OPENSSL_SSL_DEBUG_BROKEN_PROTOCOL
+	{ "force_version", OPT_FORCE_VERSION, 'p' },
+#endif
+#if 0 /* stay backwards-compatible with 0.9.5; this should go away soon */
+	{ "crlext", OPT_OPT_CLREXT, '-' },
+#endif
+	{ NULL }
+};
+
 int x509_main(int argc, char **argv)
 	{
 	BIO *out=NULL, *STDout=NULL;
 	STACK_OF(ASN1_OBJECT) *trust=NULL, *reject=NULL;
+#ifndef OPENSSL_NO_ENGINE
 	ENGINE *e=NULL;
+#endif
 	X509_REQ *req=NULL, *rq=NULL;
 	X509 *x=NULL,*xca=NULL;
 	X509_STORE *ctx=NULL;
@@ -182,9 +285,9 @@ int x509_main(int argc, char **argv)
 	ASN1_INTEGER *sno=NULL;
 	char *infile=NULL,*outfile=NULL,*keyfile=NULL,*CAfile=NULL;
 	char *CAkeyfile=NULL,*CAserial=NULL, *fkeyfile=NULL, *alias=NULL;
-	char *extsect=NULL, *extfile=NULL, *passin=NULL, *passargin=NULL;
+	char *extsect=NULL, *extfile=NULL, *passin=NULL, *passinarg=NULL;
 	char *checkhost=NULL, *checkemail=NULL, *checkip=NULL;
-	int ret=1, i,num,badops=0, badsig=0;
+	int ret=1, i,num, badsig=0;
 	int informat=FORMAT_PEM, outformat=FORMAT_PEM, keyformat=FORMAT_PEM;
 	int CAformat=FORMAT_PEM, CAkeyformat=FORMAT_PEM;
 	int text=0,serial=0,subject=0,issuer=0,startdate=0,enddate=0;
@@ -200,297 +303,250 @@ int x509_main(int argc, char **argv)
 	CONF *extconf=NULL;
 	char buf[256];
 	unsigned long nmflag=0, certflag=0;
-#ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
-#endif
+	enum options o;
+	char* prog;
 
-	STDout=dup_bio_out();
 	ctx=X509_STORE_new();
-	if (ctx == NULL) goto end;
+	if (ctx == NULL)
+		goto end;
 	X509_STORE_set_verify_cb(ctx,callb);
+	STDout=dup_bio_out();
 
-	argc--;
-	argv++;
-	num=0;
-	while (argc >= 1)
-		{
-		if 	(strcmp(*argv,"-inform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			informat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-outform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outformat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-keyform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			keyformat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-req") == 0)
-			{
-			reqfile=1;
-			need_rand = 1;
-			}
-		else if (strcmp(*argv,"-CAform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			CAformat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-CAkeyform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			CAkeyformat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-sigopt") == 0)
-			{
-			if (--argc < 1)
-				goto bad;
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+err:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(x509_help);
+			goto end;
+		case OPT_INFORM:
+			opt_format(opt_arg(), 1, &informat);
+			break;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUTFORM:
+			opt_format(opt_arg(), 1, &outformat);
+			break;
+		case OPT_KEYFORM:
+			opt_format(opt_arg(), 1, &keyformat);
+			break;
+		case OPT_CAFORM:
+			opt_format(opt_arg(), 1, &CAformat);
+			break;
+		case OPT_CAKEYFORM:
+			opt_format(opt_arg(), 1, &CAkeyformat);
+			break;
+		case OPT_OUT:
+			outfile = opt_arg();
+			break;
+		case OPT_REQ:
+			reqfile = need_rand = 1;
+			break;
+
+		case OPT_SIGOPT:
 			if (!sigopts)
 				sigopts = sk_OPENSSL_STRING_new_null();
-			if (!sigopts || !sk_OPENSSL_STRING_push(sigopts, *(++argv)))
-				goto bad;
-			}
+			if (!sigopts || !sk_OPENSSL_STRING_push(sigopts, opt_arg()))
+				goto err;
+			break;
 #ifdef OPENSSL_SSL_DEBUG_BROKEN_PROTOCOL
-		else if (strcmp(*argv,"-force_version") == 0)
-			{
-			if (--argc < 1) goto bad;
-			force_version=atoi(*(++argv)) - 1;
-			}
+		case OPT_FORCE_VERSION:
+			force_version=atoi(opt_arg()) - 1;
+			break;
 #endif
-		else if (strcmp(*argv,"-days") == 0)
-			{
-			if (--argc < 1) goto bad;
-			days=atoi(*(++argv));
-			if (days == 0)
-				{
-				BIO_printf(bio_err,"bad number of days\n");
-				goto bad;
-				}
-			}
-		else if (strcmp(*argv,"-passin") == 0)
-			{
-			if (--argc < 1) goto bad;
-			passargin= *(++argv);
-			}
-		else if (strcmp(*argv,"-extfile") == 0)
-			{
-			if (--argc < 1) goto bad;
-			extfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-extensions") == 0)
-			{
-			if (--argc < 1) goto bad;
-			extsect= *(++argv);
-			}
-		else if (strcmp(*argv,"-in") == 0)
-			{
-			if (--argc < 1) goto bad;
-			infile= *(++argv);
-			}
-		else if (strcmp(*argv,"-out") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-signkey") == 0)
-			{
-			if (--argc < 1) goto bad;
-			keyfile= *(++argv);
+		case OPT_DAYS:
+			days=atoi(opt_arg());
+			break;
+		case OPT_PASSIN:
+			passinarg = opt_arg();
+			break;
+		case OPT_EXTFILE:
+			extfile = opt_arg();
+			break;
+		case OPT_EXTENSIONS:
+			extsect = opt_arg();
+			break;
+		case OPT_SIGNKEY:
+			keyfile = opt_arg();
 			sign_flag= ++num;
 			need_rand = 1;
-			}
-		else if (strcmp(*argv,"-CA") == 0)
-			{
-			if (--argc < 1) goto bad;
-			CAfile= *(++argv);
+			break;
+		case OPT_CA:
+			CAfile = opt_arg();
 			CA_flag= ++num;
 			need_rand = 1;
-			}
-		else if (strcmp(*argv,"-CAkey") == 0)
-			{
-			if (--argc < 1) goto bad;
-			CAkeyfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-CAserial") == 0)
-			{
-			if (--argc < 1) goto bad;
-			CAserial= *(++argv);
-			}
-		else if (strcmp(*argv,"-set_serial") == 0)
-			{
-			if (--argc < 1) goto bad;
-			if (!(sno = s2i_ASN1_INTEGER(NULL, *(++argv))))
-				goto bad;
-			}
-		else if (strcmp(*argv,"-force_pubkey") == 0)
-			{
-			if (--argc < 1) goto bad;
-			fkeyfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-addtrust") == 0)
-			{
-			if (--argc < 1) goto bad;
-			if (!(objtmp = OBJ_txt2obj(*(++argv), 0)))
-				{
+			break;
+		case OPT_CAKEY:
+			CAkeyfile = opt_arg();
+			break;
+		case OPT_CASERIAL:
+			CAserial = opt_arg();
+			break;
+		case OPT_SET_SERIAL:
+			if ((sno = s2i_ASN1_INTEGER(NULL, opt_arg())) == NULL)
+				goto err;
+			break;
+		case OPT_FORCE_PUBKEY:
+			fkeyfile = opt_arg();
+			break;
+		case OPT_ADDTRUST:
+			if ((objtmp = OBJ_txt2obj(opt_arg(), 0)) == NULL) {
 				BIO_printf(bio_err,
-					"Invalid trust object value %s\n", *argv);
-				goto bad;
-				}
-			if (!trust) trust = sk_ASN1_OBJECT_new_null();
+					"%s: Invalid trust object value %s\n",
+					prog, opt_arg());
+				goto err;
+			}
+			if (trust == NULL)
+				trust = sk_ASN1_OBJECT_new_null();
 			sk_ASN1_OBJECT_push(trust, objtmp);
 			trustout = 1;
-			}
-		else if (strcmp(*argv,"-addreject") == 0)
-			{
-			if (--argc < 1) goto bad;
-			if (!(objtmp = OBJ_txt2obj(*(++argv), 0)))
-				{
+			break;
+		case OPT_ADDREJECT:
+			if ((objtmp = OBJ_txt2obj(opt_arg(), 0)) == NULL) {
 				BIO_printf(bio_err,
-					"Invalid reject object value %s\n", *argv);
-				goto bad;
-				}
-			if (!reject) reject = sk_ASN1_OBJECT_new_null();
+					"%s: Invalid reject object value %s\n",
+					prog, opt_arg());
+				goto err;
+			}
+			if (reject == NULL)
+				reject = sk_ASN1_OBJECT_new_null();
 			sk_ASN1_OBJECT_push(reject, objtmp);
 			trustout = 1;
-			}
-		else if (strcmp(*argv,"-setalias") == 0)
-			{
-			if (--argc < 1) goto bad;
-			alias= *(++argv);
-			trustout = 1;
-			}
-		else if (strcmp(*argv,"-certopt") == 0)
-			{
-			if (--argc < 1) goto bad;
-			if (!set_cert_ex(&certflag, *(++argv))) goto bad;
-			}
-		else if (strcmp(*argv,"-nameopt") == 0)
-			{
-			if (--argc < 1) goto bad;
-			if (!set_name_ex(&nmflag, *(++argv))) goto bad;
-			}
-#ifndef OPENSSL_NO_ENGINE
-		else if (strcmp(*argv,"-engine") == 0)
-			{
-			if (--argc < 1) goto bad;
-			engine= *(++argv);
-			}
-#endif
-		else if (strcmp(*argv,"-C") == 0)
-			C= ++num;
-		else if (strcmp(*argv,"-email") == 0)
-			email= ++num;
-		else if (strcmp(*argv,"-ocsp_uri") == 0)
-			ocsp_uri= ++num;
-		else if (strcmp(*argv,"-serial") == 0)
-			serial= ++num;
-		else if (strcmp(*argv,"-next_serial") == 0)
-			next_serial= ++num;
-		else if (strcmp(*argv,"-modulus") == 0)
-			modulus= ++num;
-		else if (strcmp(*argv,"-pubkey") == 0)
-			pubkey= ++num;
-		else if (strcmp(*argv,"-x509toreq") == 0)
-			x509req= ++num;
-		else if (strcmp(*argv,"-text") == 0)
-			text= ++num;
-		else if (strcmp(*argv,"-hash") == 0
-			|| strcmp(*argv,"-subject_hash") == 0)
-			subject_hash= ++num;
-#ifndef OPENSSL_NO_MD5
-		else if (strcmp(*argv,"-subject_hash_old") == 0)
-			subject_hash_old= ++num;
-#endif
-		else if (strcmp(*argv,"-issuer_hash") == 0)
-			issuer_hash= ++num;
-#ifndef OPENSSL_NO_MD5
-		else if (strcmp(*argv,"-issuer_hash_old") == 0)
-			issuer_hash_old= ++num;
-#endif
-		else if (strcmp(*argv,"-subject") == 0)
-			subject= ++num;
-		else if (strcmp(*argv,"-issuer") == 0)
-			issuer= ++num;
-		else if (strcmp(*argv,"-fingerprint") == 0)
-			fingerprint= ++num;
-		else if (strcmp(*argv,"-dates") == 0)
-			{
-			startdate= ++num;
-			enddate= ++num;
-			}
-		else if (strcmp(*argv,"-purpose") == 0)
-			pprint= ++num;
-		else if (strcmp(*argv,"-startdate") == 0)
-			startdate= ++num;
-		else if (strcmp(*argv,"-enddate") == 0)
-			enddate= ++num;
-		else if (strcmp(*argv,"-checkend") == 0)
-			{
-			if (--argc < 1) goto bad;
-			checkoffset=atoi(*(++argv));
-			checkend=1;
-			}
-		else if (strcmp(*argv,"-checkhost") == 0)
-			{
-			if (--argc < 1) goto bad;
-			checkhost=*(++argv);
-			}
-		else if (strcmp(*argv,"-checkemail") == 0)
-			{
-			if (--argc < 1) goto bad;
-			checkemail=*(++argv);
-			}
-		else if (strcmp(*argv,"-checkip") == 0)
-			{
-			if (--argc < 1) goto bad;
-			checkip=*(++argv);
-			}
-		else if (strcmp(*argv,"-noout") == 0)
-			noout= ++num;
-		else if (strcmp(*argv,"-trustout") == 0)
-			trustout= 1;
-		else if (strcmp(*argv,"-clrtrust") == 0)
-			clrtrust= ++num;
-		else if (strcmp(*argv,"-clrreject") == 0)
-			clrreject= ++num;
-		else if (strcmp(*argv,"-alias") == 0)
-			aliasout= ++num;
-		else if (strcmp(*argv,"-CAcreateserial") == 0)
-			CA_createserial= ++num;
-		else if (strcmp(*argv,"-clrext") == 0)
-			clrext = 1;
-#if 1 /* stay backwards-compatible with 0.9.5; this should go away soon */
-		else if (strcmp(*argv,"-crlext") == 0)
-			{
-			BIO_printf(bio_err,"use -clrext instead of -crlext\n");
-			clrext = 1;
-			}
-#endif
-		else if (strcmp(*argv,"-ocspid") == 0)
-			ocspid= ++num;
-		else if (strcmp(*argv,"-badsig") == 0)
-			badsig = 1;
-		else if (opt_md(*argv+1, &digest))
-			;
-		else
-			{
-			badops=1;
 			break;
-			}
-		argc--;
-		argv++;
+		case OPT_SETALIAS:
+			alias = opt_arg();
+			trustout = 1;
+			break;
+		case OPT_CERTOPT:
+			if (!set_cert_ex(&certflag, opt_arg()))
+				goto err;
+			break;
+		case OPT_NAMEOPT:
+			if (!set_name_ex(&nmflag, opt_arg()))
+				goto err;
+			break;
+		case OPT_ENGINE:
+			engine = opt_arg();
+			break;
+		case OPT_C:
+			C= ++num;
+			break;
+		case OPT_EMAIL:
+			email= ++num;
+			break;
+		case OPT_OCSP_URI:
+			ocsp_uri= ++num;
+			break;
+		case OPT_SERIAL:
+			serial= ++num;
+			break;
+		case OPT_NEXT_SERIAL:
+			next_serial= ++num;
+			break;
+		case OPT_MODULUS:
+			modulus= ++num;
+			break;
+		case OPT_PUBKEY:
+			pubkey= ++num;
+			break;
+		case OPT_X509TOREQ:
+			x509req= ++num;
+			break;
+		case OPT_TEXT:
+			text= ++num;
+			break;
+		case OPT_SUBJECT:
+			subject= ++num;
+			break;
+		case OPT_ISSUER:
+			issuer= ++num;
+			break;
+		case OPT_FINGERPRINT:
+			fingerprint= ++num;
+			break;
+		case OPT_HASH:
+			subject_hash= ++num;
+			break;
+		case OPT_ISSUER_HASH:
+			issuer_hash= ++num;
+			break;
+		case OPT_PURPOSE:
+			pprint= ++num;
+			break;
+		case OPT_STARTDATE:
+			startdate= ++num;
+			break;
+		case OPT_ENDDATE:
+			enddate= ++num;
+			break;
+		case OPT_NOOUT:
+			noout= ++num;
+			break;
+		case OPT_TRUSTOUT:
+			trustout= 1;
+			break;
+		case OPT_CLRTRUST:
+			clrtrust= ++num;
+			break;
+		case OPT_CLRREJECT:
+			clrreject= ++num;
+			break;
+		case OPT_ALIAS:
+			aliasout= ++num;
+			break;
+		case OPT_CACREATESERIAL:
+			CA_createserial= ++num;
+			break;
+#if 0
+		case OPT_CRLEXT:
+			/* stay backwards-compatible with 0.9.5; this should go away soon */
+			BIO_printf(bio_err,
+				"%s:  Use -clrext instead of -crlext\n",
+				prog);
+#endif
+		case OPT_CLREXT:
+			clrext = 1;
+			break;
+		case OPT_OCSPID:
+			ocspid= ++num;
+			break;
+		case OPT_BADSIG:
+			badsig = 1;
+			break;
+#ifndef OPENSSL_NO_MD5
+		case OPT_SUBJECT_HASH_OLD:
+			subject_hash_old= ++num;
+			break;
+		case OPT_ISSUER_HASH_OLD:
+			issuer_hash_old= ++num;
+			break;
+#endif
+		case OPT_DATES:
+			startdate= ++num;
+			enddate= ++num;
+			break;
+		case OPT_CHECKEND:
+			checkoffset=atoi(opt_arg());
+			checkend=1;
+			break;
+		case OPT_CHECKHOST:
+			checkhost = opt_arg();
+			break;
+		case OPT_CHECKEMAIL:
+			checkemail = opt_arg();
+			break;
+		case OPT_CHECKIP:
+			checkip = opt_arg();
+			break;
+		case OPT_MD:
+			if (!opt_md(*argv+1, &digest))
+				goto err;
 		}
-
-	if (badops)
-		{
-bad:
-		BIO_printf(bio_err, "x509 [args]\n");
-		printhelp(x509_help);
-		goto end;
-		}
+	}
 
 #ifndef OPENSSL_NO_ENGINE
         e = setup_engine(bio_err, engine, 0);
@@ -499,7 +555,7 @@ bad:
 	if (need_rand)
 		app_RAND_load_file(NULL, bio_err, 0);
 
-	if (!app_passwd(bio_err, passargin, NULL, &passin, NULL))
+	if (!app_passwd(bio_err, passinarg, NULL, &passin, NULL))
 		{
 		BIO_printf(bio_err, "Error getting password\n");
 		goto end;
