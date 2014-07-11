@@ -71,6 +71,12 @@
 #undef BUFSIZE
 #define BUFSIZE	1024*8
 
+int do_fp(BIO *out, unsigned char *buf, BIO *bp, int sep, int binout,
+	  EVP_PKEY *key, unsigned char *sigin, int siglen,
+	  const char *sig_name, const char *md_name,
+	  const char *file,BIO *bmd);
+
+
 const char *dgst_help[] = {
 	"-c              to output the digest with separating colons",
 	"-r              to output the digest in coreutils format",
@@ -93,10 +99,41 @@ const char *dgst_help[] = {
 	NULL
 };
 
-int do_fp(BIO *out, unsigned char *buf, BIO *bp, int sep, int binout,
-	  EVP_PKEY *key, unsigned char *sigin, int siglen,
-	  const char *sig_name, const char *md_name,
-	  const char *file,BIO *bmd);
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_C, OPT_R, OPT_RAND, OPT_OUT, OPT_SIGN, OPT_PASSIN, OPT_VERIFY,
+	OPT_PRVERIFY, OPT_SIGNATURE, OPT_KEYFORM, OPT_ENGINE, OPT_ENGINE_IMPL,
+	OPT_HEX, OPT_BINARY, OPT_DEBUG, OPT_FIPS_FINGERPRINT,
+	OPT_NON_FIPS_ALLOW, OPT_HMAC, OPT_MAC, OPT_SIGOPT, OPT_MACOPT,
+	OPT_DIGEST,
+};
+
+static OPTIONS options[] = {
+	{ "c", OPT_C, '-' },
+	{ "r", OPT_R, '-' },
+	{ "rand", OPT_RAND, 's' },
+	{ "out", OPT_OUT, '>' },
+	{ "sign", OPT_SIGN, '<' },
+	{ "passin", OPT_PASSIN, 's' },
+	{ "verify", OPT_VERIFY, '<' },
+	{ "prverify", OPT_PRVERIFY, '<' },
+	{ "signature", OPT_SIGNATURE, '<' },
+	{ "keyform", OPT_KEYFORM, 'F', },
+	{ "engine", OPT_ENGINE, 's' },
+	{ "engine_impl", OPT_ENGINE_IMPL, '-' },
+	{ "hex", OPT_HEX, '-' },
+	{ "binary", OPT_BINARY, '-' },
+	{ "d", OPT_DEBUG, '-' },
+	{ "debug", OPT_DEBUG, '-' },
+	{ "fips-fingerprint", OPT_FIPS_FINGERPRINT, '-' },
+	{ "non-fips-allow", OPT_NON_FIPS_ALLOW, '-' },
+	{ "hmac", OPT_HMAC, 's' },
+	{ "mac", OPT_MAC, 's' },
+	{ "sigop", OPT_SIGOPT, 's' },
+	{ "macop", OPT_MACOPT, 's' },
+	{ "", OPT_DIGEST, '-' },
+	{ NULL }
+};
 
 static void list_md_fn(const EVP_MD *m,
 			const char *from, const char *to, void *arg)
@@ -120,132 +157,127 @@ static void list_md_fn(const EVP_MD *m,
 
 int dgst_main(int argc, char **argv)
 	{
-	ENGINE *e = NULL, *impl = NULL;
+	ENGINE *e=NULL, *impl=NULL;
 	unsigned char *buf=NULL;
-	int i,err=1;
 	const EVP_MD *md=NULL,*m;
-	BIO *in=NULL,*inp;
-	BIO *bmd=NULL;
-	BIO *out = NULL;
-	int separator=0;
-	int debug=0;
-	int keyform=FORMAT_PEM;
-	const char *outfile = NULL, *keyfile = NULL;
-	const char *sigfile = NULL, *randfile = NULL;
-	int out_bin = -1, want_pub = 0, do_verify = 0;
-	EVP_PKEY *sigkey = NULL;
-	unsigned char *sigbuf = NULL;
-	int siglen = 0;
-	char *passargin = NULL, *passin = NULL;
+	BIO *in=NULL,*inp, *bmd=NULL, *out=NULL;
+	int separator=0, debug=0, keyform=FORMAT_PEM;
+	const char *outfile=NULL, *keyfile=NULL, *prog=NULL;
+	const char *sigfile=NULL, *randfile=NULL;
+	int i,err=1;
+	int out_bin=-1, want_pub=0, do_verify=0;
+	EVP_PKEY *sigkey=NULL;
+	unsigned char *sigbuf=NULL;
+	int siglen=0, non_fips_allow=0;
+	char *passinarg=NULL, *passin=NULL;
 #ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
-	int engine_impl = 0;
+	int engine_impl=0;
 #endif
 	char *hmac_key=NULL;
 	char *mac_name=NULL;
-	int non_fips_allow = 0;
-	STACK_OF(OPENSSL_STRING) *sigopts = NULL, *macopts = NULL;
+	STACK_OF(OPENSSL_STRING) *sigopts=NULL, *macopts=NULL;
+	enum options o;
 
-	if ((buf=(unsigned char *)OPENSSL_malloc(BUFSIZE)) == NULL)
-		{
-		BIO_printf(bio_err,"out of memory\n");
+	prog = opt_progname(argv[0]);
+	if ((buf=(unsigned char *)OPENSSL_malloc(BUFSIZE)) == NULL) {
+		BIO_printf(bio_err, "%s: out of memory\n", prog);
 		goto end;
-		}
+	}
+	md=EVP_get_digestbyname(prog);
 
-	md=EVP_get_digestbyname(opt_progname(argv[0]));
 
-	argc--;
-	argv++;
-	while (argc > 0)
-		{
-		if ((*argv)[0] != '-') break;
-		if (strcmp(*argv,"-c") == 0)
-			separator=1;
-		else if (strcmp(*argv,"-r") == 0)
-			separator=2;
-		else if (strcmp(*argv,"-rand") == 0)
-			{
-			randfile=*(++argv);
-			}
-		else if (strcmp(*argv,"-out") == 0)
-			{
-			outfile=*(++argv);
-			}
-		else if (strcmp(*argv,"-sign") == 0)
-			{
-			keyfile=*(++argv);
-			}
-		else if (!strcmp(*argv,"-passin"))
-			{
-			passargin=*++argv;
-			}
-		else if (strcmp(*argv,"-verify") == 0)
-			{
-			keyfile=*(++argv);
-			want_pub = 1;
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+err:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(dgst_help);
+			goto end;
+
+		case OPT_C:
+			separator = 1;
+			break;
+		case OPT_R:
+			separator = 2;
+			break;
+		case OPT_RAND:
+			randfile = opt_arg();
+			break;
+		case OPT_OUT:
+			outfile = opt_arg();
+			break;
+		case OPT_SIGN:
+			keyfile = opt_arg();
+			break;
+		case OPT_PASSIN:
+			passinarg = opt_arg();
+			break;
+		case OPT_VERIFY:
+			keyfile = opt_arg();
+			want_pub = do_verify = 1;
+			break;
+		case OPT_PRVERIFY:
+			keyfile = opt_arg();
 			do_verify = 1;
-			}
-		else if (strcmp(*argv,"-prverify") == 0)
-			{
-			keyfile=*(++argv);
-			do_verify = 1;
-			}
-		else if (strcmp(*argv,"-signature") == 0)
-			{
-			sigfile=*(++argv);
-			}
-		else if (strcmp(*argv,"-keyform") == 0)
-			{
-			keyform=str2fmt(*(++argv));
-			}
+			break;
+		case OPT_SIGNATURE:
+			sigfile = opt_arg();
+			break;
+		case OPT_KEYFORM:
+			opt_format(opt_arg(), 1, &keyform);
+			break;
 #ifndef OPENSSL_NO_ENGINE
-		else if (strcmp(*argv,"-engine") == 0)
-			{
-			engine= *(++argv);
+		case OPT_ENGINE:
+			engine = opt_arg();
         		e = setup_engine(bio_err, engine, 0);
-			}
-		else if (strcmp(*argv,"-engine_impl") == 0)
+			break;
+		case OPT_ENGINE_IMPL:
 			engine_impl = 1;
+			break;
 #endif
-		else if (strcmp(*argv,"-hex") == 0)
+		case OPT_HEX:
 			out_bin = 0;
-		else if (strcmp(*argv,"-binary") == 0)
+			break;
+		case OPT_BINARY:
 			out_bin = 1;
-		else if (strcmp(*argv,"-d") == 0)
-			debug=1;
-		else if (!strcmp(*argv,"-fips-fingerprint"))
+			break;
+		case OPT_DEBUG:
+			debug = 1;
+			break;
+		case OPT_FIPS_FINGERPRINT:
 			hmac_key = "etaonrishdlcupfm";
-		else if (strcmp(*argv,"-non-fips-allow") == 0)
-			non_fips_allow=1;
-		else if (!strcmp(*argv,"-hmac"))
-			{
-			hmac_key=*++argv;
-			}
-		else if (!strcmp(*argv,"-mac"))
-			{
-			mac_name=*++argv;
-			}
-		else if (strcmp(*argv,"-sigopt") == 0)
-			{
+			break;
+		case OPT_NON_FIPS_ALLOW:
+			non_fips_allow = 1;
+			break;
+		case OPT_HMAC:
+			hmac_key = opt_arg();
+			break;
+		case OPT_MAC:
+			mac_name = opt_arg();
+			break;
+		case OPT_SIGOPT:
 			if (!sigopts)
 				sigopts = sk_OPENSSL_STRING_new_null();
-			if (!sigopts || !sk_OPENSSL_STRING_push(sigopts, *(++argv)))
-				break;
-			}
-		else if (strcmp(*argv,"-macopt") == 0)
-			{
+			if (!sigopts || !sk_OPENSSL_STRING_push(sigopts, opt_arg()))
+				goto err;
+			break;
+		case OPT_MACOPT:
 			if (!macopts)
 				macopts = sk_OPENSSL_STRING_new_null();
-			if (!macopts || !sk_OPENSSL_STRING_push(macopts, *(++argv)))
-				break;
-			}
-		else if (opt_md(opt_unknown(), &m))
-			md=m;
-		else
+			if (!macopts || !sk_OPENSSL_STRING_push(macopts, opt_arg()))
+				goto err;
 			break;
-		argc--;
-		argv++;
+		case OPT_DIGEST:
+			if (!opt_md(opt_unknown(), &m))
+				goto err;
+			md=m;
+			break;
 		}
+	}
 
 
 	if(do_verify && !sigfile) {
@@ -275,7 +307,7 @@ int dgst_main(int argc, char **argv)
 		BIO_set_callback_arg(in,(char *)bio_err);
 		}
 
-	if(!app_passwd(bio_err, passargin, NULL, &passin, NULL))
+	if(!app_passwd(bio_err, passinarg, NULL, &passin, NULL))
 		{
 		BIO_printf(bio_err, "Error getting password\n");
 		goto end;

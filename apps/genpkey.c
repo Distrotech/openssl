@@ -83,131 +83,112 @@ const char* genpkey_help[] = {
 	"                   to value <value>",
 	"-genparam          generate parameters, not key",
 	"-text              print the in text",
+	"Order of options may be important!  See the documentation.",
 	NULL
 };
+
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ENGINE, OPT_OUTFORM, OPT_OUT, OPT_PASS, OPT_PARAMFILE,
+	OPT_ALGORITHM, OPT_PKEYOPT, OPT_GENPARAM, OPT_TEXT, OPT_CIPHER,
+};
+
+static OPTIONS options[] = {
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's' },
+#endif
+	{ "outform", OPT_OUTFORM, 'F' },
+	{ "out", OPT_OUT, '>' },
+	{ "pass", OPT_PASS, 's' },
+	{ "paramfile", OPT_PARAMFILE, '<' },
+	{ "algorithm", OPT_ALGORITHM, 's' },
+	{ "pkeyopt", OPT_PKEYOPT, 's' },
+	{ "genparam", OPT_GENPARAM, '-' },
+	{ "text", OPT_TEXT, '-' },
+	{ "", OPT_CIPHER, '-' },
+	{ NULL }
+};
+
 int genpkey_main(int argc, char **argv)
 	{
-	ENGINE *e = NULL;
-	char **args, *outfile = NULL;
-	char *passarg = NULL;
-	BIO *in = NULL, *out = NULL;
-	const EVP_CIPHER *cipher = NULL;
-	int outformat;
-	int text = 0;
+	ENGINE *e=NULL;
+	BIO *in=NULL, *out=NULL;
+	const EVP_CIPHER *cipher=NULL;
 	EVP_PKEY *pkey=NULL;
-	EVP_PKEY_CTX *ctx = NULL;
-	char *pass = NULL;
-	int badarg = 0;
-	int ret = 1, rv;
+	EVP_PKEY_CTX *ctx=NULL;
+	char *outfile=NULL, *passarg=NULL, *pass=NULL;
+	int outformat=FORMAT_PEM, text=0, ret=1, rv, do_param=0;
+	enum options o;
+	char* prog;
 
-	int do_param = 0;
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+err:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(genpkey_help);
+			goto end;
+		case OPT_OUTFORM:
+			opt_format(opt_arg(), 1, &outformat);
+			break;
+		case OPT_OUT:
+			outfile= opt_arg();
+			break;
 
-	outformat=FORMAT_PEM;
-
-	args = argv + 1;
-	while (!badarg && *args && *args[0] == '-')
-		{
-		if (!strcmp(*args,"-outform"))
-			{
-			if (args[1])
-				{
-				args++;
-				outformat=str2fmt(*args);
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args,"-pass"))
-			{
-			if (!args[1]) goto bad;
-			passarg= *(++args);
-			}
+		case OPT_PASS:
+			passarg= opt_arg();
+			break;
 #ifndef OPENSSL_NO_ENGINE
-		else if (strcmp(*args,"-engine") == 0)
-			{
-			if (!args[1])
-				goto bad;
-        		e = setup_engine(bio_err, *(++args), 0);
-			}
+		case OPT_ENGINE:
+        		e = setup_engine(bio_err, opt_arg(), 0);
+			break;
 #endif
-		else if (!strcmp (*args, "-paramfile"))
-			{
-			if (!args[1])
-				goto bad;
-			args++;
+		case OPT_PARAMFILE:
 			if (do_param == 1)
-				goto bad;
-			if (!init_keygen_file(bio_err, &ctx, *args, e))
+				goto err;
+			if (!init_keygen_file(bio_err, &ctx, opt_arg(), e))
 				goto end;
-			}
-		else if (!strcmp (*args, "-out"))
-			{
-			if (args[1])
-				{
-				args++;
-				outfile = *args;
-				}
-			else badarg = 1;
-			}
-		else if (strcmp(*args,"-algorithm") == 0)
-			{
-			if (!args[1])
-				goto bad;
-			if (!init_gen_str(bio_err, &ctx, *(++args),e, do_param))
+			break;
+		case OPT_ALGORITHM:
+			if (!init_gen_str(bio_err, &ctx, opt_arg(),e, do_param))
 				goto end;
+			break;
+		case OPT_PKEYOPT:
+			if (ctx == NULL) {
+				BIO_printf(bio_err,
+					"%s: No keytype specified.\n", prog);
+				goto err;
 			}
-		else if (strcmp(*args,"-pkeyopt") == 0)
-			{
-			if (!args[1])
-				goto bad;
-			if (!ctx)
-				{
-				BIO_puts(bio_err, "No keytype specified\n");
-				goto bad;
-				}
-			else if (pkey_ctrl_string(ctx, *(++args)) <= 0)
-				{
-				BIO_puts(bio_err, "parameter setting error\n");
+			if (pkey_ctrl_string(ctx, opt_arg()) <= 0) {
+				BIO_printf(bio_err,
+					"%s: Error setting %s parameter:\n",
+					prog, opt_arg());
 				ERR_print_errors(bio_err);
 				goto end;
 				}
-			}
-		else if (strcmp(*args,"-genparam") == 0)
-			{
-			if (ctx)
-				goto bad;
+			break;
+		case OPT_GENPARAM:
+			if (ctx != NULL)
+				goto err;
 			do_param = 1;
-			}
-		else if (strcmp(*args,"-text") == 0)
+			break;
+		case OPT_TEXT:
 			text=1;
-		else
-			{
-			if (!opt_cipher(*args+1, &cipher))
-				{
-				BIO_printf(bio_err, "Unknown cipher %s\n",
-								*args + 1);
-				badarg = 1;
-				}
+			break;
+		case OPT_CIPHER:
+			if (!opt_cipher(opt_arg(), &cipher))
+				goto err;
 			if (do_param == 1)
-				badarg = 1;
-			}
-		args++;
+				goto err;
 		}
+	}
 
-	if (!ctx)
-		badarg = 1;
+	if (ctx == NULL)
+		goto err;
 
-	if (badarg)
-		{
-		bad:
-		BIO_printf(bio_err, "Usage: genpkey [options]\n");
-		BIO_printf(bio_err, "where options may be\n");
-		printhelp(genpkey_help);
-		BIO_printf(bio_err, "NB: options order may be important!  See the manual page.\n");
-		goto end;
-		}
-
-	if (!app_passwd(bio_err, passarg, NULL, &pass, NULL))
-		{
+	if (!app_passwd(bio_err, passarg, NULL, &pass, NULL)) {
 		BIO_puts(bio_err, "Error getting password\n");
 		goto end;
 		}

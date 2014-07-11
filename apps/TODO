@@ -26,7 +26,7 @@ X   329 ec.c
     390 verify.c
 X   400 rsa.c
 X   411 asn1pars.c
-    416 genpkey.c
+X   416 genpkey.c
 X   418 opt.c
 X   420 crl.c
 -   433 progs.h
@@ -34,13 +34,13 @@ X   438 pkcs8.c
 X   473 passwd.c
 X   497 dhparam.c
 X   530 engine.c
-    536 pkeyutl.c
-    607 s_time.c
-    614 dgst.c
-    630 ecparam.c
-    697 enc.c
-    738 srp.c
-    758 s_socket.c
+X   536 pkeyutl.c
+X   607 s_time.c
+X   614 dgst.c
+X   630 ecparam.c
+X   697 enc.c
+X   738 srp.c
+-   758 s_socket.c
     789 openssl.c
     829 smime.c
     952 pkcs12.c

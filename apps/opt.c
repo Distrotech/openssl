@@ -202,6 +202,20 @@ int opt_md(const char* name, const EVP_MD** mdp)
 	BIO_printf(bio_err, "%s: Unknown digest %s\n", prog, name);
 	return 0;
 }
+int opt_pair(const char* name, const OPT_PAIR* pairs, int* result)
+{
+	const OPT_PAIR* pp;
+
+	for (pp = pairs; pp->name; pp++)
+		if (strcmp(pp->name, name) == 0) {
+			*result = pp->retval;
+			return 1;
+		}
+	BIO_printf(bio_err, "%s: Value must be one of:\n", prog);
+	for (pp = pairs; pp->name; pp++)
+		BIO_printf(bio_err, "\t%s\n", pp->name);
+	return 0;
+}
 
 /* See if cp looks like a hex number, in case user left off the 0x */
 static int scanforhex(const char* cp)

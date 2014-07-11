@@ -173,6 +173,11 @@ typedef struct options_st {
 	int valtype;
 } OPTIONS;
 
+typedef struct opt_pair_st {
+	const char* name;
+	int retval;
+} OPT_PAIR;
+
 extern char* opt_progname(const char *argv0);
 extern char* opt_init(int ac, char** av, const OPTIONS* o);
 extern int opt_next();
@@ -180,6 +185,7 @@ extern int opt_format(const char *s, int onlyderpem, int* result);
 extern int opt_int(const char* arg, int* result);
 extern int opt_ulong(const char* arg, unsigned long* result);
 extern int opt_long(const char* arg, long* result);
+extern int opt_pair(const char* arg, const OPT_PAIR* pairs, int* result);
 extern int opt_cipher(const char* name, const EVP_CIPHER** cipherp);
 extern int opt_md(const char* name, const EVP_MD** mdp);
 extern char* opt_arg(void);

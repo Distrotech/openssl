@@ -85,6 +85,8 @@
 #include <openssl/pem.h>
 
 
+static int ecparam_print_var(BIO *,BIGNUM *,const char *,int,unsigned char *);
+
 const char* ecparam_help[] = {
 	"-inform arg       input format - default PEM (DER or PEM)",
 	"-outform arg      output format - default PEM",
@@ -109,135 +111,126 @@ const char* ecparam_help[] = {
 	NULL
 };
 
-static int ecparam_print_var(BIO *,BIGNUM *,const char *,int,unsigned char *);
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT, OPT_TEXT, OPT_C,
+	OPT_CHECK, OPT_LIST_CURVES, OPT_NO_SEED, OPT_NOOUT, OPT_NAME,
+	OPT_CONV_FORM, OPT_PARAM_ENC, OPT_GENKEY, OPT_RAND, OPT_ENGINE,
+};
+static OPTIONS options[] = {
+	{ "inform", OPT_INFORM, 'F' },
+	{ "outform", OPT_OUTFORM, 'F' },
+	{ "in", OPT_IN, '<' },
+	{ "out", OPT_OUT, '>' },
+	{ "text", OPT_TEXT, '-' },
+	{ "C", OPT_C, '-' },
+	{ "check", OPT_CHECK, '-' },
+	{ "list_curves", OPT_LIST_CURVES, '-' },
+	{ "no_seed", OPT_NO_SEED, '-' },
+	{ "noout", OPT_NOOUT, '-' },
+	{ "name", OPT_NAME, 's' },
+	{ "conv_form", OPT_CONV_FORM, 's' },
+	{ "param_enc", OPT_PARAM_ENC, 's' },
+	{ "genkey", OPT_GENKEY, '-' },
+	{ "rand", OPT_RAND, 's' },
+	{ "engine", OPT_ENGINE, 's' },
+	{ NULL }
+};
+OPT_PAIR forms[] = {
+	{ "compressed", POINT_CONVERSION_COMPRESSED },
+	{ "uncompressed", POINT_CONVERSION_UNCOMPRESSED },
+	{ "hybrid", POINT_CONVERSION_HYBRID },
+	{ NULL }
+};
+OPT_PAIR encodings[] = {
+	{ "named_curve", OPENSSL_EC_NAMED_CURVE },
+	{ "explicit", 0 },
+	{ NULL }
+};
 
 int ecparam_main(int argc, char **argv)
 	{
-	EC_GROUP *group = NULL;
-	point_conversion_form_t form = POINT_CONVERSION_UNCOMPRESSED; 
-	int 	new_form = 0;
-	int 	asn1_flag = OPENSSL_EC_NAMED_CURVE;
-	int 	new_asn1_flag = 0;
-	char 	*curve_name = NULL, *inrand = NULL;
-	int	list_curves = 0, no_seed = 0, check = 0,
-		badops = 0, text = 0, i, need_rand = 0, genkey = 0;
-	char	*infile = NULL, *outfile = NULL, *prog;
-	BIO 	*in = NULL, *out = NULL;
-	int 	informat, outformat, noout = 0, C = 0, ret = 1;
-	char	*engine = NULL;
+	EC_GROUP *group=NULL;
+	point_conversion_form_t form=POINT_CONVERSION_UNCOMPRESSED; 
+	int new_form=0;
+	int  asn1_flag=OPENSSL_EC_NAMED_CURVE, new_asn1_flag=0;
+	char  *curve_name=NULL, *inrand=NULL;
+	int list_curves=0, no_seed=0, check=0;
+	int text=0, i, need_rand=0, genkey=0;
+	char *infile=NULL, *outfile=NULL, *prog;
+	BIO  *in=NULL, *out=NULL;
+	int  informat=FORMAT_PEM, outformat=FORMAT_PEM, noout=0, C=0, ret=1;
+	char *engine=NULL;
+	BIGNUM *ec_p=NULL, *ec_a=NULL, *ec_b=NULL;
+	BIGNUM *ec_gen=NULL, *ec_order=NULL, *ec_cofactor=NULL;
+	unsigned char *buffer=NULL;
+	enum options o;
 
-	BIGNUM	*ec_p = NULL, *ec_a = NULL, *ec_b = NULL,
-		*ec_gen = NULL, *ec_order = NULL, *ec_cofactor = NULL;
-	unsigned char *buffer = NULL;
-
-	informat=FORMAT_PEM;
-	outformat=FORMAT_PEM;
-
-	prog=argv[0];
-	argc--;
-	argv++;
-	while (argc >= 1)
-		{
-		if 	(strcmp(*argv,"-inform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			informat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-outform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outformat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-in") == 0)
-			{
-			if (--argc < 1) goto bad;
-			infile= *(++argv);
-			}
-		else if (strcmp(*argv,"-out") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-text") == 0)
-			text = 1;
-		else if (strcmp(*argv,"-C") == 0)
-			C = 1;
-		else if (strcmp(*argv,"-check") == 0)
-			check = 1;
-		else if (strcmp (*argv, "-name") == 0)
-			{
-			if (--argc < 1)
-				goto bad;
-			curve_name = *(++argv);
-			}
-		else if (strcmp(*argv, "-list_curves") == 0)
-			list_curves = 1;
-		else if (strcmp(*argv, "-conv_form") == 0)
-			{
-			if (--argc < 1)
-				goto bad;
-			++argv;
-			new_form = 1;
-			if (strcmp(*argv, "compressed") == 0)
-				form = POINT_CONVERSION_COMPRESSED;
-			else if (strcmp(*argv, "uncompressed") == 0)
-				form = POINT_CONVERSION_UNCOMPRESSED;
-			else if (strcmp(*argv, "hybrid") == 0)
-				form = POINT_CONVERSION_HYBRID;
-			else
-				goto bad;
-			}
-		else if (strcmp(*argv, "-param_enc") == 0)
-			{
-			if (--argc < 1)
-				goto bad;
-			++argv;
-			new_asn1_flag = 1;
-			if (strcmp(*argv, "named_curve") == 0)
-				asn1_flag = OPENSSL_EC_NAMED_CURVE;
-			else if (strcmp(*argv, "explicit") == 0)
-				asn1_flag = 0;
-			else
-				goto bad;
-			}
-		else if (strcmp(*argv, "-no_seed") == 0)
-			no_seed = 1;
-		else if (strcmp(*argv, "-noout") == 0)
-			noout=1;
-		else if (strcmp(*argv,"-genkey") == 0)
-			{
-			genkey=1;
-			need_rand=1;
-			}
-		else if (strcmp(*argv, "-rand") == 0)
-			{
-			if (--argc < 1) goto bad;
-			inrand= *(++argv);
-			need_rand=1;
-			}
-		else if(strcmp(*argv, "-engine") == 0)
-			{
-			if (--argc < 1) goto bad;
-			engine = *(++argv);
-			}	
-		else
-			{
-			BIO_printf(bio_err,"unknown option %s\n",*argv);
-			badops=1;
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+err:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(ecparam_help);
+			goto end;
+		case OPT_INFORM:
+			opt_format(opt_arg(), 1, &informat);
 			break;
-			}
-		argc--;
-		argv++;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUTFORM:
+			opt_format(opt_arg(), 1, &outformat);
+			break;
+		case OPT_OUT:
+			outfile= opt_arg();
+			break;
+		case OPT_TEXT:
+			text = 1;
+			break;
+		case OPT_C:
+			C = 1;
+			break;
+		case OPT_CHECK:
+			check = 1;
+			break;
+		case OPT_LIST_CURVES:
+			list_curves = 1;
+			break;
+		case OPT_NO_SEED:
+			no_seed = 1;
+			break;
+		case OPT_NOOUT:
+			noout=1;
+			break;
+		case OPT_NAME:
+			curve_name = opt_arg();
+			break;
+		case OPT_CONV_FORM:
+			if (!opt_pair(opt_arg(), forms, &new_form))
+				goto err;
+			form = new_form;
+			new_form = 1;
+			break;
+		case OPT_PARAM_ENC:
+			if (!opt_pair(opt_arg(), encodings, &asn1_flag))
+				goto err;
+			new_asn1_flag = 1;
+			break;
+		case OPT_GENKEY:
+			genkey = need_rand = 1;
+			break;
+		case OPT_RAND:
+			inrand = opt_arg();
+			need_rand=1;
+			break;
+		case OPT_ENGINE:
+			engine = opt_arg();
+			break;
 		}
-
-	if (badops)
-		{
-bad:
-		BIO_printf(bio_err, "%s [options] <infile >outfile\n",prog);
-		BIO_printf(bio_err, "where options are\n");
-		printhelp(ecparam_help);
-		goto end;
-		}
+	}
 
 	in = bio_open_default(infile, RB(informat));
 	if (in == NULL)

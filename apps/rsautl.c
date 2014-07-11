@@ -74,8 +74,6 @@
 #define KEY_PUBKEY	2
 #define KEY_CERT	3
 
-static void usage(void);
-
 const char* rsautl_help[] = {
 	"-in file        input file",
 	"-out file       output file",
@@ -135,23 +133,23 @@ static OPTIONS options[] = {
 
 int rsautl_main(int argc, char **argv)
 {
-	ENGINE *e = NULL;
-	BIO *in = NULL, *out = NULL;
-	char *infile = NULL, *outfile = NULL;
-	char *engine = NULL;
-	char *keyfile = NULL;
-	char rsa_mode = RSA_VERIFY, key_type = KEY_PRIVKEY;
-	int keyformat = FORMAT_PEM;
-	char need_priv = 0, badarg = 0, rev = 0;
-	char hexdump = 0, asn1parse = 0;
+	ENGINE *e=NULL;
+	BIO *in=NULL, *out=NULL;
+	char *infile=NULL, *outfile=NULL;
+	char *engine=NULL;
+	char *keyfile=NULL;
+	char rsa_mode=RSA_VERIFY, key_type=KEY_PRIVKEY;
+	int keyformat=FORMAT_PEM;
+	char need_priv=0, rev=0;
+	char hexdump=0, asn1parse=0;
 	X509 *x;
-	EVP_PKEY *pkey = NULL;
-	RSA *rsa = NULL;
-	unsigned char *rsa_in = NULL, *rsa_out = NULL, pad = RSA_PKCS1_PADDING;
-	char *passinarg = NULL, *passin = NULL;
-	int rsa_inlen, rsa_outlen = 0;
+	EVP_PKEY *pkey=NULL;
+	RSA *rsa=NULL;
+	unsigned char *rsa_in=NULL, *rsa_out=NULL, pad=RSA_PKCS1_PADDING;
+	char *passinarg=NULL, *passin=NULL;
+	int rsa_inlen, rsa_outlen=0;
 	int keysize;
-	int ret = 1;
+	int ret=1;
 	enum options o;
 	char* prog;
 
@@ -349,12 +347,6 @@ end:
 	if(rsa_out) OPENSSL_free(rsa_out);
 	if(passin) OPENSSL_free(passin);
 	return ret;
-}
-
-static void usage()
-{
-	BIO_printf(bio_err, "Usage: rsautl [options]\n");
-	printhelp(rsautl_help);
 }
 
 #else /* !OPENSSL_NO_RSA */
