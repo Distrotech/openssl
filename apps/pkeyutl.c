@@ -66,12 +66,10 @@
 #define KEY_PUBKEY	2
 #define KEY_CERT	3
 
-static void usage(void);
-
 
 static EVP_PKEY_CTX *init_ctx(int *pkeysize,
 				char *keyfile, int keyform, int key_type,
-				char *passargin, int pkey_op, ENGINE *e);
+				char *passinarg, int pkey_op, ENGINE *e);
 
 static int setup_peer(BIO *err, EVP_PKEY_CTX *ctx, int peerform,
 							const char *file);
@@ -103,158 +101,172 @@ const char* pkeyutl_help[] = {
 	 NULL
 };
 
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ENGINE, OPT_IN, OPT_OUT,
+	OPT_PUBIN, OPT_CERTIN, OPT_ASN1PARSE, OPT_HEXDUMP, OPT_SIGN,
+	OPT_VERIFY, OPT_VERIFYRECOVER, OPT_REV, OPT_ENCRYPT, OPT_DECRYPT,
+	OPT_DERIVE, OPT_SIGFILE, OPT_INKEY, OPT_PEERKEY, OPT_PASSIN,
+	OPT_PEERFORM, OPT_KEYFORM, OPT_PKEYOPT,
+};
+
+static OPTIONS options[] = {
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's' },
+#endif
+	{ "in", OPT_IN, '<' },
+	{ "out", OPT_OUT, '>' },
+	{ "pubin", OPT_PUBIN, '-' },
+	{ "certin", OPT_CERTIN, '-' },
+	{ "asn1parse", OPT_ASN1PARSE, '-' },
+	{ "hexdump", OPT_HEXDUMP, '-' },
+	{ "sign", OPT_SIGN, '-' },
+	{ "verify", OPT_VERIFY, '-' },
+	{ "verifyrecover", OPT_VERIFYRECOVER, '-' },
+	{ "rev", OPT_REV, '-' },
+	{ "encrypt", OPT_ENCRYPT, '-' },
+	{ "decrypt", OPT_DECRYPT, '-' },
+	{ "derive", OPT_DERIVE, '-' },
+	{ "sigfile", OPT_SIGFILE, '<' },
+	{ "inkey", OPT_INKEY, 's' },
+	{ "peerkey", OPT_PEERKEY, 's' },
+	{ "passin", OPT_PASSIN, 's' },
+	{ "peerform", OPT_PEERFORM, 'F' },
+	{ "keyform", OPT_KEYFORM, 'F' },
+	{ "pkeyopt", OPT_PKEYOPT, 's' },
+	{ NULL }
+};
+
 int pkeyutl_main(int argc, char **argv)
 {
-	BIO *in = NULL, *out = NULL;
-	char *infile = NULL, *outfile = NULL, *sigfile = NULL;
-	ENGINE *e = NULL;
-	int pkey_op = EVP_PKEY_OP_SIGN, key_type = KEY_PRIVKEY;
-	int keyform = FORMAT_PEM, peerform = FORMAT_PEM;
-	char badarg = 0, rev = 0;
-	char hexdump = 0, asn1parse = 0;
-	EVP_PKEY_CTX *ctx = NULL;
-	char *passargin = NULL;
-	int keysize = -1;
-
-	unsigned char *buf_in = NULL, *buf_out = NULL, *sig = NULL;
+	BIO *in=NULL, *out=NULL;
+	char *infile=NULL, *outfile=NULL, *sigfile=NULL;
+	ENGINE *e=NULL;
+	int pkey_op=EVP_PKEY_OP_SIGN, key_type=KEY_PRIVKEY;
+	int keyform=FORMAT_PEM, peerform=FORMAT_PEM;
+	char rev=0;
+	char hexdump=0, asn1parse=0;
+	EVP_PKEY_CTX *ctx=NULL;
+	char *passinarg=NULL;
+	int keysize=-1;
+	unsigned char *buf_in=NULL, *buf_out=NULL, *sig=NULL;
 	size_t buf_outlen;
-	int buf_inlen = 0, siglen = -1;
+	int buf_inlen=0, siglen=-1;
+	int ret=1, rv=-1;
+	enum options o;
+	char* prog;
 
-	int ret = 1, rv = -1;
-
-	argc--;
-	argv++;
-
-	while(argc >= 1)
-		{
-		if (!strcmp(*argv,"-in"))
-			{
-			if (--argc < 1) badarg = 1;
-                        else infile= *(++argv);
-			}
-		else if (!strcmp(*argv,"-out"))
-			{
-			if (--argc < 1) badarg = 1;
-			else outfile= *(++argv);
-			}
-		else if (!strcmp(*argv,"-sigfile"))
-			{
-			if (--argc < 1) badarg = 1;
-			else sigfile= *(++argv);
-			}
-		else if(!strcmp(*argv, "-inkey"))
-			{
-			if (--argc < 1)
-				badarg = 1;
-			else
-				{
-				ctx = init_ctx(&keysize,
-						*(++argv), keyform, key_type,
-						passargin, pkey_op, e);
-				if (!ctx)
-					{
-					BIO_puts(bio_err,
-						"Error initializing context\n");
-					ERR_print_errors(bio_err);
-					badarg = 1;
-					}
-				}
-			}
-		else if (!strcmp(*argv,"-peerkey"))
-			{
-			if (--argc < 1)
-				badarg = 1;
-			else if (!setup_peer(bio_err, ctx, peerform, *(++argv)))
-				badarg = 1;
-			}
-		else if (!strcmp(*argv,"-passin"))
-			{
-			if (--argc < 1) badarg = 1;
-			else passargin= *(++argv);
-			}
-		else if (strcmp(*argv,"-peerform") == 0)
-			{
-			if (--argc < 1) badarg = 1;
-			else peerform=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-keyform") == 0)
-			{
-			if (--argc < 1) badarg = 1;
-			else keyform=str2fmt(*(++argv));
-			}
-#ifndef OPENSSL_NO_ENGINE
-		else if(!strcmp(*argv, "-engine"))
-			{
-			if (--argc < 1)
-				badarg = 1;
-			else
-				e = setup_engine(bio_err, *(++argv), 0);
-			}
-#endif
-		else if(!strcmp(*argv, "-pubin"))
-			key_type = KEY_PUBKEY;
-		else if(!strcmp(*argv, "-certin"))
-			key_type = KEY_CERT;
-		else if(!strcmp(*argv, "-asn1parse"))
-			asn1parse = 1;
-		else if(!strcmp(*argv, "-hexdump"))
-			hexdump = 1;
-		else if(!strcmp(*argv, "-sign"))
-			pkey_op = EVP_PKEY_OP_SIGN;
-		else if(!strcmp(*argv, "-verify"))
-			pkey_op = EVP_PKEY_OP_VERIFY;
-		else if(!strcmp(*argv, "-verifyrecover"))
-			pkey_op = EVP_PKEY_OP_VERIFYRECOVER;
-		else if(!strcmp(*argv, "-rev"))
-			rev = 1;
-		else if(!strcmp(*argv, "-encrypt"))
-			pkey_op = EVP_PKEY_OP_ENCRYPT;
-		else if(!strcmp(*argv, "-decrypt"))
-			pkey_op = EVP_PKEY_OP_DECRYPT;
-		else if(!strcmp(*argv, "-derive"))
-			pkey_op = EVP_PKEY_OP_DERIVE;
-		else if (strcmp(*argv,"-pkeyopt") == 0)
-			{
-			if (--argc < 1)
-				badarg = 1;
-			else if (!ctx)
-				{
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+err:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(pkeyutl_help);
+			goto end;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUT:
+			outfile= opt_arg();
+			break;
+		case OPT_SIGFILE:
+			sigfile = opt_arg();
+			break;
+		case OPT_INKEY:
+			ctx = init_ctx(&keysize, opt_arg(), keyform, key_type,
+					passinarg, pkey_op, e);
+			if (ctx == NULL) {
 				BIO_puts(bio_err,
-					"-pkeyopt command before -inkey\n");
-				badarg = 1;
+					"%s: Error initializing context\n");
+				ERR_print_errors(bio_err);
+				goto err;
+			}
+			break;
+		case OPT_PEERKEY:
+			if (!setup_peer(bio_err, ctx, peerform, opt_arg()))
+				goto err;
+			break;
+		case OPT_PASSIN:
+			passinarg= opt_arg();
+			break;
+		case OPT_PEERFORM:
+			opt_format(opt_arg(), 1, &peerform);
+			break;
+		case OPT_KEYFORM:
+			opt_format(opt_arg(), 1, &keyform);
+			break;
+#ifndef OPENSSL_NO_ENGINE
+		case OPT_ENGINE:
+			e = setup_engine(bio_err, opt_arg(), 0);
+			break;
+#endif
+		case OPT_PUBIN:
+			key_type = KEY_PUBKEY;
+			break;
+		case OPT_CERTIN:
+			key_type = KEY_CERT;
+			break;
+		case OPT_ASN1PARSE:
+			asn1parse = 1;
+			break;
+		case OPT_HEXDUMP:
+			hexdump = 1;
+			break;
+		case OPT_SIGN:
+			pkey_op = EVP_PKEY_OP_SIGN;
+			break;
+		case OPT_VERIFY:
+			pkey_op = EVP_PKEY_OP_VERIFY;
+			break;
+		case OPT_VERIFYRECOVER:
+			pkey_op = EVP_PKEY_OP_VERIFYRECOVER;
+			break;
+		case OPT_REV:
+			rev = 1;
+		case OPT_ENCRYPT:
+			pkey_op = EVP_PKEY_OP_ENCRYPT;
+			break;
+		case OPT_DECRYPT:
+			pkey_op = EVP_PKEY_OP_DECRYPT;
+			break;
+		case OPT_DERIVE:
+			pkey_op = EVP_PKEY_OP_DERIVE;
+			break;
+		case OPT_PKEYOPT:
+			if (ctx == NULL) {
+				BIO_printf(bio_err,
+					"%s: Must have -inkey before -pkeyopt\n",
+					prog);
+				goto err;
 				}
-			else if (pkey_ctrl_string(ctx, *(++argv)) <= 0)
-				{
-				BIO_puts(bio_err, "parameter setting error\n");
+			if (pkey_ctrl_string(ctx, opt_arg()) <= 0) {
+				BIO_printf(bio_err,
+					"%s: Can't set parameter:\n", prog);
 				ERR_print_errors(bio_err);
 				goto end;
-				}
 			}
-		else badarg = 1;
-		if(badarg)
-			{
-			usage();
-			goto end;
-			}
-		argc--;
-		argv++;
+			break;
 		}
+	}
 
-	if (!ctx)
-		{
-		usage();
-		goto end;
-		}
+	if (ctx == NULL)
+		goto err;
 
 	if (sigfile && (pkey_op != EVP_PKEY_OP_VERIFY))
 		{
-		BIO_puts(bio_err, "Signature file specified for non verify\n");
+		BIO_printf(bio_err,
+			"%s: Signature file specified for non verify\n",
+			prog);
 		goto end;
 		}
 
 	if (!sigfile && (pkey_op == EVP_PKEY_OP_VERIFY))
 		{
-		BIO_puts(bio_err, "No signature file specified for verify\n");
+		BIO_printf(bio_err,
+			"%s: No signature file specified for verify\n",
+			prog);
 		goto end;
 		}
 
@@ -370,15 +382,10 @@ int pkeyutl_main(int argc, char **argv)
 	return ret;
 }
 
-static void usage()
-{
-	BIO_printf(bio_err, "Usage: pkeyutl [options]\n");
-	printhelp(pkeyutl_help);
-}
 
 static EVP_PKEY_CTX *init_ctx(int *pkeysize,
 				char *keyfile, int keyform, int key_type,
-				char *passargin, int pkey_op, ENGINE *e)
+				char *passinarg, int pkey_op, ENGINE *e)
 	{
 	EVP_PKEY *pkey = NULL;
 	EVP_PKEY_CTX *ctx = NULL;
@@ -392,7 +399,7 @@ static EVP_PKEY_CTX *init_ctx(int *pkeysize,
 		BIO_printf(bio_err, "A private key is needed for this operation\n");
 		goto end;
 		}
-	if(!app_passwd(bio_err, passargin, NULL, &passin, NULL))
+	if(!app_passwd(bio_err, passinarg, NULL, &passin, NULL))
 		{
 		BIO_printf(bio_err, "Error getting password\n");
 		goto end;

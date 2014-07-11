@@ -185,12 +185,6 @@ const char *ca_help[] = {
 	NULL
 };
 
-#ifdef EFENCE
-extern int EF_PROTECT_FREE;
-extern int EF_PROTECT_BELOW;
-extern int EF_ALIGNMENT;
-#endif
-
 static void lookup_fail(const char *name, const char *tag);
 static int certify(X509 **xret, char *infile,EVP_PKEY *pkey,X509 *x509,
 		const EVP_MD *dgst,STACK_OF(OPENSSL_STRING) *sigopts,
@@ -314,17 +308,9 @@ int ca_main(int argc, char **argv)
 #define BSIZE 256
 	MS_STATIC char buf[3][BSIZE];
 	char *randfile=NULL;
-#ifndef OPENSSL_NO_ENGINE
 	char *engine = NULL;
-#endif
 	char *tofree=NULL;
 	DB_ATTR db_attr;
-
-#ifdef EFENCE
-EF_PROTECT_FREE=1;
-EF_PROTECT_BELOW=1;
-EF_ALIGNMENT=0;
-#endif
 
 	conf = NULL;
 	key = NULL;

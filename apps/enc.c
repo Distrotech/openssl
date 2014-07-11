@@ -122,250 +122,231 @@ static void show_ciphers(const OBJ_NAME *name,void *bio_)
 		BIO_printf(bio," ");
 	}
 
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_E, OPT_IN, OPT_OUT, OPT_PASS, OPT_ENGINE, OPT_D, OPT_P, OPT_V,
+	OPT_NOPAD, OPT_SALT, OPT_NOSALT, OPT_DEBUG, OPT_UPPER_P, OPT_UPPER_A,
+	OPT_A, OPT_Z, OPT_BUFSIZE, OPT_K, OPT_KFILE, OPT_UPPER_K, OPT_NONE,
+	OPT_UPPER_S, OPT_IV, OPT_MD, OPT_NON_FIPS_ALLOW, OPT_CIPHER,
+};
+
+static OPTIONS options[] = {
+	{ "e", OPT_E, '-' },
+	{ "in", OPT_IN, '<' },
+	{ "out", OPT_OUT, '>' },
+	{ "pass", OPT_PASS, 's' },
+	{ "engine", OPT_ENGINE, 's' },
+	{ "d", OPT_D, '-' },
+	{ "p", OPT_P, '-' },
+	{ "v", OPT_V, '-' },
+	{ "nopad", OPT_NOPAD, '-' },
+	{ "salt", OPT_SALT, '-' },
+	{ "nosalt", OPT_NOSALT, '-' },
+	{ "debug", OPT_DEBUG, '-' },
+	{ "P", OPT_UPPER_P, '-' },
+	{ "A", OPT_UPPER_A, '-' },
+	{ "a", OPT_A, '-' },
+	{ "base64", OPT_A, '-' },
+	{ "z", OPT_Z, '-' },
+	{ "bufsize", OPT_BUFSIZE, 's' },
+	{ "k", OPT_K, 's' },
+	{ "kfile", OPT_KFILE, '<' },
+	{ "K", OPT_UPPER_K, '-' },
+	{ "S", OPT_UPPER_S, 's' },
+	{ "iv", OPT_IV, 's' },
+	{ "md", OPT_MD, 's' },
+	{ "non-fips-allow", OPT_NON_FIPS_ALLOW, '-' },
+	{ "", OPT_CIPHER, '-' },
+	{ "none", OPT_NONE, '-' },
+	{ NULL }
+};
+
 int enc_main(int argc, char **argv)
 	{
+	static char buf[128];
 	static const char magic[]="Salted__";
 	char mbuf[sizeof magic-1];
 	char *strbuf=NULL;
-	unsigned char *buff=NULL,*bufsize=NULL;
-	int bsize=BSIZE,verbose=0;
-	int ret=1,inl;
-	int nopad = 0;
-	unsigned char key[EVP_MAX_KEY_LENGTH],iv[EVP_MAX_IV_LENGTH];
+	unsigned char *buff=NULL;
+	int bsize=BSIZE, verbose=0;
+	int ret=1, inl, nopad=0, non_fips_allow=0;
+	unsigned char key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH];
 	unsigned char salt[PKCS5_SALT_LEN];
-	char *str=NULL, *passarg = NULL, *pass = NULL;
-	char *hkey=NULL,*hiv=NULL,*hsalt = NULL;
-	char *md=NULL;
-	int enc=1,printkey=0,i,base64=0;
-	int do_zlib=0;
+	unsigned long n;
+	char *str=NULL, *passarg=NULL, *pass=NULL;
+	char *hkey=NULL, *hiv=NULL, *hsalt=NULL, *p;
+	int enc=1, printkey=0, i, k, base64=0;
+	int do_zlib=0, debug=0, olb64=0, nosalt=0;
+	const EVP_CIPHER *cipher=NULL, *c;
+	EVP_CIPHER_CTX *ctx = NULL;
+	char *infile=NULL, *outfile=NULL, *prog;
+	BIO *in=NULL, *out=NULL, *b64=NULL, *benc=NULL, *rbio=NULL, *wbio=NULL;
+	enum options o;
+	char *engine = NULL;
+	const EVP_MD *dgst=NULL;
 #ifdef ZLIB
 	BIO *bzl = NULL;
 #endif
-	int debug=0,olb64=0,nosalt=0;
-	const EVP_CIPHER *cipher=NULL,*c;
-	EVP_CIPHER_CTX *ctx = NULL;
-	char *inf=NULL,*outf=NULL, *pname;
-	BIO *in=NULL,*out=NULL,*b64=NULL,*benc=NULL,*rbio=NULL,*wbio=NULL;
-#ifndef OPENSSL_NO_ENGINE
-	char *engine = NULL;
-#endif
-	const EVP_MD *dgst=NULL;
-	int non_fips_allow = 0;
 
 	/* first check the program name */
-	pname = opt_progname(argv[0]);
-	if (strcmp(pname, "base64") == 0)
-		base64=1;
+	prog = opt_progname(argv[0]);
+	if (strcmp(prog, "base64") == 0)
+		base64 = 1;
 #ifdef ZLIB
-	else if (strcmp(pname, "zlib") == 0)
-		do_zlib=1;
+	else if (strcmp(prog, "zlib") == 0)
+		do_zlib = 1;
 #endif
-	else
-		cipher=EVP_get_cipherbyname(pname);
-	if (!do_zlib && !base64 && (cipher == NULL)
-				&& (strcmp(pname,"enc") != 0))
-		{
-		BIO_printf(bio_err,"%s is an unknown cipher\n",pname);
-		goto bad;
+	else {
+		cipher=EVP_get_cipherbyname(prog);
+		if (cipher == NULL && strcmp(prog, "enc") != 0) {
+			BIO_printf(bio_err, "%s is not a known cipher\n", prog);
+			goto end;
 		}
+	}
 
-	argc--;
-	argv++;
-	while (argc >= 1)
-		{
-		if	(strcmp(*argv,"-e") == 0)
-			enc=1;
-		else if (strcmp(*argv,"-in") == 0)
-			{
-			if (--argc < 1) goto bad;
-			inf= *(++argv);
-			}
-		else if (strcmp(*argv,"-out") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outf= *(++argv);
-			}
-		else if (strcmp(*argv,"-pass") == 0)
-			{
-			if (--argc < 1) goto bad;
-			passarg= *(++argv);
-			}
-#ifndef OPENSSL_NO_ENGINE
-		else if (strcmp(*argv,"-engine") == 0)
-			{
-			if (--argc < 1) goto bad;
-			engine= *(++argv);
-			}
-#endif
-		else if	(strcmp(*argv,"-d") == 0)
-			enc=0;
-		else if	(strcmp(*argv,"-p") == 0)
-			printkey=1;
-		else if	(strcmp(*argv,"-v") == 0)
-			verbose=1;
-		else if	(strcmp(*argv,"-nopad") == 0)
-			nopad=1;
-		else if	(strcmp(*argv,"-salt") == 0)
-			nosalt=0;
-		else if	(strcmp(*argv,"-nosalt") == 0)
-			nosalt=1;
-		else if	(strcmp(*argv,"-debug") == 0)
-			debug=1;
-		else if	(strcmp(*argv,"-P") == 0)
-			printkey=2;
-		else if	(strcmp(*argv,"-A") == 0)
-			olb64=1;
-		else if	(strcmp(*argv,"-a") == 0)
-			base64=1;
-		else if	(strcmp(*argv,"-base64") == 0)
-			base64=1;
-#ifdef ZLIB
-		else if	(strcmp(*argv,"-z") == 0)
-			do_zlib=1;
-#endif
-		else if (strcmp(*argv,"-bufsize") == 0)
-			{
-			if (--argc < 1) goto bad;
-			bufsize=(unsigned char *)*(++argv);
-			}
-		else if (strcmp(*argv,"-k") == 0)
-			{
-			if (--argc < 1) goto bad;
-			str= *(++argv);
-			}
-		else if (strcmp(*argv,"-kfile") == 0)
-			{
-			static char buf[128];
-			FILE *infile;
-			char *file;
-
-			if (--argc < 1) goto bad;
-			file= *(++argv);
-			infile=fopen(file,"r");
-			if (infile == NULL)
-				{
-				BIO_printf(bio_err,"unable to read key from '%s'\n",
-					file);
-				goto bad;
-				}
-			buf[0]='\0';
-			if (!fgets(buf,sizeof buf,infile))
-				{
-				BIO_printf(bio_err,"unable to read key from '%s'\n",
-					file);
-				goto bad;
-				}
-			fclose(infile);
-			i=strlen(buf);
-			if ((i > 0) &&
-				((buf[i-1] == '\n') || (buf[i-1] == '\r')))
-				buf[--i]='\0';
-			if ((i > 0) &&
-				((buf[i-1] == '\n') || (buf[i-1] == '\r')))
-				buf[--i]='\0';
-			if (i < 1)
-				{
-				BIO_printf(bio_err,"zero length password\n");
-				goto bad;
-				}
-			str=buf;
-			}
-		else if (strcmp(*argv,"-K") == 0)
-			{
-			if (--argc < 1) goto bad;
-			hkey= *(++argv);
-			}
-		else if (strcmp(*argv,"-S") == 0)
-			{
-			if (--argc < 1) goto bad;
-			hsalt= *(++argv);
-			}
-		else if (strcmp(*argv,"-iv") == 0)
-			{
-			if (--argc < 1) goto bad;
-			hiv= *(++argv);
-			}
-		else if (strcmp(*argv,"-md") == 0)
-			{
-			if (--argc < 1) goto bad;
-			md= *(++argv);
-			}
-		else if (strcmp(*argv,"-non-fips-allow") == 0)
-			non_fips_allow = 1;
-		else if	((argv[0][0] == '-') &&
-				opt_cipher(opt_unknown(), &c))
-			{
-			cipher=c;
-			}
-		else if (strcmp(*argv,"-none") == 0)
-			cipher=NULL;
-		else
-			{
-			BIO_printf(bio_err,"unknown option '%s'\n",*argv);
-			BIO_printf(bio_err,"options are:\n");
-bad:
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+err:
+			BIO_printf(bio_err,"Valid options are:\n");
 			printhelp(enc_help);
 			BIO_printf(bio_err,"Cipher Types\n");
 			OBJ_NAME_do_all_sorted(OBJ_NAME_TYPE_CIPHER_METH,
 					       show_ciphers,
 					       bio_err);
 			BIO_printf(bio_err,"\n");
-
 			goto end;
+		case OPT_E:
+			enc = 1;
+			break;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUT:
+			outfile = opt_arg();
+			break;
+		case OPT_PASS:
+			passarg = opt_arg();
+			break;
+		case OPT_ENGINE:
+			engine = opt_arg();
+			break;
+		case OPT_D:
+			enc = 0;
+			break;
+		case OPT_P:
+			printkey = 1;
+			break;
+		case OPT_V:
+			verbose = 1;
+			break;
+		case OPT_NOPAD:
+			nopad = 1;
+			break;
+		case OPT_SALT:
+			nosalt = 0;
+			break;
+		case OPT_NOSALT:
+			nosalt = 1;
+			break;
+		case OPT_DEBUG:
+			debug = 1;
+			break;
+		case OPT_UPPER_P:
+			printkey = 2;
+			break;
+		case OPT_UPPER_A:
+			olb64 = 1;
+			break;
+		case OPT_A:
+			base64 = 1;
+			break;
+		case OPT_Z:
+			do_zlib = 1;
+			break;
+		case OPT_BUFSIZE:
+			p = opt_arg();
+			i = (int)strlen(p) - 1;
+			k = i >= 1 && p[i] == 'k';
+			if (k)
+				p[i] = '\0';
+			if (!opt_ulong(opt_arg(), &n))
+				goto err;
+			if (k)
+				n *=1024;
+			bsize = (int)n;
+			break;
+		case OPT_K:
+			str= opt_arg();
+			break;
+		case OPT_KFILE:
+			in = bio_open_default(opt_arg(), "r");
+			if (in == NULL)
+				goto err;
+			i = BIO_gets(in, buf, sizeof buf);
+			BIO_free(in);
+			in = NULL;
+			if (i <= 0) {
+				BIO_printf(bio_err,
+					"%s Can't read key from %s\n",
+					prog, opt_arg());
+				goto err;
 			}
-		argc--;
-		argv++;
+			while (--i > 0 && (buf[i] == '\r' || buf[i] == '\n'))
+				buf[i] = '\0';
+			if (i <= 0) {
+				BIO_printf(bio_err,
+					"%s: zero length password\n", prog);
+				goto err;
+			}
+			str = buf;
+			break;
+		case OPT_UPPER_K:
+			hkey = opt_arg();
+			break;
+		case OPT_UPPER_S:
+			hsalt = opt_arg();
+			break;
+		case OPT_IV:
+			hiv = opt_arg();
+			break;
+		case OPT_MD:
+			if (!opt_md(opt_arg(), &dgst))
+				goto err;
+			break;
+		case OPT_NON_FIPS_ALLOW:
+			non_fips_allow = 1;
+			break;
+		case OPT_CIPHER:
+			if (!opt_cipher(opt_unknown(), &c))
+				goto err;
+			cipher = c;
+			break;
+		case OPT_NONE:
+			cipher = NULL;
+			break;
 		}
+	}
 
 #ifndef OPENSSL_NO_ENGINE
         setup_engine(bio_err, engine, 0);
 #endif
 
-	if (cipher && EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_AEAD_CIPHER)
-		{
-		BIO_printf(bio_err, "AEAD ciphers not supported by the enc utility\n");
-		goto end;
-		}
-
-	if (md && (dgst=EVP_get_digestbyname(md)) == NULL)
-		{
-		BIO_printf(bio_err,"%s is an unsupported message digest type\n",md);
+	if (cipher && (EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_AEAD_CIPHER)) {
+		BIO_printf(bio_err, "%s: AEAD ciphers not supported\n", prog);
 		goto end;
 		}
 
 	if (dgst == NULL)
-		{
 		dgst = EVP_md5();
-		}
 
-	if (bufsize != NULL)
-		{
-		unsigned long n;
-
-		for (n=0; *bufsize; bufsize++)
-			{
-			i= *bufsize;
-			if ((i <= '9') && (i >= '0'))
-				n=n*10+i-'0';
-			else if (i == 'k')
-				{
-				n*=1024;
-				bufsize++;
-				break;
-				}
-			}
-		if (*bufsize != '\0')
-			{
-			BIO_printf(bio_err,"invalid 'bufsize' specified.\n");
-			goto end;
-			}
-
-		/* It must be large enough for a base64 encoded line */
-		if (base64 && n < 80) n=80;
-
-		bsize=(int)n;
-		if (verbose) BIO_printf(bio_err,"bufsize=%d\n",bsize);
-		}
+	/* It must be large enough for a base64 encoded line */
+	if (base64 && bsize < 80)
+		bsize = 80;
+	if (verbose)
+		BIO_printf(bio_err,"bufsize=%d\n",bsize);
 
 	strbuf=OPENSSL_malloc(SIZE);
 	buff=(unsigned char *)OPENSSL_malloc(EVP_ENCODE_LENGTH(bsize));
@@ -383,13 +364,12 @@ bad:
 		BIO_set_callback_arg(out,(char *)bio_err);
 		}
 
-	if (inf == NULL)
-	        {
+	if (infile == NULL) {
 		unbuffer(stdin);
 		in = dup_bio_in();
-	        }
+	}
 	else
-		in = bio_open_default(inf, "r");
+		in = bio_open_default(infile, "r");
 	if (in == NULL)
 		goto end;
 
@@ -431,7 +411,7 @@ bad:
 		}
 
 
-	out = bio_open_default(outf, "w");
+	out = bio_open_default(outfile, "w");
 	if (out == NULL)
 		goto end;
 
