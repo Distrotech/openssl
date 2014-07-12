@@ -220,7 +220,7 @@ static OPTIONS options[] = {
 	{ "verify_other", OPT_VERIFY_OTHER, '<' },
 	{ "CAfile", OPT_CAFILE, '<' },
 	{ "CApath", OPT_CAPATH, '<' },
-	{ "validity_period", OPT_VALIDITY_PERIOD, 'p' },
+	{ "validity_period", OPT_VALIDITY_PERIOD, 'u' },
 	{ "status_age", OPT_STATUS_AGE, 'p' },
 	{ "signkey", OPT_SIGNKEY, 's' },
 	{ "reqout", OPT_REQOUT, 's' },
@@ -417,7 +417,7 @@ err:
 			opt_ulong(opt_arg(), &nsec);
 			break;
 		case OPT_STATUS_AGE:
-			opt_ulong(opt_arg(), &maxage);
+			opt_long(opt_arg(), &maxage);
 			break;
 		case OPT_SIGNKEY:
 			keyfile = opt_arg();
