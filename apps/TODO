@@ -42,18 +42,18 @@ X   630 ecparam.c
 X   697 enc.c
 X   738 srp.c
 -   758 s_socket.c
-    789 openssl.c
+-   789 openssl.c
 X   829 smime.c
 X   952 pkcs12.c
 X  1117 ts.c
 X  1313 x509.c
 X  1447 ocsp.c
-   1514 cms.c
+X  1514 cms.c
 X  1758 req.c
 -  1960 s_cb.c
 -  2010 testrsa.h
    2525 s_client.c
    2942 speed.c
 X  2986 ca.c
-   3082 apps.c
+-  3082 apps.c
    3677 s_server.c

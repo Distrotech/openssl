@@ -152,6 +152,9 @@ extern void unbuffer(FILE* fp);
 #include <signal.h>
 #endif
 
+/*
+ * Common verification options.
+ */
 #define OPT_V_ENUM \
 	OPT_V__FIRST=2000, \
 	OPT_V_POLICY, OPT_V_PURPOSE, OPT_V_VERIFY_NAME, OPT_V_VERIFY_DEPTH, \
@@ -222,6 +225,61 @@ extern void unbuffer(FILE* fp);
 	case OPT_V_SUITEB_192: \
 	case OPT_V_PARTIAL_CHAIN
 
+/*
+ * Common "extended"? options.
+ */
+#define OPT_X_ENUM \
+	OPT_X__FIRST=1000, \
+	OPT_X_KEY, OPT_X_CERT, OPT_X_CHAIN, OPT_X_CHAIN_BUILD, \
+	OPT_X_CERTFORM, OPT_X_KEYFORM, \
+	OPT_X__LAST
+
+#define OPT_X_OPTIONS \
+	{ "xkey", OPT_X_KEY, '<' }, \
+	{ "xcert", OPT_X_CERT, '<' }, \
+	{" xchain", OPT_X_CHAIN, '<' }, \
+	{ "xchain_build", OPT_X_CHAIN_BUILD, '-' }, \
+	{ "xcertform", OPT_X_CERTFORM, 'F' }, \
+	{ "xkeyform", OPT_X_KEYFORM, 'F' },
+
+#define OPT_X_CASES \
+	OPT_X__FIRST: case OPT_X__LAST: break; \
+	case OPT_X_KEY: \
+	case OPT_X_CERT: \
+	case OPT_X_CHAIN: \
+	case OPT_X_CHAIN_BUILD: \
+	case OPT_X_CERTFORM: \
+	case OPT_X_KEYFORM:
+
+/*
+ * Common SSL options.
+ */
+#define OPT_S_ENUM \
+	OPT_S__FIRST=3000, \
+	OPT_S_SIGALGS, OPT_S_CLIENT_SIGALGS, OPT_S_CURVES, OPS_S_NAMED_CURVE, \
+	OPT_S_CIPHER, OPT_S_CERT, OPT_S_KEY, OPT_S_DHPARAM \
+	OPT_S__LAST
+
+#define OPT_S_OPTIONS \
+	{ "sigalgs", OPT_S_SIGALGS, 's' }, \
+	{ "client_sigalgs", OPT_S_CLIENT_SIGALGS, 's' }, \
+	{ "curves", OPT_S_CURVES, 's' }, \
+	{ "named_curve", OPT_S_NAMED_CURVE, 's' }, \
+	{ "cipher", OPT_S_CIPHER, 's' }, \
+	{ "cert", OPT_S_CERT, '<' }, \
+	{ "key", OPT_S_KEY, '<' }, \
+	{ "dhparam", OPT_S_DHPARAM, '<' },
+
+#define OPS_S_CASES \
+	OPT_S__FIRST: case OPT_S__LAST: break; \
+	case OPT_S_SIGALGS: \
+	case OPT_S_CLIENT_SIGALGS: \
+	case OPT_S_CURVES: \
+	case OPS_S_NAMED_CURVE: \
+	case OPT_S_CIPHER: \
+	case OPT_S_CERT: \
+	case OPT_S_KEY: \
+	case OPT_S_DHPARAM
 
 #if defined(OPENSSL_SYSNAME_WIN32) || defined(OPENSSL_SYSNAME_WINCE)
 #  define openssl_fdset(a,b) FD_SET((unsigned int)a, b)
@@ -249,6 +307,7 @@ typedef struct opt_pair_st {
 } OPT_PAIR;
 
 extern char* opt_progname(const char *argv0);
+extern char* opt_getprog(void);
 extern char* opt_init(int ac, char** av, const OPTIONS* o);
 extern int opt_next();
 extern int opt_format(const char *s, int onlyderpem, int* result);

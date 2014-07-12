@@ -90,6 +90,11 @@ char* opt_progname(const char *argv0)
 }
 #endif
 
+char* get_getprog(void)
+{
+	return prog;
+}
+
 
 /* Set up the arg parsing. */
 char *opt_init(int ac, char** av, const OPTIONS* o)
