@@ -679,6 +679,10 @@ static char *jpake_secret = NULL;
 	c_msg=0;
 	c_showcerts=0;
 
+	if ((vpm = X509_VERIFY_PARAM_new()) == NULL)
+		return 1;
+
+
 	cctx = SSL_CONF_CTX_new();
 	if (!cctx)
 		goto end;
@@ -770,11 +774,9 @@ static char *jpake_secret = NULL;
 			if (--argc < 1) goto bad;
 			crl_format = str2fmt(*(++argv));
 			}
-		else if (args_verify(&argv, &argc, &badarg, bio_err, &vpm))
-			{
-			if (badarg)
+		// case OPT_V_COMMON_VERIFY_CASES: vpmtouched++
+		else if (!opt_verify(i, vpm))
 				goto bad;
-			continue;
 			}
 		else if (strcmp(*argv,"-verify_return_error") == 0)
 			verify_return_error = 1;
@@ -1273,7 +1275,7 @@ bad:
 	if (sdebug)
 		ssl_ctx_security_debug(ctx, bio_err, sdebug);
 
-	if (vpm)
+	if (vpmtouched)
 		SSL_CTX_set1_param(ctx, vpm);
 
 	if (!args_ssl_call(ctx, bio_err, cctx, ssl_args, 1, no_jpake))

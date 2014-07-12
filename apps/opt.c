@@ -277,6 +277,137 @@ int opt_ulong(const char* arg, unsigned long* result)
 	return 1;
 }
 
+enum range { OPT_V_ENUM };
+
+int opt_verify(int opt, X509_VERIFY_PARAM *vpm)
+{
+	unsigned long ul;
+	int i;
+	ASN1_OBJECT *otmp;
+	X509_PURPOSE *xptmp;
+	const X509_VERIFY_PARAM* vtmp;
+
+	assert(vpm != NULL);
+	assert(opt > OPT_V__FIRST);
+	assert(opt < OPT_V__FIRST);
+
+	switch ((enum range)opt) {
+	case OPT_V__FIRST:
+	case OPT_V__LAST:
+		return 0;
+	case OPT_V_POLICY:
+		otmp = OBJ_txt2obj(opt_arg(), 0);
+		if (otmp == NULL) {
+			BIO_printf(bio_err, "%s: Invalid Policy %s\n",
+				prog, opt_arg());
+			return 0;
+		}
+		X509_VERIFY_PARAM_add0_policy(vpm, otmp);
+		break;
+	case OPT_V_PURPOSE:
+		i = X509_PURPOSE_get_by_sname(opt_arg());
+		if (i < 0) {
+			BIO_printf(bio_err, "%s: Invalid purpose %s\n",
+				prog, opt_arg());
+			return 0;
+		}
+		xptmp = X509_PURPOSE_get0(i);
+		i = X509_PURPOSE_get_id(xptmp);
+		X509_VERIFY_PARAM_set_purpose(vpm, i);
+		break;
+	case OPT_V_VERIFY_NAME:
+		vtmp = X509_VERIFY_PARAM_lookup(opt_arg());
+		if (vpm == NULL) {
+			BIO_printf(bio_err, "%s: Invalid verify name %s\n",
+				prog, opt_arg());
+			return 0;
+		}
+		X509_VERIFY_PARAM_set1(vpm, vtmp);
+		break;
+	case OPT_V_VERIFY_DEPTH:
+		if (i >= 0)
+			X509_VERIFY_PARAM_set_depth(vpm, atoi(opt_arg()));
+		break;
+	case OPT_V_ATTIME:
+		opt_ulong(opt_arg(), &ul);
+		if (ul) 
+			X509_VERIFY_PARAM_set_time(vpm, (time_t)ul);
+		break;
+	case OPT_V_VERIFY_HOSTNAME:
+		if (!X509_VERIFY_PARAM_set1_host(vpm, opt_arg(), 0))
+			return 0;
+		break;
+	case OPT_V_VERIFY_EMAIL:
+		if (!X509_VERIFY_PARAM_set1_email(vpm, opt_arg(), 0))
+			return 0;
+		break;
+	case OPT_V_VERIFY_IP:
+		if (!X509_VERIFY_PARAM_set1_ip_asc(vpm, opt_arg()))
+			return 0;
+		break;
+	case OPT_V_IGNORE_CRITICAL:
+		X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_IGNORE_CRITICAL);
+		break;
+	case OPT_V_ISSUER_CHECKS:
+		X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_CB_ISSUER_CHECK);
+		break;
+	case OPT_V_CRL_CHECK:
+		X509_VERIFY_PARAM_set_flags(vpm,  X509_V_FLAG_CRL_CHECK);
+		break;
+	case OPT_V_CRL_CHECK_ALL:
+		X509_VERIFY_PARAM_set_flags(vpm,
+			X509_V_FLAG_CRL_CHECK|X509_V_FLAG_CRL_CHECK_ALL);
+		break;
+	case OPT_V_POLICY_CHECK:
+		X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_POLICY_CHECK);
+		break;
+	case OPT_V_EXPLICIT_POLICY:
+		X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_EXPLICIT_POLICY);
+		break;
+	case OPT_V_INHIBIT_ANY:
+		X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_INHIBIT_ANY);
+		break;
+	case OPT_V_INHIBIT_MAP:
+		X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_INHIBIT_MAP);
+		break;
+	case OPT_V_X509_STRICT:
+		X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_X509_STRICT);
+		break;
+	case OPT_V_EXTENDED_CRL:
+		X509_VERIFY_PARAM_set_flags(vpm,
+			X509_V_FLAG_EXTENDED_CRL_SUPPORT);
+		break;
+	case OPT_V_USE_DELTAS:
+		X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_USE_DELTAS);
+		break;
+	case OPT_V_POLICY_PRINT:
+		X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_NOTIFY_POLICY);
+		break;
+	case OPT_V_CHECK_SS_SIG:
+		X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_CHECK_SS_SIGNATURE);
+		break;
+	case OPT_V_TRUSTED_FIRST:
+		X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_TRUSTED_FIRST);
+		break;
+	case OPT_V_SUITEB_128_ONLY:
+		X509_VERIFY_PARAM_set_flags(vpm,
+			X509_V_FLAG_SUITEB_128_LOS_ONLY);
+		break;
+	case OPT_V_SUITEB_128:
+		X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_SUITEB_128_LOS);
+		break;
+	case OPT_V_SUITEB_192:
+		X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_SUITEB_192_LOS);
+		break;
+	case OPT_V_PARTIAL_CHAIN:
+		X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_PARTIAL_CHAIN);
+		break;
+	}
+	return 1;
+
+}
+
+
 /* Parse the next flag (and value if specified), return 0 if done, -1 on
  * error, otherwise the flag's retval. */
 int opt_next(void)

@@ -110,110 +110,102 @@ const char* dsaparam_help[] = {
 	NULL
 };
 
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT, OPT_TEXT, OPT_C,
+	OPT_NOOUT, OPT_GENKEY, OPT_RAND, OPT_NON_FIPS_ALLOW, OPT_ENGINE,
+	OPT_TIMEBOMB,
+};
+
+static OPTIONS options[] = {
+	{ "inform", OPT_INFORM, 'F' },
+	{ "outform", OPT_OUTFORM, 'F' },
+	{ "in", OPT_IN, '<' },
+	{ "out", OPT_OUT, '>' },
+	{ "text", OPT_TEXT, '-' },
+	{ "C", OPT_C, '-' },
+	{ "noout", OPT_NOOUT, '-' },
+	{ "genkey", OPT_GENKEY, '-' },
+	{ "rand", OPT_RAND, 's' },
+	{ "non-fips-allow", OPT_NON_FIPS_ALLOW, '-' },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's' },
+#endif
+#ifdef GENCB_TEST
+	{ "timebomb", OPT_TIMEBOMB, 'p' },
+#endif
+	{ NULL }
+};
+
 int dsaparam_main(int argc, char **argv)
 	{
 	DSA *dsa=NULL;
-	int i,badops=0,text=0;
 	BIO *in=NULL,*out=NULL;
-	int informat,outformat,noout=0,C=0,ret=1;
-	char *infile,*outfile,*prog,*inrand=NULL;
-	int numbits= -1,num,genkey=0;
-	int need_rand=0;
-	int non_fips_allow = 0;
-#ifndef OPENSSL_NO_ENGINE
+	int i,badops=0,text=0;
+	int numbits=-1,num,genkey=0, need_rand=0, non_fips_allow=0;
+	int informat=FORMAT_PEM,outformat=FORMAT_PEM,noout=0,C=0,ret=1;
+	char *infile=NULL,*outfile=NULL,*prog,*inrand=NULL;
 	char *engine=NULL;
-#endif
-#ifdef GENCB_TEST
 	int timebomb=0;
-#endif
+	enum options o;
 
-	infile=NULL;
-	outfile=NULL;
-	informat=FORMAT_PEM;
-	outformat=FORMAT_PEM;
-
-	prog=argv[0];
-	argc--;
-	argv++;
-	while (argc >= 1)
-		{
-		if 	(strcmp(*argv,"-inform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			informat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-outform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outformat=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-in") == 0)
-			{
-			if (--argc < 1) goto bad;
-			infile= *(++argv);
-			}
-		else if (strcmp(*argv,"-out") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outfile= *(++argv);
-			}
-#ifndef OPENSSL_NO_ENGINE
-		else if(strcmp(*argv, "-engine") == 0)
-			{
-			if (--argc < 1) goto bad;
-			engine = *(++argv);
-			}
-#endif
-#ifdef GENCB_TEST
-		else if(strcmp(*argv, "-timebomb") == 0)
-			{
-			if (--argc < 1) goto bad;
-			timebomb = atoi(*(++argv));
-			}
-#endif
-		else if (strcmp(*argv,"-text") == 0)
-			text=1;
-		else if (strcmp(*argv,"-C") == 0)
-			C=1;
-		else if (strcmp(*argv,"-genkey") == 0)
-			{
-			genkey=1;
-			need_rand=1;
-			}
-		else if (strcmp(*argv,"-rand") == 0)
-			{
-			if (--argc < 1) goto bad;
-			inrand= *(++argv);
-			need_rand=1;
-			}
-		else if (strcmp(*argv,"-noout") == 0)
-			noout=1;
-		else if (strcmp(*argv,"-non-fips-allow") == 0)
-			non_fips_allow = 1;
-		else if (sscanf(*argv,"%d",&num) == 1)
-			{
-			/* generate a key */
-			numbits=num;
-			need_rand=1;
-			}
-		else
-			{
-			BIO_printf(bio_err,"unknown option %s\n",*argv);
-			badops=1;
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(dsaparam_help);
+			goto end;
+		case OPT_INFORM:
+			opt_format(opt_arg(), 1, &informat);
 			break;
-			}
-		argc--;
-		argv++;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUTFORM:
+			opt_format(opt_arg(), 1, &outformat);
+			break;
+		case OPT_OUT:
+			outfile= opt_arg();
+			break;
+		case OPT_ENGINE:
+			engine = opt_arg();
+			break;
+		case OPT_TIMEBOMB:
+			timebomb = atoi(opt_arg());
+			break;
+		case OPT_TEXT:
+			text = 1;
+			break;
+		case OPT_C:
+			C = 1;
+			break;
+		case OPT_GENKEY:
+			genkey = need_rand = 1;
+			break;
+		case OPT_RAND:
+			inrand = opt_arg();
+			need_rand = 1;
+			break;
+		case OPT_NOOUT:
+			noout = 1;
+			break;
+		case OPT_NON_FIPS_ALLOW:
+			non_fips_allow = 1;
+			break;
 		}
+	}
 
-	if (badops)
-		{
-bad:
-		BIO_printf(bio_err,"%s [options] [bits] <infile >outfile\n",prog);
-		BIO_printf(bio_err,"where options are\n");
-		printhelp(dsaparam_help);
-		goto end;
-		}
+	argc = opt_num_rest();
+	argv = opt_rest();
+	if (argc == 1) {
+		if ( !opt_int(argv[0], &num))
+			goto end;
+		/* generate a key */
+		numbits = num;
+		need_rand = 1;
+	}
 
 	in = bio_open_default(infile, "r");
 	if (in == NULL)

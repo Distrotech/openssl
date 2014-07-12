@@ -97,6 +97,9 @@
 #endif
 
 
+#undef BSIZE
+#define BSIZE 256
+
 #define BASE_SECTION	"ca"
 #define CONFIG_FILE "openssl.cnf"
 
@@ -143,6 +146,51 @@
 #define REV_KEY_COMPROMISE	3	/* Value is cert key compromise time */
 #define REV_CA_COMPROMISE	4	/* Value is CA key compromise time */
 
+static void lookup_fail(const char *name, const char *tag);
+static int certify(X509 **xret, char *infile,EVP_PKEY *pkey,X509 *x509,
+		const EVP_MD *dgst,STACK_OF(OPENSSL_STRING) *sigopts,
+		STACK_OF(CONF_VALUE) *policy,CA_DB *db,
+		BIGNUM *serial, char *subj,unsigned long chtype, int multirdn, int email_dn, char *startdate,
+		char *enddate, long days, int batch, char *ext_sect, CONF *conf,
+		int verbose, unsigned long certopt, unsigned long nameopt,
+		int default_op, int ext_copy, int selfsign);
+static int certify_cert(X509 **xret, char *infile,EVP_PKEY *pkey,X509 *x509,
+		const EVP_MD *dgst,STACK_OF(OPENSSL_STRING) *sigopts,
+		STACK_OF(CONF_VALUE) *policy,
+		CA_DB *db, BIGNUM *serial, char *subj,unsigned long chtype, int multirdn, int email_dn,
+		char *startdate, char *enddate, long days, int batch,
+		char *ext_sect, CONF *conf,int verbose, unsigned long certopt,
+		unsigned long nameopt, int default_op, int ext_copy,
+		ENGINE *e);
+static int certify_spkac(X509 **xret, char *infile,EVP_PKEY *pkey,X509 *x509,
+		const EVP_MD *dgst,STACK_OF(OPENSSL_STRING) *sigopts,
+		STACK_OF(CONF_VALUE) *policy,
+		CA_DB *db, BIGNUM *serial,char *subj,unsigned long chtype, int multirdn, int email_dn,
+		char *startdate, char *enddate, long days, char *ext_sect,
+		CONF *conf, int verbose, unsigned long certopt, 
+		unsigned long nameopt, int default_op, int ext_copy);
+static void write_new_certificate(BIO *bp, X509 *x, int output_der, int notext);
+static int do_body(X509 **xret, EVP_PKEY *pkey, X509 *x509, const EVP_MD *dgst,
+		STACK_OF(OPENSSL_STRING) *sigopts,
+	STACK_OF(CONF_VALUE) *policy, CA_DB *db, BIGNUM *serial,char *subj,unsigned long chtype, int multirdn,
+	int email_dn, char *startdate, char *enddate, long days, int batch,
+       	int verbose, X509_REQ *req, char *ext_sect, CONF *conf,
+	unsigned long certopt, unsigned long nameopt, int default_op,
+	int ext_copy, int selfsign);
+static int do_revoke(X509 *x509, CA_DB *db, int ext, char *extval);
+static int get_certificate_status(const char *ser_status, CA_DB *db);
+static int do_updatedb(CA_DB *db);
+static int check_time_format(const char *str);
+char *make_revocation_str(int rev_type, char *rev_arg);
+int make_revoked(X509_REVOKED *rev, const char *str);
+int old_entry_print(BIO *bp, ASN1_OBJECT *obj, ASN1_STRING *str);
+
+static CONF *conf=NULL;
+static CONF *extconf=NULL;
+static char *section=NULL;
+static int preserve=0;
+static int msie_hack=0;
+
 const char *ca_help[] = {
 	"-verbose        - Talk a lot while doing things",
 	"-config file    - A config file",
@@ -185,374 +233,274 @@ const char *ca_help[] = {
 	NULL
 };
 
-static void lookup_fail(const char *name, const char *tag);
-static int certify(X509 **xret, char *infile,EVP_PKEY *pkey,X509 *x509,
-		const EVP_MD *dgst,STACK_OF(OPENSSL_STRING) *sigopts,
-		STACK_OF(CONF_VALUE) *policy,CA_DB *db,
-		BIGNUM *serial, char *subj,unsigned long chtype, int multirdn, int email_dn, char *startdate,
-		char *enddate, long days, int batch, char *ext_sect, CONF *conf,
-		int verbose, unsigned long certopt, unsigned long nameopt,
-		int default_op, int ext_copy, int selfsign);
-static int certify_cert(X509 **xret, char *infile,EVP_PKEY *pkey,X509 *x509,
-		const EVP_MD *dgst,STACK_OF(OPENSSL_STRING) *sigopts,
-		STACK_OF(CONF_VALUE) *policy,
-		CA_DB *db, BIGNUM *serial, char *subj,unsigned long chtype, int multirdn, int email_dn,
-		char *startdate, char *enddate, long days, int batch,
-		char *ext_sect, CONF *conf,int verbose, unsigned long certopt,
-		unsigned long nameopt, int default_op, int ext_copy,
-		ENGINE *e);
-static int certify_spkac(X509 **xret, char *infile,EVP_PKEY *pkey,X509 *x509,
-		const EVP_MD *dgst,STACK_OF(OPENSSL_STRING) *sigopts,
-		STACK_OF(CONF_VALUE) *policy,
-		CA_DB *db, BIGNUM *serial,char *subj,unsigned long chtype, int multirdn, int email_dn,
-		char *startdate, char *enddate, long days, char *ext_sect,
-		CONF *conf, int verbose, unsigned long certopt, 
-		unsigned long nameopt, int default_op, int ext_copy);
-static void write_new_certificate(BIO *bp, X509 *x, int output_der, int notext);
-static int do_body(X509 **xret, EVP_PKEY *pkey, X509 *x509, const EVP_MD *dgst,
-		STACK_OF(OPENSSL_STRING) *sigopts,
-	STACK_OF(CONF_VALUE) *policy, CA_DB *db, BIGNUM *serial,char *subj,unsigned long chtype, int multirdn,
-	int email_dn, char *startdate, char *enddate, long days, int batch,
-       	int verbose, X509_REQ *req, char *ext_sect, CONF *conf,
-	unsigned long certopt, unsigned long nameopt, int default_op,
-	int ext_copy, int selfsign);
-static int do_revoke(X509 *x509, CA_DB *db, int ext, char *extval);
-static int get_certificate_status(const char *ser_status, CA_DB *db);
-static int do_updatedb(CA_DB *db);
-static int check_time_format(const char *str);
-char *make_revocation_str(int rev_type, char *rev_arg);
-int make_revoked(X509_REVOKED *rev, const char *str);
-int old_entry_print(BIO *bp, ASN1_OBJECT *obj, ASN1_STRING *str);
-static CONF *conf=NULL;
-static CONF *extconf=NULL;
-static char *section=NULL;
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ENGINE, OPT_VERBOSE, OPT_CONFIG, OPT_NAME, OPT_SUBJ, OPT_UTF8,
+	OPT_CREATE_SERIAL, OPT_MULTIVALUE_RDN, OPT_STARTDATE, OPT_ENDDATE,
+	OPT_DAYS, OPT_MD, OPT_POLICY, OPT_KEYFILE, OPT_KEYFORM, OPT_PASSIN,
+	OPT_KEY, OPT_CERT, OPT_SELFSIGN, OPT_IN, OPT_OUT, OPT_OUTDIR,
+	OPT_SIGOPT, OPT_NOTEXT, OPT_BATCH, OPT_PRESERVEDN, OPT_NOEMAILDN,
+	OPT_GENCRL, OPT_MSIE_HACK, OPT_CRLDAYS, OPT_CRLHOURS, OPT_CRLSEC,
+	OPT_INFILES, OPT_SS_CERT, OPT_SPKAC, OPT_REVOKE, OPT_VALID,
+	OPT_EXTENSIONS, OPT_EXTFILE, OPT_STATUS, OPT_UPDATEDB, OPT_CRLEXTS,
+	OPT_CRL_REASON, OPT_CRL_HOLD, OPT_CRL_COMPROMISE, OPT_CRL_CA_COMPROMISE,
+};
 
-static int preserve=0;
-static int msie_hack=0;
-
+static OPTIONS options[] = {
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's' },
+#endif
+	{ "verbose", OPT_VERBOSE, '-' },
+	{ "config", OPT_CONFIG, 's' },
+	{ "name", OPT_NAME, 's' },
+	{ "subj", OPT_SUBJ, 's' },
+	{ "utf8", OPT_UTF8, '-' },
+	{ "create_serial", OPT_CREATE_SERIAL, '-' },
+	{ "multivalue-rdn", OPT_MULTIVALUE_RDN, '-' },
+	{ "startdate", OPT_STARTDATE, 's' },
+	{ "enddate", OPT_ENDDATE, 's' },
+	{ "days", OPT_DAYS, 'p' },
+	{ "md", OPT_MD, 's' },
+	{ "policy", OPT_POLICY, 's' },
+	{ "keyfile", OPT_KEYFILE, '<' },
+	{ "keyform", OPT_KEYFORM, 'F' },
+	{ "passin", OPT_PASSIN, 's' },
+	{ "key", OPT_KEY, 's' },
+	{ "cert", OPT_CERT, '<' },
+	{ "selfsign", OPT_SELFSIGN, '-' },
+	{ "in", OPT_IN, '<' },
+	{ "out", OPT_OUT, '>' },
+	{ "outdir", OPT_OUTDIR, '/' },
+	{ "sigopt", OPT_SIGOPT, 's' },
+	{ "notext", OPT_NOTEXT, '-' },
+	{ "batch", OPT_BATCH, '-' },
+	{ "preserveDN", OPT_PRESERVEDN, '-' },
+	{ "noemailDN", OPT_NOEMAILDN, '-' },
+	{ "gencrl", OPT_GENCRL, '-' },
+	{ "msie_hack", OPT_MSIE_HACK, '-' },
+	{ "crldays", OPT_CRLDAYS, 'p' },
+	{ "crlhours", OPT_CRLHOURS, 'p' },
+	{ "crlsec", OPT_CRLSEC, 'p' },
+	{ "infiles", OPT_INFILES, 's' },
+	{ "ss_cert", OPT_SS_CERT, '<' },
+	{ "spkac", OPT_SPKAC, '<' },
+	{ "revoke", OPT_REVOKE, '<' },
+	{ "valid", OPT_VALID, 's' },
+	{ "extensions", OPT_EXTENSIONS, 's' },
+	{ "extfile", OPT_EXTFILE, '<' },
+	{ "status", OPT_STATUS, 's' },
+	{ "updatedb", OPT_UPDATEDB, '-' },
+	{ "crlexts", OPT_CRLEXTS, 's' },
+	{ "crl_reason", OPT_CRL_REASON, 's' },
+	{ "crl_hold", OPT_CRL_HOLD, 's' },
+	{ "crl_compromise", OPT_CRL_COMPROMISE, 's' },
+	{ "crl_CA_compromise", OPT_CRL_CA_COMPROMISE, 's' },
+	{ NULL }
+};
 
 int ca_main(int argc, char **argv)
 	{
-	ENGINE *e = NULL;
-	char *key=NULL,*passargin=NULL;
-	int create_ser = 0;
-	int free_key = 0;
-	int total=0;
-	int total_done=0;
-	int badops=0;
-	int ret=1;
-	int email_dn=1;
-	int req=0;
-	int verbose=0;
-	int gencrl=0;
-	int dorevoke=0;
-	int doupdatedb=0;
-	long crldays=0;
-	long crlhours=0;
-	long crlsec=0;
-	long errorline= -1;
-	char *configfile=NULL;
-	char *md=NULL;
-	char *policy=NULL;
-	char *keyfile=NULL;
-	char *certfile=NULL;
-	int keyform=FORMAT_PEM;
-	char *infile=NULL;
-	char *spkac_file=NULL;
-	char *ss_cert_file=NULL;
-	char *ser_status=NULL;
+	ENGINE *e=NULL;
+	BIGNUM *crlnumber=NULL, *serial=NULL;
 	EVP_PKEY *pkey=NULL;
-	int output_der = 0;
-	char *outfile=NULL;
-	char *outdir=NULL;
-	char *serialfile=NULL;
-	char *crlnumberfile=NULL;
-	char *extensions=NULL;
-	char *extfile=NULL;
-	char *subj=NULL;
-	unsigned long chtype = MBSTRING_ASC;
-	int multirdn = 0;
-	char *tmp_email_dn=NULL;
-	char *crl_ext=NULL;
-	int rev_type = REV_NONE;
-	char *rev_arg = NULL;
-	BIGNUM *serial=NULL;
-	BIGNUM *crlnumber=NULL;
-	char *startdate=NULL;
-	char *enddate=NULL;
-	long days=0;
-	int batch=0;
-	int notext=0;
-	unsigned long nameopt = 0, certopt = 0;
-	int default_op = 1;
-	int ext_copy = EXT_COPY_NONE;
-	int selfsign = 0;
-	X509 *x509=NULL, *x509p = NULL;
-	X509 *x=NULL;
+	const EVP_MD *dgst=NULL;
+	char *configfile=NULL, *md=NULL, *policy=NULL, *keyfile=NULL;
+	char *certfile=NULL, *crl_ext=NULL, *crlnumberfile=NULL, *enddate=NULL;
+	char *infile=NULL, *spkac_file=NULL, *ss_cert_file=NULL;
+	char *extensions=NULL, *extfile=NULL, *key=NULL,*passinarg=NULL;
+	char *outdir=NULL, *outfile=NULL, *rev_arg=NULL, *ser_status=NULL;
+	char *serialfile=NULL, *startdate=NULL, *subj=NULL, *tmp_email_dn=NULL;
+	char * const *pp;
+	char *dbfile=NULL, *engine=NULL, *f, *randfile=NULL, *tofree=NULL;
+	const char *p;
+	int create_ser=0, free_key=0, total=0, total_done=0;
+	int batch=0, default_op=1, doupdatedb=0, ext_copy=EXT_COPY_NONE;
+	int keyformat=FORMAT_PEM, multirdn=0, notext=0, output_der=0;
+	int ret=1, email_dn=1, req=0, verbose=0, gencrl=0, dorevoke=0;
+	int i, j, rev_type=REV_NONE, selfsign=0;
+	long crldays=0, crlhours=0, crlsec=0, errorline=-1, days=0;
+	unsigned long chtype=MBSTRING_ASC, nameopt=0, certopt=0;
+	X509 *x509=NULL, *x509p=NULL, *x=NULL;
 	BIO *in=NULL,*out=NULL,*Sout=NULL,*Cout=NULL;
-	char *dbfile=NULL;
+	ASN1_INTEGER *tmpser;
+	ASN1_TIME *tmptm;
 	CA_DB *db=NULL;
+	DB_ATTR db_attr;
+	MS_STATIC char buf[3][BSIZE];
+	STACK_OF(CONF_VALUE) *attribs=NULL;
+	STACK_OF(OPENSSL_STRING) *sigopts=NULL;
+	STACK_OF(X509) *cert_sk=NULL;
 	X509_CRL *crl=NULL;
 	X509_REVOKED *r=NULL;
-	ASN1_TIME *tmptm;
-	ASN1_INTEGER *tmpser;
-	char *f;
-	const char *p;
-	char * const *pp;
-	int i,j;
-	const EVP_MD *dgst=NULL;
-	STACK_OF(CONF_VALUE) *attribs=NULL;
-	STACK_OF(X509) *cert_sk=NULL;
-	STACK_OF(OPENSSL_STRING) *sigopts = NULL;
-#undef BSIZE
-#define BSIZE 256
-	MS_STATIC char buf[3][BSIZE];
-	char *randfile=NULL;
-	char *engine = NULL;
-	char *tofree=NULL;
-	DB_ATTR db_attr;
 
 	conf = NULL;
-	key = NULL;
 	section = NULL;
+	preserve = 0;
+	msie_hack = 0;
 
-	preserve=0;
-	msie_hack=0;
-	argc--;
-	argv++;
-	while (argc >= 1)
-		{
-		if	(strcmp(*argv,"-verbose") == 0)
-			verbose=1;
-		else if	(strcmp(*argv,"-config") == 0)
-			{
-			if (--argc < 1) goto bad;
-			configfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-name") == 0)
-			{
-			if (--argc < 1) goto bad;
-			section= *(++argv);
-			}
-		else if (strcmp(*argv,"-subj") == 0)
-			{
-			if (--argc < 1) goto bad;
-			subj= *(++argv);
+	enum options o;
+	char* prog;
+
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(ca_help);
+			goto err;
+		case OPT_IN:
+			infile = opt_arg();
+			break;
+		case OPT_OUT:
+			outfile = opt_arg();
+			break;
+		case OPT_VERBOSE:
+			verbose = 1;
+			break;
+		case OPT_CONFIG:
+			configfile = opt_arg();
+			break;
+		case OPT_NAME:
+			section = opt_arg();
+			break;
+		case OPT_SUBJ:
+			subj = opt_arg();
 			/* preserve=1; */
-			}
-		else if (strcmp(*argv,"-utf8") == 0)
+			break;
+		case OPT_UTF8:
 			chtype = MBSTRING_UTF8;
-		else if (strcmp(*argv,"-create_serial") == 0)
+			break;
+		case OPT_CREATE_SERIAL:
 			create_ser = 1;
-		else if (strcmp(*argv,"-multivalue-rdn") == 0)
-			multirdn=1;
-		else if (strcmp(*argv,"-startdate") == 0)
-			{
-			if (--argc < 1) goto bad;
-			startdate= *(++argv);
-			}
-		else if (strcmp(*argv,"-enddate") == 0)
-			{
-			if (--argc < 1) goto bad;
-			enddate= *(++argv);
-			}
-		else if (strcmp(*argv,"-days") == 0)
-			{
-			if (--argc < 1) goto bad;
-			days=atoi(*(++argv));
-			}
-		else if (strcmp(*argv,"-md") == 0)
-			{
-			if (--argc < 1) goto bad;
-			md= *(++argv);
-			}
-		else if (strcmp(*argv,"-policy") == 0)
-			{
-			if (--argc < 1) goto bad;
-			policy= *(++argv);
-			}
-		else if (strcmp(*argv,"-keyfile") == 0)
-			{
-			if (--argc < 1) goto bad;
-			keyfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-keyform") == 0)
-			{
-			if (--argc < 1) goto bad;
-			keyform=str2fmt(*(++argv));
-			}
-		else if (strcmp(*argv,"-passin") == 0)
-			{
-			if (--argc < 1) goto bad;
-			passargin= *(++argv);
-			}
-		else if (strcmp(*argv,"-key") == 0)
-			{
-			if (--argc < 1) goto bad;
-			key= *(++argv);
-			}
-		else if (strcmp(*argv,"-cert") == 0)
-			{
-			if (--argc < 1) goto bad;
-			certfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-selfsign") == 0)
+			break;
+		case OPT_MULTIVALUE_RDN:
+			multirdn = 1;
+			break;
+		case OPT_STARTDATE:
+			startdate = opt_arg();
+			break;
+		case OPT_ENDDATE:
+			enddate = opt_arg();
+			break;
+		case OPT_DAYS:
+			days = atoi(opt_arg());
+			break;
+		case OPT_MD:
+			md = opt_arg();
+			break;
+		case OPT_POLICY:
+			policy = opt_arg();
+			break;
+		case OPT_KEYFILE:
+			keyfile = opt_arg();
+			break;
+		case OPT_KEYFORM:
+			opt_format(opt_arg(), 1, &keyformat);
+			break;
+		case OPT_PASSIN:
+			passinarg = opt_arg();
+			break;
+		case OPT_KEY:
+			key = opt_arg();
+			break;
+		case OPT_CERT:
+			certfile = opt_arg();
+			break;
+		case OPT_SELFSIGN:
 			selfsign=1;
-		else if (strcmp(*argv,"-in") == 0)
-			{
-			if (--argc < 1) goto bad;
-			infile= *(++argv);
-			req=1;
-			}
-		else if (strcmp(*argv,"-out") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-outdir") == 0)
-			{
-			if (--argc < 1) goto bad;
-			outdir= *(++argv);
-			}
-		else if (strcmp(*argv,"-sigopt") == 0)
-			{
-			if (--argc < 1)
-				goto bad;
-			if (!sigopts)
+			break;
+		case OPT_OUTDIR:
+			outdir = opt_arg();
+			break;
+		case OPT_SIGOPT:
+			if (sigopts == NULL)
 				sigopts = sk_OPENSSL_STRING_new_null();
-			if (!sigopts || !sk_OPENSSL_STRING_push(sigopts, *(++argv)))
-				goto bad;
-			}
-		else if (strcmp(*argv,"-notext") == 0)
-			notext=1;
-		else if (strcmp(*argv,"-batch") == 0)
-			batch=1;
-		else if (strcmp(*argv,"-preserveDN") == 0)
-			preserve=1;
-		else if (strcmp(*argv,"-noemailDN") == 0)
-			email_dn=0;
-		else if (strcmp(*argv,"-gencrl") == 0)
-			gencrl=1;
-		else if (strcmp(*argv,"-msie_hack") == 0)
-			msie_hack=1;
-		else if (strcmp(*argv,"-crldays") == 0)
-			{
-			if (--argc < 1) goto bad;
-			crldays= atol(*(++argv));
-			}
-		else if (strcmp(*argv,"-crlhours") == 0)
-			{
-			if (--argc < 1) goto bad;
-			crlhours= atol(*(++argv));
-			}
-		else if (strcmp(*argv,"-crlsec") == 0)
-			{
-			if (--argc < 1) goto bad;
-			crlsec = atol(*(++argv));
-			}
-		else if (strcmp(*argv,"-infiles") == 0)
-			{
-			argc--;
-			argv++;
-			req=1;
+			if (sigopts == NULL || !sk_OPENSSL_STRING_push(sigopts, opt_arg()))
+				goto err;
 			break;
-			}
-		else if (strcmp(*argv, "-ss_cert") == 0)
-			{
-			if (--argc < 1) goto bad;
-			ss_cert_file = *(++argv);
-			req=1;
-			}
-		else if (strcmp(*argv, "-spkac") == 0)
-			{
-			if (--argc < 1) goto bad;
-			spkac_file = *(++argv);
-			req=1;
-			}
-		else if (strcmp(*argv,"-revoke") == 0)
-			{
-			if (--argc < 1) goto bad;
-			infile= *(++argv);
-			dorevoke=1;
-			}
-		else if (strcmp(*argv,"-valid") == 0)
-			{
-			if (--argc < 1) goto bad;
-			infile= *(++argv);
-			dorevoke=2;
-			}
-		else if (strcmp(*argv,"-extensions") == 0)
-			{
-			if (--argc < 1) goto bad;
-			extensions= *(++argv);
-			}
-		else if (strcmp(*argv,"-extfile") == 0)
-			{
-			if (--argc < 1) goto bad;
-			extfile= *(++argv);
-			}
-		else if (strcmp(*argv,"-status") == 0)
-			{
-			if (--argc < 1) goto bad;
-			ser_status= *(++argv);
-			}
-		else if (strcmp(*argv,"-updatedb") == 0)
-			{
-			doupdatedb=1;
-			}
-		else if (strcmp(*argv,"-crlexts") == 0)
-			{
-			if (--argc < 1) goto bad;
-			crl_ext= *(++argv);
-			}
-		else if (strcmp(*argv,"-crl_reason") == 0)
-			{
-			if (--argc < 1) goto bad;
-			rev_arg = *(++argv);
+		case OPT_NOTEXT:
+			notext = 1;
+			break;
+		case OPT_BATCH:
+			batch = 1;
+			break;
+		case OPT_PRESERVEDN:
+			preserve = 1;
+			break;
+		case OPT_NOEMAILDN:
+			email_dn = 0;
+			break;
+		case OPT_GENCRL:
+			gencrl = 1;
+			break;
+		case OPT_MSIE_HACK:
+			msie_hack = 1;
+			break;
+		case OPT_CRLDAYS:
+			crldays = atol(opt_arg());
+			break;
+		case OPT_CRLHOURS:
+			crlhours = atol(opt_arg());
+			break;
+		case OPT_CRLSEC:
+			crlsec = atol(opt_arg());
+			break;
+		case OPT_INFILES:
+			req = 1;
+			break;
+		case OPT_SS_CERT:
+			ss_cert_file = opt_arg();
+			req = 1;
+			break;
+		case OPT_SPKAC:
+			spkac_file = opt_arg();
+			req = 1;
+			break;
+		case OPT_REVOKE:
+			infile = opt_arg();
+			dorevoke = 1;
+			break;
+		case OPT_VALID:
+			infile = opt_arg();
+			dorevoke = 2;
+			break;
+		case OPT_EXTENSIONS:
+			extensions = opt_arg();
+			break;
+		case OPT_EXTFILE:
+			extfile = opt_arg();
+			break;
+		case OPT_STATUS:
+			ser_status = opt_arg();
+			break;
+		case OPT_UPDATEDB:
+			doupdatedb = 1;
+			break;
+		case OPT_CRLEXTS:
+			crl_ext = opt_arg();
+			break;
+		case OPT_CRL_REASON:
+			rev_arg = opt_arg();
 			rev_type = REV_CRL_REASON;
-			}
-		else if (strcmp(*argv,"-crl_hold") == 0)
-			{
-			if (--argc < 1) goto bad;
-			rev_arg = *(++argv);
-			rev_type = REV_HOLD;
-			}
-		else if (strcmp(*argv,"-crl_compromise") == 0)
-			{
-			if (--argc < 1) goto bad;
-			rev_arg = *(++argv);
-			rev_type = REV_KEY_COMPROMISE;
-			}
-		else if (strcmp(*argv,"-crl_CA_compromise") == 0)
-			{
-			if (--argc < 1) goto bad;
-			rev_arg = *(++argv);
-			rev_type = REV_CA_COMPROMISE;
-			}
-#ifndef OPENSSL_NO_ENGINE
-		else if (strcmp(*argv,"-engine") == 0)
-			{
-			if (--argc < 1) goto bad;
-			engine= *(++argv);
-			}
-#endif
-		else
-			{
-bad:
-			BIO_printf(bio_err,"unknown option %s\n",*argv);
-			badops=1;
 			break;
-			}
-		argc--;
-		argv++;
+		case OPT_CRL_HOLD:
+			rev_arg = opt_arg();
+			rev_type = REV_HOLD;
+			break;
+		case OPT_CRL_COMPROMISE:
+			rev_arg = opt_arg();
+			rev_type = REV_KEY_COMPROMISE;
+			break;
+		case OPT_CRL_CA_COMPROMISE:
+			rev_arg = opt_arg();
+			rev_type = REV_CA_COMPROMISE;
+			break;
+		case OPT_ENGINE:
+			engine = opt_arg();
+			break;
 		}
-
-	if (badops)
-		{
-		BIO_printf(bio_err, "usage: ca args\n");
-		printhelp(ca_help);
-		goto err;
-		}
+	}
 
 	/*****************************************************************/
 	tofree=NULL;
@@ -715,13 +663,13 @@ bad:
 	if (!key)
 		{
 		free_key = 1;
-		if (!app_passwd(bio_err, passargin, NULL, &key, NULL))
+		if (!app_passwd(bio_err, passinarg, NULL, &key, NULL))
 			{
 			BIO_printf(bio_err,"Error getting password\n");
 			goto err;
 			}
 		}
-	pkey = load_key(bio_err, keyfile, keyform, 0, key, e, 
+	pkey = load_key(bio_err, keyfile, keyformat, 0, key, e, 
 		"CA private key");
 	if (key) OPENSSL_cleanse(key,strlen(key));
 	if (pkey == NULL)
@@ -2615,8 +2563,8 @@ static int do_updatedb (CA_DB *db)
 				/* all on the same y2k side */
 				if (strcmp(rrow[DB_exp_date], a_tm_s) <= 0)
 				       	{
-				       	rrow[DB_type][0]  = 'E';
-				       	rrow[DB_type][1]  = '\0';
+				       	rrow[DB_type][0] = 'E';
+				       	rrow[DB_type][1] = '\0';
 	  				cnt++;
 
 					BIO_printf(bio_err, "%s=Expired\n",
