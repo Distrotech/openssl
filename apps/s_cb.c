@@ -1422,111 +1422,71 @@ int load_excert(SSL_EXCERT **pexc, BIO *err)
 		}
 	return 1;
 	}
-		
 
-int args_excert(char ***pargs, int *pargc,
-			int *badarg, BIO *err, SSL_EXCERT **pexc)
-	{
-	char *arg = **pargs, *argn = (*pargs)[1];
+enum range { OPT_X_ENUM };
+
+int args_excert(int opt, SSL_EXCERT **pexc)
+{
 	SSL_EXCERT *exc = *pexc;
-	int narg = 2;
-	if (!exc)
-		{
-		if (ssl_excert_prepend(&exc))
-			*pexc = exc;
-		else
-			{
-			BIO_printf(err, "Error initialising xcert\n");
-			*badarg = 1;
+
+	assert(opt > OPT_X__FIRST);
+	assert(opt < OPT_X__LAST);
+
+	if (exc == NULL) {
+		if (!ssl_excert_prepend(&exc)) {
+			BIO_printf(bio_err, " %s: Error initialising xcert\n",
+				opt_getprog());
 			goto err;
-			}
 		}
-	if (strcmp(arg, "-xcert") == 0)
-		{
-		if (!argn)
-			{
-			*badarg = 1;
-			return 1;
-			}
-		if (exc->certfile && !ssl_excert_prepend(&exc))
-			{
-			BIO_printf(err, "Error adding xcert\n");
-			*badarg = 1;
-			goto err;
-			}
-		exc->certfile = argn;
-		}
-	else if (strcmp(arg,"-xkey") == 0)
-		{
-		if (!argn)
-			{
-			*badarg = 1;
-			return 1;
-			}
-		if (exc->keyfile)
-			{
-			BIO_printf(err, "Key already specified\n");
-			*badarg = 1;
-			return 1;
-			}
-		exc->keyfile = argn;
-		}
-	else if (strcmp(arg,"-xchain") == 0)
-		{
-		if (!argn)
-			{
-			*badarg = 1;
-			return 1;
-			}
-		if (exc->chainfile)
-			{
-			BIO_printf(err, "Chain already specified\n");
-			*badarg = 1;
-			return 1;
-			}
-		exc->chainfile = argn;
-		}
-	else if (strcmp(arg,"-xchain_build") == 0)
-		{
-		narg = 1;
-		exc->build_chain = 1;
-		}
-	else if (strcmp(arg,"-xcertform") == 0)
-		{
-		if (!argn)
-			{
-			*badarg = 1;
-			goto err;
-			}
-		exc->certform = str2fmt(argn);
-		}
-	else if (strcmp(arg,"-xkeyform") == 0)
-		{
-		if (!argn)
-			{
-			*badarg = 1;
-			goto err;
-			}
-		exc->keyform = str2fmt(argn);
-		}
-	else
-		return 0;
-
-	(*pargs) += narg;
-
-	if (pargc)
-		*pargc -= narg;
-
-	*pexc = exc;
-
-	return 1;
-
-	err:
-	ERR_print_errors(err);
-	ssl_excert_free(exc);
-	*pexc = NULL;
-	return 1;
+		*pexc = exc;
 	}
+
+	switch ((enum range)opt) {
+	case OPT_X__FIRST:
+	case OPT_X__LAST:
+		return 0;
+	case OPT_X_CERT:
+		if (exc->certfile && !ssl_excert_prepend(&exc)) {
+			BIO_printf(bio_err, "%s: Error adding xcert\n", opt_getprog());
+			goto err;
+		}
+		exc->certfile = opt_arg();
+		break;
+	case OPT_X_KEY:
+		if (exc->keyfile) {
+			BIO_printf(bio_err, "%s: Key already specified\n",
+				opt_getprog());
+			goto err;
+		}
+		exc->keyfile = opt_arg();
+		break;
+	case OPT_X_CHAIN:
+		if (exc->chainfile) {
+			BIO_printf(bio_err, "%s: Chain already specified\n",
+				opt_getprog());
+			goto err;
+		}
+		exc->chainfile = opt_arg();
+		break;
+	case OPT_X_CHAIN_BUILD:
+		exc->build_chain = 1;
+		break;
+	case OPT_X_CERTFORM:
+		opt_format(opt_arg(), 1, &exc->certform);
+		break;
+	case OPT_X_KEYFORM:
+		opt_format(opt_arg(), 1, &exc->keyform);
+		break;
+	}
+	return 1;
+
+err:
+	ERR_print_errors(bio_err);
+	if (exc)
+		ssl_excert_free(exc);
+	*pexc = NULL;
+	return 0;
+}
 
 static void print_raw_cipherlist(BIO *bio, SSL *s)
 	{

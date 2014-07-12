@@ -194,8 +194,7 @@ typedef struct ssl_excert_st SSL_EXCERT;
 
 void ssl_ctx_set_excert(SSL_CTX *ctx, SSL_EXCERT *exc);
 void ssl_excert_free(SSL_EXCERT *exc);
-int args_excert(char ***pargs, int *pargc,
-			int *badarg, BIO *err, SSL_EXCERT **pexc);
+int args_excert(int option, SSL_EXCERT **pexc);
 int load_excert(SSL_EXCERT **pexc, BIO *err);
 void print_ssl_summary(BIO *bio, SSL *s);
 #ifdef HEADER_SSL_H

@@ -87,9 +87,9 @@ const char* verify_help[] = {
 
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
-	OPT_V_ENUM,
 	OPT_ENGINE, OPT_CAPATH, OPT_CAFILE, OPT_UNTRUSTED, OPT_TRUSTED,
 	OPT_CRLFILE, OPT_CRL_DOWNLOAD, OPT_SHOW_CHAIN, OPT_VERBOSE,
+	OPT_V_ENUM,
 };
 
 static OPTIONS options[] = {

@@ -172,7 +172,6 @@ const char* ocsp_help[] = {
 
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
-	OPT_V_ENUM,
 	OPT_OUTFILE, OPT_TIMEOUT, OPT_URL, OPT_HOST, OPT_PORT,
 	OPT_IGNORE_ERR, OPT_NOVERIFY, OPT_NONCE, OPT_NO_NONCE,
 	OPT_RESP_NO_CERTS, OPT_RESP_KEY_ID, OPT_NO_CERTS,
@@ -185,6 +184,7 @@ enum options {
 	OPT_RESPOUT, OPT_PATH, OPT_ISSUER, OPT_CERT, OPT_SERIAL,
 	OPT_INDEX, OPT_CA, OPT_NMIN, OPT_REQUEST, OPT_NDAYS, OPT_RSIGNER,
 	OPT_RKEY, OPT_ROTHER, OPT_RMD, OPT_MD,
+	OPT_V_ENUM,
 };
 
 static OPTIONS options[] = {
@@ -414,7 +414,7 @@ err:
 			vpmtouched++;
 			break;
 		case OPT_VALIDITY_PERIOD:
-			opt_ulong(opt_arg(), &nsec);
+			opt_long(opt_arg(), &nsec);
 			break;
 		case OPT_STATUS_AGE:
 			opt_long(opt_arg(), &maxage);
