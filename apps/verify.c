@@ -66,6 +66,12 @@
 #include <openssl/x509v3.h>
 #include <openssl/pem.h>
 
+static int cb(int ok, X509_STORE_CTX *ctx);
+static int check(X509_STORE *ctx, char *file,
+		STACK_OF(X509) *uchain, STACK_OF(X509) *tchain,
+		STACK_OF(X509_CRL) *crls, ENGINE *e, int show_chain);
+static int v_verbose=0, vflags = 0;
+
 const char* verify_help[] = {
 	"-verbose",
 	"-CApath path",
@@ -79,101 +85,98 @@ const char* verify_help[] = {
 	NULL
 };
 
-static int cb(int ok, X509_STORE_CTX *ctx);
-static int check(X509_STORE *ctx, char *file,
-		STACK_OF(X509) *uchain, STACK_OF(X509) *tchain,
-		STACK_OF(X509_CRL) *crls, ENGINE *e, int show_chain);
-static int v_verbose=0, vflags = 0;
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_V_ENUM,
+	OPT_ENGINE, OPT_CAPATH, OPT_CAFILE, OPT_UNTRUSTED, OPT_TRUSTED,
+	OPT_CRLFILE, OPT_CRL_DOWNLOAD, OPT_SHOW_CHAIN, OPT_VERBOSE,
+};
+
+static OPTIONS options[] = {
+	OPT_V_OPTIONS,
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's' },
+#endif
+	{ "CApath", OPT_CAPATH, '/' },
+	{ "CAfile", OPT_CAFILE, '<' },
+	{ "untrusted", OPT_UNTRUSTED, '<' },
+	{ "trusted", OPT_TRUSTED, '<' },
+	{ "CRLfile", OPT_CRLFILE, '<' },
+	{ "crl_download", OPT_CRL_DOWNLOAD, '-' },
+	{ "show_chain", OPT_SHOW_CHAIN, '-' },
+	{ "verbose", OPT_VERBOSE, '-' },
+	{ NULL }
+};
+
 
 int verify_main(int argc, char **argv)
 	{
-	ENGINE *e = NULL;
-	int i,ret=1, badarg = 0;
-	char *CApath=NULL,*CAfile=NULL;
-	char *untfile = NULL, *trustfile = NULL, *crlfile = NULL;
-	STACK_OF(X509) *untrusted = NULL, *trusted = NULL;
-	STACK_OF(X509_CRL) *crls = NULL;
-	X509_STORE *cert_ctx=NULL;
+	ENGINE *e=NULL;
+	STACK_OF(X509) *untrusted=NULL, *trusted=NULL;
+	STACK_OF(X509_CRL) *crls=NULL;
 	X509_LOOKUP *lookup=NULL;
-	X509_VERIFY_PARAM *vpm = NULL;
-	int crl_download = 0, show_chain = 0;
-#ifndef OPENSSL_NO_ENGINE
-	char *engine=NULL;
-#endif
+	X509_STORE *cert_ctx=NULL;
+	X509_VERIFY_PARAM *vpm=NULL;
+	char* prog, *CApath=NULL,*CAfile=NULL, *engine=NULL;
+	char *untfile=NULL, *trustfile=NULL, *crlfile=NULL;
+	int vpmtouched=0, crl_download=0, show_chain=0, i=0, ret=1;
+	enum options o;
 
 	cert_ctx=X509_STORE_new();
-	if (cert_ctx == NULL) goto end;
+	if (cert_ctx == NULL)
+		goto end;
 	X509_STORE_set_verify_cb(cert_ctx,cb);
+	if ((vpm = X509_VERIFY_PARAM_new()) == NULL)
+		goto end;
 
-	argc--;
-	argv++;
-	for (;;)
-		{
-		if (argc >= 1)
-			{
-			if (strcmp(*argv,"-CApath") == 0)
-				{
-				if (argc-- < 1) goto end;
-				CApath= *(++argv);
-				}
-			else if (strcmp(*argv,"-CAfile") == 0)
-				{
-				if (argc-- < 1) goto end;
-				CAfile= *(++argv);
-				}
-			else if (args_verify(&argv, &argc, &badarg, bio_err,
-									&vpm))
-				{
-				if (badarg)
-					goto end;
-				continue;
-				}
-			else if (strcmp(*argv,"-untrusted") == 0)
-				{
-				if (argc-- < 1) goto end;
-				untfile= *(++argv);
-				}
-			else if (strcmp(*argv,"-trusted") == 0)
-				{
-				if (argc-- < 1) goto end;
-				trustfile= *(++argv);
-				}
-			else if (strcmp(*argv,"-CRLfile") == 0)
-				{
-				if (argc-- < 1) goto end;
-				crlfile= *(++argv);
-				}
-			else if (strcmp(*argv,"-crl_download") == 0)
-				crl_download = 1;
-			else if (strcmp(*argv,"-show_chain") == 0)
-				show_chain = 1;
-#ifndef OPENSSL_NO_ENGINE
-			else if (strcmp(*argv,"-engine") == 0)
-				{
-				if (--argc < 1) goto end;
-				engine= *(++argv);
-				}
-#endif
-			else if (strcmp(*argv,"-help") == 0)
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(verify_help);
+			goto end;
+		case OPT_V_CASES:
+			if (!opt_verify(o, vpm))
 				goto end;
-			else if (strcmp(*argv,"-verbose") == 0)
-				v_verbose=1;
-			else if (argv[0][0] == '-')
-				goto end;
-			else
-				break;
-			argc--;
-			argv++;
-			}
-		else
+			vpmtouched++;
+			break;
+		case OPT_CAPATH:
+			CApath = opt_arg();
+			break;
+		case OPT_CAFILE:
+			CAfile = opt_arg();
+			break;
+		case OPT_UNTRUSTED:
+			untfile = opt_arg();
+			break;
+		case OPT_TRUSTED:
+			trustfile = opt_arg();
+			break;
+		case OPT_CRLFILE:
+			crlfile = opt_arg();
+			break;
+		case OPT_CRL_DOWNLOAD:
+			crl_download = 1;
+			break;
+		case OPT_SHOW_CHAIN:
+			show_chain = 1;
+			break;
+		case OPT_ENGINE:
+			engine = opt_arg();
+			break;
+		case OPT_VERBOSE:
+			v_verbose = 1;
 			break;
 		}
+	}
 
 #ifndef OPENSSL_NO_ENGINE
         e = setup_engine(bio_err, engine, 0);
 #endif
 
-	if (vpm)
+	if (vpmtouched)
 		X509_STORE_set1_param(cert_ctx, vpm);
 
 	lookup=X509_STORE_add_lookup(cert_ctx,X509_LOOKUP_file());

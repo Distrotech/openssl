@@ -152,6 +152,76 @@ extern void unbuffer(FILE* fp);
 #include <signal.h>
 #endif
 
+#define OPT_V_ENUM \
+	OPT_V__FIRST=2000, \
+	OPT_V_POLICY, OPT_V_PURPOSE, OPT_V_VERIFY_NAME, OPT_V_VERIFY_DEPTH, \
+	OPT_V_ATTIME, OPT_V_VERIFY_HOSTNAME, OPT_V_VERIFY_EMAIL, \
+	OPT_V_VERIFY_IP, OPT_V_IGNORE_CRITICAL, OPT_V_ISSUER_CHECKS, \
+	OPT_V_CRL_CHECK, OPT_V_CRL_CHECK_ALL, OPT_V_POLICY_CHECK, \
+	OPT_V_EXPLICIT_POLICY, OPT_V_INHIBIT_ANY, OPT_V_INHIBIT_MAP, \
+	OPT_V_X509_STRICT, OPT_V_EXTENDED_CRL, OPT_V_USE_DELTAS, \
+	OPT_V_POLICY_PRINT, OPT_V_CHECK_SS_SIG, OPT_V_TRUSTED_FIRST, \
+	OPT_V_SUITEB_128_ONLY, OPT_V_SUITEB_128, OPT_V_SUITEB_192, \
+	OPT_V_PARTIAL_CHAIN, \
+	OPT_V__LAST
+
+#define OPT_V_OPTIONS \
+	{ "policy", OPT_V_POLICY, 's' }, \
+	{ "purpose", OPT_V_PURPOSE, 's' }, \
+	{ "verify_name", OPT_V_VERIFY_NAME, 's' }, \
+	{ "verify_depth", OPT_V_VERIFY_DEPTH, 'p' }, \
+	{ "attime", OPT_V_ATTIME, 'p' }, \
+	{ "verify_hostname", OPT_V_VERIFY_HOSTNAME, 's' }, \
+	{ "verify_email", OPT_V_VERIFY_EMAIL, 's' }, \
+	{ "verify_ip", OPT_V_VERIFY_IP, 's' }, \
+	{ "ignore_critical", OPT_V_IGNORE_CRITICAL, '-' }, \
+	{ "issuer_checks", OPT_V_ISSUER_CHECKS, '-' }, \
+	{ "crl_check", OPT_V_CRL_CHECK, '-' }, \
+	{ "crl_check_all", OPT_V_CRL_CHECK_ALL, '-' }, \
+	{ "policy_check", OPT_V_POLICY_CHECK, '-' }, \
+	{ "explicit_policy", OPT_V_EXPLICIT_POLICY, '-' }, \
+	{ "inhibit_any", OPT_V_INHIBIT_ANY, '-' }, \
+	{ "inhibit_map", OPT_V_INHIBIT_MAP, '-' }, \
+	{ "x509_strict", OPT_V_X509_STRICT, '-' }, \
+	{ "extended_crl", OPT_V_EXTENDED_CRL, '-' }, \
+	{ "use_deltas", OPT_V_USE_DELTAS, '-' }, \
+	{ "policy_print", OPT_V_POLICY_PRINT, '-' }, \
+	{ "check_ss_sig", OPT_V_CHECK_SS_SIG, '-' }, \
+	{ "trusted_first", OPT_V_TRUSTED_FIRST, '-' }, \
+	{ "suiteB_128_only", OPT_V_SUITEB_128_ONLY, '-' }, \
+	{ "suiteB_128", OPT_V_SUITEB_128, '-' }, \
+	{ "suiteB_192", OPT_V_SUITEB_192, '-' }, \
+	{ "partial_chain", OPT_V_PARTIAL_CHAIN, '-' }
+
+#define OPT_V_CASES \
+	OPT_V__FIRST: case OPT_V__LAST: break; \
+	case OPT_V_POLICY: \
+	case OPT_V_PURPOSE: \
+	case OPT_V_VERIFY_NAME: \
+	case OPT_V_VERIFY_DEPTH: \
+	case OPT_V_ATTIME: \
+	case OPT_V_VERIFY_HOSTNAME: \
+	case OPT_V_VERIFY_EMAIL: \
+	case OPT_V_VERIFY_IP: \
+	case OPT_V_IGNORE_CRITICAL: \
+	case OPT_V_ISSUER_CHECKS: \
+	case OPT_V_CRL_CHECK: \
+	case OPT_V_CRL_CHECK_ALL: \
+	case OPT_V_POLICY_CHECK: \
+	case OPT_V_EXPLICIT_POLICY: \
+	case OPT_V_INHIBIT_ANY: \
+	case OPT_V_INHIBIT_MAP: \
+	case OPT_V_X509_STRICT: \
+	case OPT_V_EXTENDED_CRL: \
+	case OPT_V_USE_DELTAS: \
+	case OPT_V_POLICY_PRINT: \
+	case OPT_V_CHECK_SS_SIG: \
+	case OPT_V_TRUSTED_FIRST: \
+	case OPT_V_SUITEB_128_ONLY: \
+	case OPT_V_SUITEB_128: \
+	case OPT_V_SUITEB_192: \
+	case OPT_V_PARTIAL_CHAIN
+
 
 #if defined(OPENSSL_SYSNAME_WIN32) || defined(OPENSSL_SYSNAME_WINCE)
 #  define openssl_fdset(a,b) FD_SET((unsigned int)a, b)
@@ -193,7 +263,8 @@ extern char* opt_unknown(void);
 extern char* opt_reset(void);
 extern char** opt_rest(void);
 extern int opt_num_rest(void);
-extern int str2fmt(char* s); /* XXX rsalz remove */
+extern int opt_verify(int i, X509_VERIFY_PARAM* vpm);
+
 
 #define RB(xformat)  ((xformat) == FORMAT_ASN1 ? "rb" : "r")
 #define WB(xformat)  ((xformat) == FORMAT_ASN1 ? "wb" : "w")
@@ -296,8 +367,6 @@ int index_name_cmp(const OPENSSL_CSTRING *a, const OPENSSL_CSTRING *b);
 int parse_yesno(const char *str, int def);
 
 X509_NAME *parse_name(char *str, long chtype, int multirdn);
-int args_verify(char ***pargs, int *pargc,
-			int *badarg, BIO *err, X509_VERIFY_PARAM **pm);
 void policies_print(BIO *out, X509_STORE_CTX *ctx);
 int bio_to_mem(unsigned char **out, int maxlen, BIO *in);
 int pkey_ctrl_string(EVP_PKEY_CTX *ctx, char *value);

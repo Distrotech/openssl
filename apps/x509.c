@@ -543,7 +543,7 @@ err:
 			checkip = opt_arg();
 			break;
 		case OPT_MD:
-			if (!opt_md(*argv+1, &digest))
+			if (!opt_md(opt_arg(), &digest))
 				goto err;
 		}
 	}

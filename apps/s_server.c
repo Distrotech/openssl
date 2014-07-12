@@ -1042,6 +1042,9 @@ int s_server_main(int argc, char *argv[])
 		goto end;
 	SSL_CONF_CTX_set_flags(cctx, SSL_CONF_FLAG_SERVER);
 	SSL_CONF_CTX_set_flags(cctx, SSL_CONF_FLAG_CMDLINE);
+	if ((vpm = X509_VERIFY_PARAM_new()) == NULL)
+		return 1;
+
 
 	verify_depth=0;
 #ifdef FIONBIO
@@ -1220,12 +1223,9 @@ int s_server_main(int argc, char *argv[])
 			if (--argc < 1) goto bad;
 			crl_format = str2fmt(*(++argv));
 			}
-		else if (args_verify(&argv, &argc, &badarg, bio_err, &vpm))
-			{
-			if (badarg)
-				goto bad;
-			continue;
-			}
+		// case OPT_V_COMMON_VERIFY_CASES: vpmtouched++
+		else if (!opt_verify(i, vpm))
+			goto bad;
 		else if (args_excert(&argv, &argc, &badarg, bio_err, &exc))
 			{
 			if (badarg)
@@ -1792,7 +1792,7 @@ bad:
 		ERR_print_errors(bio_err);
 		/* goto end; */
 		}
-	if (vpm)
+	if (vpmtouched)
 		SSL_CTX_set1_param(ctx, vpm);
 
 	ssl_ctx_add_crls(ctx, crls, 0);

@@ -212,6 +212,9 @@ int cms_main(int argc, char **argv)
 	ASN1_OBJECT *econtent_type = NULL;
 	X509_VERIFY_PARAM *vpm = NULL;
 
+	if ((vpm = X509_VERIFY_PARAM_new()) == NULL)
+		return 1;
+
 	args = argv + 1;
 	ret = 1;
 	while (!badarg && *args && *args[0] == '-')
@@ -256,32 +259,11 @@ int cms_main(int argc, char **argv)
 			operation = SMIME_ENCRYPTED_DECRYPT;
 		else if (!strcmp (*args, "-EncryptedData_encrypt"))
 			operation = SMIME_ENCRYPTED_ENCRYPT;
-#ifndef OPENSSL_NO_DES
-		else if (!strcmp (*args, "-des3")) 
-				cipher = EVP_des_ede3_cbc();
-		else if (!strcmp (*args, "-des")) 
-				cipher = EVP_des_cbc();
-		else if (!strcmp (*args, "-des3-wrap")) 
-				wrap_cipher = EVP_des_ede3_wrap();
-#endif
-#ifndef OPENSSL_NO_SEED
-		else if (!strcmp (*args, "-seed")) 
-				cipher = EVP_seed_cbc();
-#endif
-#ifndef OPENSSL_NO_RC2
-		else if (!strcmp (*args, "-rc2-40")) 
-				cipher = EVP_rc2_40_cbc();
-		else if (!strcmp (*args, "-rc2-128")) 
-				cipher = EVP_rc2_cbc();
-		else if (!strcmp (*args, "-rc2-64")) 
-				cipher = EVP_rc2_64_cbc();
-#endif
+		case OPT_CIPHER:
+		if (!opt_cipher(opt_arg(), &cipher))
+			goto bad;
+		break;
 #ifndef OPENSSL_NO_AES
-		else if (!strcmp(*args,"-aes128"))
-				cipher = EVP_aes_128_cbc();
-		else if (!strcmp(*args,"-aes192"))
-				cipher = EVP_aes_192_cbc();
-		else if (!strcmp(*args,"-aes256"))
 				cipher = EVP_aes_256_cbc();
 		else if (!strcmp(*args,"-aes128-wrap"))
 				wrap_cipher = EVP_aes_128_wrap();
@@ -289,14 +271,6 @@ int cms_main(int argc, char **argv)
 				wrap_cipher = EVP_aes_192_wrap();
 		else if (!strcmp(*args,"-aes256-wrap"))
 				wrap_cipher = EVP_aes_256_wrap();
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-		else if (!strcmp(*args,"-camellia128"))
-				cipher = EVP_camellia_128_cbc();
-		else if (!strcmp(*args,"-camellia192"))
-				cipher = EVP_camellia_192_cbc();
-		else if (!strcmp(*args,"-camellia256"))
-				cipher = EVP_camellia_256_cbc();
 #endif
 		else if (!strcmp (*args, "-debug_decrypt")) 
 				flags |= CMS_DEBUG_DECRYPT;
@@ -423,14 +397,12 @@ int cms_main(int argc, char **argv)
 			inrand = *args;
 			need_rand = 1;
 			}
-#ifndef OPENSSL_NO_ENGINE
 		else if (!strcmp(*args,"-engine"))
 			{
 			if (!args[1])
 				goto argerr;
 			engine = *++args;
 			}
-#endif
 		else if (!strcmp(*args,"-passin"))
 			{
 			if (!args[1])
@@ -628,7 +600,8 @@ int cms_main(int argc, char **argv)
 				goto argerr;
 			contfile = *++args;
 			}
-		else if (args_verify(&args, NULL, &badarg, bio_err, &vpm))
+		// case OPT_V_COMMON_VERIFY_CASES: vpmtouched++;
+		else if (opt_verify(i, vpm))
 			continue;
 		else if (!opt_cipher(opt_unknown(), &cipher))
 			badarg = 1;
@@ -1275,8 +1248,7 @@ end:
 		app_RAND_write_file(NULL, bio_err);
 	sk_X509_pop_free(encerts, X509_free);
 	sk_X509_pop_free(other, X509_free);
-	if (vpm)
-		X509_VERIFY_PARAM_free(vpm);
+	X509_VERIFY_PARAM_free(vpm);
 	if (sksigners)
 		sk_OPENSSL_STRING_free(sksigners);
 	if (skkeys)

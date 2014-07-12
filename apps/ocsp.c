@@ -168,124 +168,157 @@ const char* ocsp_help[] = {
 	"-<dgst alg>     use specified digest in the request",
 	NULL
 };
+
+
+enum options {
+	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_V_ENUM,
+	OPT_OUTFILE, OPT_TIMEOUT, OPT_URL, OPT_HOST, OPT_PORT,
+	OPT_IGNORE_ERR, OPT_NOVERIFY, OPT_NONCE, OPT_NO_NONCE,
+	OPT_RESP_NO_CERTS, OPT_RESP_KEY_ID, OPT_NO_CERTS,
+	OPT_NO_SIGNATURE_VERIFY, OPT_NO_CERT_VERIFY, OPT_NO_CHAIN,
+	OPT_NO_CERT_CHECKS, OPT_NO_EXPLICIT, OPT_TRUST_OTHER,
+	OPT_NO_INTERN, OPT_BADSIG, OPT_TEXT, OPT_REQ_TEXT, OPT_RESP_TEXT,
+	OPT_REQIN, OPT_RESPIN, OPT_SIGNER, OPT_VAFILE, OPT_SIGN_OTHER,
+	OPT_VERIFY_OTHER, OPT_CAFILE, OPT_CAPATH,
+	OPT_VALIDITY_PERIOD, OPT_STATUS_AGE, OPT_SIGNKEY, OPT_REQOUT,
+	OPT_RESPOUT, OPT_PATH, OPT_ISSUER, OPT_CERT, OPT_SERIAL,
+	OPT_INDEX, OPT_CA, OPT_NMIN, OPT_REQUEST, OPT_NDAYS, OPT_RSIGNER,
+	OPT_RKEY, OPT_ROTHER, OPT_RMD, OPT_MD,
+};
+
+static OPTIONS options[] = {
+	OPT_V_OPTIONS,
+	{ "out", OPT_OUTFILE, '>' },
+	{ "timeout", OPT_TIMEOUT, 'p' },
+	{ "url", OPT_URL, 's' },
+	{ "host", OPT_HOST, 's' },
+	{ "port", OPT_PORT, 's' },
+	{ "ignore_err", OPT_IGNORE_ERR, '-' },
+	{ "noverify", OPT_NOVERIFY, '-' },
+	{ "nonce", OPT_NONCE, '-' },
+	{ "no_nonce", OPT_NO_NONCE, '-' },
+	{ "resp_no_certs", OPT_RESP_NO_CERTS, '-' },
+	{ "resp_key_id", OPT_RESP_KEY_ID, '-' },
+	{ "no_certs", OPT_NO_CERTS, '-' },
+	{ "no_signature_verify", OPT_NO_SIGNATURE_VERIFY, '-' },
+	{ "no_cert_verify", OPT_NO_CERT_VERIFY, '-' },
+	{ "no_chain", OPT_NO_CHAIN, '-' },
+	{ "no_cert_checks", OPT_NO_CERT_CHECKS, '-' },
+	{ "no_explicit", OPT_NO_EXPLICIT, '-' },
+	{ "trust_other", OPT_TRUST_OTHER, '-' },
+	{ "no_intern", OPT_NO_INTERN, '-' },
+	{ "badsig", OPT_BADSIG, '-' },
+	{ "text", OPT_TEXT, '-' },
+	{ "req_text", OPT_REQ_TEXT, '-' },
+	{ "resp_text", OPT_RESP_TEXT, '-' },
+	{ "reqin", OPT_REQIN, 's' },
+	{ "respin", OPT_RESPIN, 's' },
+	{ "signer", OPT_SIGNER, '<' },
+	{ "VAfile", OPT_VAFILE, '<' },
+	{ "sign_other", OPT_SIGN_OTHER, '<' },
+	{ "verify_other", OPT_VERIFY_OTHER, '<' },
+	{ "CAfile", OPT_CAFILE, '<' },
+	{ "CApath", OPT_CAPATH, '<' },
+	{ "validity_period", OPT_VALIDITY_PERIOD, 'p' },
+	{ "status_age", OPT_STATUS_AGE, 'p' },
+	{ "signkey", OPT_SIGNKEY, 's' },
+	{ "reqout", OPT_REQOUT, 's' },
+	{ "respout", OPT_RESPOUT, 's' },
+	{ "path", OPT_PATH, 's' },
+	{ "issuer", OPT_ISSUER, '<' },
+	{ "cert", OPT_CERT, '<' },
+	{ "serial", OPT_SERIAL, 's' },
+	{ "index", OPT_INDEX, ',' },
+	{ "CA", OPT_CA, ',' },
+	{ "nmin", OPT_NMIN, 'p' },
+	{ "nrequest", OPT_REQUEST, 'p' },
+	{ "ndays", OPT_NDAYS, 'p' },
+	{ "rsigner", OPT_RSIGNER, '<' },
+	{ "rkey", OPT_RKEY, '<' },
+	{ "rother", OPT_ROTHER, '<' },
+	{ "rmd", OPT_RMD, 's' },
+	{ "", OPT_MD, '-' },
+	{ NULL }
+};
+
 int ocsp_main(int argc, char **argv)
 	{
-	ENGINE *e = NULL;
-	char **args;
-	char *host = NULL, *port = NULL, *path = "/";
-	char *thost = NULL, *tport = NULL, *tpath = NULL;
-	char *reqin = NULL, *respin = NULL;
-	char *reqout = NULL, *respout = NULL;
-	char *signfile = NULL, *keyfile = NULL;
-	char *rsignfile = NULL, *rkeyfile = NULL;
-	char *outfile = NULL;
-	int add_nonce = 1, noverify = 0, use_ssl = -1;
-	STACK_OF(CONF_VALUE) *headers = NULL;
-	OCSP_REQUEST *req = NULL;
-	OCSP_RESPONSE *resp = NULL;
-	OCSP_BASICRESP *bs = NULL;
-	X509 *issuer = NULL, *cert = NULL;
-	X509 *signer = NULL, *rsigner = NULL;
-	EVP_PKEY *key = NULL, *rkey = NULL;
-	BIO *acbio = NULL, *cbio = NULL;
-	BIO *derbio = NULL;
-	BIO *out = NULL;
-	int req_timeout = -1;
-	int req_text = 0, resp_text = 0;
-	long nsec = MAX_VALIDITY_PERIOD, maxage = -1;
-	char *CAfile = NULL, *CApath = NULL;
-	X509_STORE *store = NULL;
-	X509_VERIFY_PARAM *vpm = NULL;
-	STACK_OF(X509) *sign_other = NULL, *verify_other = NULL, *rother = NULL;
-	char *sign_certfile = NULL, *verify_certfile = NULL, *rcertfile = NULL;
-	unsigned long sign_flags = 0, verify_flags = 0, rflags = 0;
-	int ret = 1;
-	int accept_count = -1;
-	int badarg = 0;
-	int badsig = 0;
-	int i;
-	int ignore_err = 0;
-	STACK_OF(OPENSSL_STRING) *reqnames = NULL;
-	STACK_OF(OCSP_CERTID) *ids = NULL;
+	BIO *acbio=NULL, *cbio=NULL, *derbio=NULL, *out=NULL;
+	const EVP_MD *cert_id_md=NULL, *rsign_md=NULL;
+	CA_DB *rdb=NULL;
+	EVP_PKEY *key=NULL, *rkey=NULL;
+	OCSP_BASICRESP *bs=NULL;
+	OCSP_REQUEST *req=NULL;
+	OCSP_RESPONSE *resp=NULL;
+	STACK_OF(CONF_VALUE) *headers=NULL;
+	STACK_OF(OCSP_CERTID) *ids=NULL;
+	STACK_OF(OPENSSL_STRING) *reqnames=NULL;
+	STACK_OF(X509) *sign_other=NULL, *verify_other=NULL, *rother=NULL;
+	X509 *issuer=NULL, *cert=NULL, *rca_cert=NULL;
+	X509 *signer=NULL, *rsigner=NULL;
+	X509_STORE *store=NULL;
+	X509_VERIFY_PARAM *vpm=NULL;
+	char *CAfile=NULL, *CApath=NULL;
+	char *host=NULL, *port=NULL, *path="/", *outfile=NULL;
+	char *rca_filename=NULL, *reqin=NULL, *respin=NULL;
+	char *reqout=NULL, *respout=NULL, *ridx_filename=NULL;
+	char *rsignfile=NULL, *rkeyfile=NULL;
+	char *sign_certfile=NULL, *verify_certfile=NULL, *rcertfile=NULL;
+	char *signfile=NULL, *keyfile=NULL;
+	char *thost=NULL, *tport=NULL, *tpath=NULL;
+	int accept_count=-1, add_nonce=1, noverify=0, use_ssl=-1;
+	int vpmtouched=0, badsig=0, i, ignore_err=0, nmin=0, ndays=-1;
+	int req_text=0, resp_text=0, req_timeout=-1, ret=1;
+	long nsec=MAX_VALIDITY_PERIOD, maxage=-1;
+	unsigned long sign_flags=0, verify_flags=0, rflags=0;
+	enum options o;
+	char* prog;
 
-	X509 *rca_cert = NULL;
-	char *ridx_filename = NULL;
-	char *rca_filename = NULL;
-	CA_DB *rdb = NULL;
-	int nmin = 0, ndays = -1;
-	const EVP_MD *cert_id_md = NULL, *rsign_md = NULL;
-
-	args = argv + 1;
 	reqnames = sk_OPENSSL_STRING_new_null();
 	ids = sk_OCSP_CERTID_new_null();
-	while (!badarg && *args && *args[0] == '-')
-		{
-		if (!strcmp(*args, "-out"))
-			{
-			if (args[1])
-				{
-				args++;
-				outfile = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-timeout"))
-			{
-			if (args[1])
-				{
-				args++;
-				req_timeout = atol(*args);
-				if (req_timeout < 0)
-					{
-					BIO_printf(bio_err,
-						"Illegal timeout value %s\n",
-						*args);
-					badarg = 1;
-					}
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-url"))
-			{
+	if ((vpm = X509_VERIFY_PARAM_new()) == NULL)
+		return 1;
+
+	prog = opt_init(argc, argv, options);
+	while ((o = opt_next()) != OPT_EOF) {
+		switch (o) {
+		case OPT_EOF:
+		case OPT_ERR:
+err:
+			BIO_printf(bio_err,"Valid options are:\n");
+			printhelp(ocsp_help);
+			goto end;
+		case OPT_OUTFILE:
+			outfile = opt_arg();
+			break;
+		case OPT_TIMEOUT:
+			req_timeout = atoi(opt_arg());
+			break;
+		case OPT_URL:
 			if (thost)
 				OPENSSL_free(thost);
 			if (tport)
 				OPENSSL_free(tport);
 			if (tpath)
 				OPENSSL_free(tpath);
-			if (args[1])
-				{
-				args++;
-				if (!OCSP_parse_url(*args, &host, &port, &path, &use_ssl))
-					{
-					BIO_printf(bio_err, "Error parsing URL\n");
-					badarg = 1;
-					}
-				thost = host;
-				tport = port;
-				tpath = path;
-				}
-			else badarg = 1;
+			if (!OCSP_parse_url(opt_arg(), &host, &port, &path, &use_ssl)) {
+				BIO_printf(bio_err,
+					"%s Error parsing URL\n", prog);
+				goto end;
 			}
-		else if (!strcmp(*args, "-host"))
-			{
-			if (args[1])
-				{
-				args++;
-				host = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-port"))
-			{
-			if (args[1])
-				{
-				args++;
-				port = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-header"))
+			thost = host;
+			tport = port;
+			tpath = path;
+			break;
+		case OPT_HOST:
+			host = opt_arg();
+			break;
+		case OPT_PORT:
+			port = opt_arg();
+			break;
+			/*
+		else if (!strcmp(opt_arg(), "-header"))
 			{
 			if (args[1] && args[2])
 				{
@@ -295,357 +328,176 @@ int ocsp_main(int argc, char **argv)
 				}
 			else badarg = 1;
 			}
-		else if (!strcmp(*args, "-ignore_err"))
+			*/
+		case OPT_IGNORE_ERR:
 			ignore_err = 1;
-		else if (!strcmp(*args, "-noverify"))
+			break;
+		case OPT_NOVERIFY:
 			noverify = 1;
-		else if (!strcmp(*args, "-nonce"))
+			break;
+		case OPT_NONCE:
 			add_nonce = 2;
-		else if (!strcmp(*args, "-no_nonce"))
+			break;
+		case OPT_NO_NONCE:
 			add_nonce = 0;
-		else if (!strcmp(*args, "-resp_no_certs"))
+			break;
+		case OPT_RESP_NO_CERTS:
 			rflags |= OCSP_NOCERTS;
-		else if (!strcmp(*args, "-resp_key_id"))
+			break;
+		case OPT_RESP_KEY_ID:
 			rflags |= OCSP_RESPID_KEY;
-		else if (!strcmp(*args, "-no_certs"))
+			break;
+		case OPT_NO_CERTS:
 			sign_flags |= OCSP_NOCERTS;
-		else if (!strcmp(*args, "-no_signature_verify"))
+			break;
+		case OPT_NO_SIGNATURE_VERIFY:
 			verify_flags |= OCSP_NOSIGS;
-		else if (!strcmp(*args, "-no_cert_verify"))
+			break;
+		case OPT_NO_CERT_VERIFY:
 			verify_flags |= OCSP_NOVERIFY;
-		else if (!strcmp(*args, "-no_chain"))
+			break;
+		case OPT_NO_CHAIN:
 			verify_flags |= OCSP_NOCHAIN;
-		else if (!strcmp(*args, "-no_cert_checks"))
+			break;
+		case OPT_NO_CERT_CHECKS:
 			verify_flags |= OCSP_NOCHECKS;
-		else if (!strcmp(*args, "-no_explicit"))
+			break;
+		case OPT_NO_EXPLICIT:
 			verify_flags |= OCSP_NOEXPLICIT;
-		else if (!strcmp(*args, "-trust_other"))
+			break;
+		case OPT_TRUST_OTHER:
 			verify_flags |= OCSP_TRUSTOTHER;
-		else if (!strcmp(*args, "-no_intern"))
+			break;
+		case OPT_NO_INTERN:
 			verify_flags |= OCSP_NOINTERN;
-		else if (!strcmp(*args, "-badsig"))
+			break;
+		case OPT_BADSIG:
 			badsig = 1;
-		else if (!strcmp(*args, "-text"))
-			{
+			break;
+		case OPT_TEXT:
+			req_text = resp_text = 1;
+			break;
+		case OPT_REQ_TEXT:
 			req_text = 1;
+			break;
+		case OPT_RESP_TEXT:
 			resp_text = 1;
-			}
-		else if (!strcmp(*args, "-req_text"))
-			req_text = 1;
-		else if (!strcmp(*args, "-resp_text"))
-			resp_text = 1;
-		else if (!strcmp(*args, "-reqin"))
-			{
-			if (args[1])
-				{
-				args++;
-				reqin = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-respin"))
-			{
-			if (args[1])
-				{
-				args++;
-				respin = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-signer"))
-			{
-			if (args[1])
-				{
-				args++;
-				signfile = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp (*args, "-VAfile"))
-			{
-			if (args[1])
-				{
-				args++;
-				verify_certfile = *args;
-				verify_flags |= OCSP_TRUSTOTHER;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-sign_other"))
-			{
-			if (args[1])
-				{
-				args++;
-				sign_certfile = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-verify_other"))
-			{
-			if (args[1])
-				{
-				args++;
-				verify_certfile = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp (*args, "-CAfile"))
-			{
-			if (args[1])
-				{
-				args++;
-				CAfile = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp (*args, "-CApath"))
-			{
-			if (args[1])
-				{
-				args++;
-				CApath = *args;
-				}
-			else badarg = 1;
-			}
-		else if (args_verify(&args, NULL, &badarg, bio_err, &vpm))
-			{
-			if (badarg)
+			break;
+		case OPT_REQIN:
+			reqin = opt_arg();
+			break;
+		case OPT_RESPIN:
+			respin = opt_arg();
+			break;
+		case OPT_SIGNER:
+			signfile = opt_arg();
+			break;
+		case OPT_VAFILE:
+			verify_certfile = opt_arg();
+			verify_flags |= OCSP_TRUSTOTHER;
+			break;
+		case OPT_SIGN_OTHER:
+			sign_certfile = opt_arg();
+			break;
+		case OPT_VERIFY_OTHER:
+			verify_certfile = opt_arg();
+			break;
+		case OPT_CAFILE:
+			CAfile = opt_arg();
+			break;
+		case OPT_CAPATH:
+			CApath = opt_arg();
+			break;
+		case OPT_V_CASES:
+			if (!opt_verify(o, vpm))
 				goto end;
-			continue;
-			}
-		else if (!strcmp (*args, "-validity_period"))
-			{
-			if (args[1])
-				{
-				args++;
-				nsec = atol(*args);
-				if (nsec < 0)
-					{
-					BIO_printf(bio_err,
-						"Illegal validity period %s\n",
-						*args);
-					badarg = 1;
-					}
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp (*args, "-status_age"))
-			{
-			if (args[1])
-				{
-				args++;
-				maxage = atol(*args);
-				if (maxage < 0)
-					{
-					BIO_printf(bio_err,
-						"Illegal validity age %s\n",
-						*args);
-					badarg = 1;
-					}
-				}
-			else badarg = 1;
-			}
-		 else if (!strcmp(*args, "-signkey"))
-			{
-			if (args[1])
-				{
-				args++;
-				keyfile = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-reqout"))
-			{
-			if (args[1])
-				{
-				args++;
-				reqout = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-respout"))
-			{
-			if (args[1])
-				{
-				args++;
-				respout = *args;
-				}
-			else badarg = 1;
-			}
-		 else if (!strcmp(*args, "-path"))
-			{
-			if (args[1])
-				{
-				args++;
-				path = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-issuer"))
-			{
-			if (args[1])
-				{
-				args++;
-				X509_free(issuer);
-				issuer = load_cert(bio_err, *args, FORMAT_PEM,
-					NULL, e, "issuer certificate");
-				if(!issuer) goto end;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp (*args, "-cert"))
-			{
-			if (args[1])
-				{
-				args++;
-				X509_free(cert);
-				cert = load_cert(bio_err, *args, FORMAT_PEM,
-					NULL, e, "certificate");
-				if(!cert) goto end;
-				if (!cert_id_md) cert_id_md = EVP_sha1();
-				if(!add_ocsp_cert(&req, cert, cert_id_md, issuer, ids))
-					goto end;
-				if(!sk_OPENSSL_STRING_push(reqnames, *args))
-					goto end;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-serial"))
-			{
-			if (args[1])
-				{
-				args++;
-				if (!cert_id_md) cert_id_md = EVP_sha1();
-				if(!add_ocsp_serial(&req, *args, cert_id_md, issuer, ids))
-					goto end;
-				if(!sk_OPENSSL_STRING_push(reqnames, *args))
-					goto end;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-index"))
-			{
-			if (args[1])
-				{
-				args++;
-				ridx_filename = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-CA"))
-			{
-			if (args[1])
-				{
-				args++;
-				rca_filename = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp (*args, "-nmin"))
-			{
-			if (args[1])
-				{
-				args++;
-				nmin = atol(*args);
-				if (nmin < 0)
-					{
-					BIO_printf(bio_err,
-						"Illegal update period %s\n",
-						*args);
-					badarg = 1;
-					}
-				}
-				if (ndays == -1)
-					ndays = 0;
-			else badarg = 1;
-			}
-		else if (!strcmp (*args, "-nrequest"))
-			{
-			if (args[1])
-				{
-				args++;
-				accept_count = atol(*args);
-				if (accept_count < 0)
-					{
-					BIO_printf(bio_err,
-						"Illegal accept count %s\n",
-						*args);
-					badarg = 1;
-					}
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp (*args, "-ndays"))
-			{
-			if (args[1])
-				{
-				args++;
-				ndays = atol(*args);
-				if (ndays < 0)
-					{
-					BIO_printf(bio_err,
-						"Illegal update period %s\n",
-						*args);
-					badarg = 1;
-					}
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-rsigner"))
-			{
-			if (args[1])
-				{
-				args++;
-				rsignfile = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-rkey"))
-			{
-			if (args[1])
-				{
-				args++;
-				rkeyfile = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-rother"))
-			{
-			if (args[1])
-				{
-				args++;
-				rcertfile = *args;
-				}
-			else badarg = 1;
-			}
-		else if (!strcmp(*args, "-rmd"))
-			{
-			if (args[1])
-				{
-				args++;
-				if (!opt_md(opt_arg(), &rsign_md))
-				if (!rsign_md)
-					badarg = 1;
-				}
-			else badarg = 1;
-			}
-		else if (!opt_md(opt_unknown(), &cert_id_md))
-			{
-			badarg = 1;
-			}
-		args++;
+			vpmtouched++;
+			break;
+		case OPT_VALIDITY_PERIOD:
+			opt_ulong(opt_arg(), &nsec);
+			break;
+		case OPT_STATUS_AGE:
+			opt_ulong(opt_arg(), &maxage);
+			break;
+		case OPT_SIGNKEY:
+			keyfile = opt_arg();
+			break;
+		case OPT_REQOUT:
+			reqout = opt_arg();
+			break;
+		case OPT_RESPOUT:
+			respout = opt_arg();
+			break;
+		case OPT_PATH:
+			path = opt_arg();
+			break;
+		case OPT_ISSUER:
+			X509_free(issuer);
+			issuer = load_cert(bio_err, opt_arg(), FORMAT_PEM,
+					NULL, NULL, "issuer certificate");
+			if (issuer == NULL)
+				goto end;
+			break;
+		case OPT_CERT:
+			X509_free(cert);
+			cert = load_cert(bio_err, opt_arg(), FORMAT_PEM,
+					NULL, NULL, "certificate");
+			if (cert == NULL)
+				goto end;
+			if (cert_id_md == NULL)
+				cert_id_md = EVP_sha1();
+			if (!add_ocsp_cert(&req, cert, cert_id_md, issuer, ids))
+				goto end;
+			if(!sk_OPENSSL_STRING_push(reqnames, opt_arg()))
+				goto end;
+			break;
+		case OPT_SERIAL:
+			if (cert_id_md == NULL)
+				cert_id_md = EVP_sha1();
+			if (!add_ocsp_serial(&req, opt_arg(), cert_id_md, issuer, ids))
+				goto end;
+			if (!sk_OPENSSL_STRING_push(reqnames, opt_arg()))
+				goto end;
+			break;
+		case OPT_INDEX:
+			ridx_filename = opt_arg();
+			break;
+		case OPT_CA:
+			rca_filename = opt_arg();
+			break;
+		case OPT_NMIN:
+			opt_int(opt_arg(), &nmin);
+			if (ndays == -1)
+				ndays = 0;
+			break;
+		case OPT_REQUEST:
+			opt_int(opt_arg(), &accept_count);
+			break;
+		case OPT_NDAYS:
+			ndays = atoi(opt_arg());
+			break;
+		case OPT_RSIGNER:
+			rsignfile = opt_arg();
+			break;
+		case OPT_RKEY:
+			rkeyfile = opt_arg();
+			break;
+		case OPT_ROTHER:
+			rcertfile = opt_arg();
+			break;
+		case OPT_RMD:
+			if (!opt_md(opt_arg(), &rsign_md))
+				goto end;
+			break;
+		case OPT_MD:
+			opt_md(opt_unknown(), &cert_id_md);
+			break;
 		}
+	}
 
 	/* Have we anything to do? */
-	if (!req && !reqin && !respin && !(port && ridx_filename)) badarg = 1;
-
-	if (badarg)
-		{
-		BIO_printf (bio_err, "Usage: ocsp [options]\n");
-		BIO_printf (bio_err, "where options are\n");
-		printhelp(ocsp_help);
-		goto end;
-		}
+	if (!req && !reqin && !respin && !(port && ridx_filename))
+		goto err;
 
 	out = bio_open_default(outfile, "w");
 	if(out==NULL)
@@ -678,18 +530,18 @@ int ocsp_main(int argc, char **argv)
 		{
 		if (!rkeyfile) rkeyfile = rsignfile;
 		rsigner = load_cert(bio_err, rsignfile, FORMAT_PEM,
-			NULL, e, "responder certificate");
+			NULL, NULL, "responder certificate");
 		if (!rsigner)
 			{
 			BIO_printf(bio_err, "Error loading responder certificate\n");
 			goto end;
 			}
 		rca_cert = load_cert(bio_err, rca_filename, FORMAT_PEM,
-			NULL, e, "CA certificate");
+			NULL, NULL, "CA certificate");
 		if (rcertfile)
 			{
 			rother = load_certs(bio_err, rcertfile, FORMAT_PEM,
-				NULL, e, "responder other certificates");
+				NULL, NULL, "responder other certificates");
 			if (!rother) goto end;
 			}
 		rkey = load_key(bio_err, rkeyfile, FORMAT_PEM, 0, NULL, NULL,
@@ -726,7 +578,7 @@ int ocsp_main(int argc, char **argv)
 		{
 		if (!keyfile) keyfile = signfile;
 		signer = load_cert(bio_err, signfile, FORMAT_PEM,
-			NULL, e, "signer certificate");
+			NULL, NULL, "signer certificate");
 		if (!signer)
 			{
 			BIO_printf(bio_err, "Error loading signer certificate\n");
@@ -735,7 +587,7 @@ int ocsp_main(int argc, char **argv)
 		if (sign_certfile)
 			{
 			sign_other = load_certs(bio_err, sign_certfile, FORMAT_PEM,
-				NULL, e, "signer certificates");
+				NULL, NULL, "signer certificates");
 			if (!sign_other) goto end;
 			}
 		key = load_key(bio_err, keyfile, FORMAT_PEM, 0, NULL, NULL,
@@ -866,12 +718,12 @@ int ocsp_main(int argc, char **argv)
 		store = setup_verify(bio_err, CAfile, CApath);
 	if (!store)
 		goto end;
-	if (vpm)
+	if (vpmtouched)
 		X509_STORE_set1_param(store, vpm);
 	if (verify_certfile)
 		{
 		verify_other = load_certs(bio_err, verify_certfile, FORMAT_PEM,
-			NULL, e, "validator certificate");
+			NULL, NULL, "validator certificate");
 		if (!verify_other) goto end;
 		}
 
