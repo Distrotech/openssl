@@ -141,7 +141,7 @@ int dsaparam_main(int argc, char **argv)
 	{
 	DSA *dsa=NULL;
 	BIO *in=NULL,*out=NULL;
-	int i,badops=0,text=0;
+	int i,text=0;
 	int numbits=-1,num,genkey=0, need_rand=0, non_fips_allow=0;
 	int informat=FORMAT_PEM,outformat=FORMAT_PEM,noout=0,C=0,ret=1;
 	char *infile=NULL,*outfile=NULL,*prog,*inrand=NULL;
