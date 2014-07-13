@@ -576,6 +576,7 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 		else
 			BIO_printf(out, "%s\n", argv[0]+3);
 		BIO_free_all(out);
+		out = NULL;
 		goto end;
 		}
 	else if ((strcmp(argv[0],"quit") == 0) ||
@@ -624,6 +625,7 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 								fp->name);
 			}
 		BIO_free_all(out);
+		out = NULL;
 		ret=0;
 		goto end;
 		}

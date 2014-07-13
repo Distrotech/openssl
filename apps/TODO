@@ -52,8 +52,8 @@ X  1514 cms.c
 X  1758 req.c
 -  1960 s_cb.c
 -  2010 testrsa.h
-   2525 s_client.c
+X  2525 s_client.c
    2942 speed.c
 X  2986 ca.c
 -  3082 apps.c
-   3677 s_server.c
+X  3677 s_server.c

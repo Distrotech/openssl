@@ -11,11 +11,13 @@
 #include <errno.h>
 #include <ctype.h>
 #include <openssl/bio.h>
+
 /* Our state */
 static char** argv;
 static int argc;
 static int opt_index;
 static char* arg;
+static char* flag;
 static char* dunno;
 static const OPTIONS* unknown;
 static const OPTIONS* opts;
@@ -90,7 +92,7 @@ char* opt_progname(const char *argv0)
 }
 #endif
 
-char* get_getprog(void)
+char* opt_getprog(void)
 {
 	return prog;
 }
@@ -330,8 +332,9 @@ int opt_verify(int opt, X509_VERIFY_PARAM *vpm)
 		X509_VERIFY_PARAM_set1(vpm, vtmp);
 		break;
 	case OPT_V_VERIFY_DEPTH:
+		i = atoi(opt_arg());
 		if (i >= 0)
-			X509_VERIFY_PARAM_set_depth(vpm, atoi(opt_arg()));
+			X509_VERIFY_PARAM_set_depth(vpm, i);
 		break;
 	case OPT_V_ATTIME:
 		opt_ulong(opt_arg(), &ul);
@@ -443,6 +446,7 @@ int opt_next(void)
 	/* Allow -nnn and --nnn */
 	if (*++p == '-')
 		p++;
+	flag = p - 1;
 
 	/* If we have --flag=foo, snip it off */
 	if ((arg = strchr(p, '=')) != NULL)
@@ -557,6 +561,12 @@ int opt_next(void)
 char* opt_arg(void)
 {
 	return arg;
+}
+
+/* Return the most recent flag. */
+char* opt_flag(void)
+{
+	return flag;
 }
 
 /* Return the unknown option. */

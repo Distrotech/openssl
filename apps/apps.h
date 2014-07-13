@@ -240,7 +240,7 @@ extern void unbuffer(FILE* fp);
 	{" xchain", OPT_X_CHAIN, '<' }, \
 	{ "xchain_build", OPT_X_CHAIN_BUILD, '-' }, \
 	{ "xcertform", OPT_X_CERTFORM, 'F' }, \
-	{ "xkeyform", OPT_X_KEYFORM, 'F' },
+	{ "xkeyform", OPT_X_KEYFORM, 'F' }
 
 #define OPT_X_CASES \
 	OPT_X__FIRST: case OPT_X__LAST: break; \
@@ -249,15 +249,15 @@ extern void unbuffer(FILE* fp);
 	case OPT_X_CHAIN: \
 	case OPT_X_CHAIN_BUILD: \
 	case OPT_X_CERTFORM: \
-	case OPT_X_KEYFORM:
+	case OPT_X_KEYFORM
 
 /*
  * Common SSL options.
  */
 #define OPT_S_ENUM \
 	OPT_S__FIRST=3000, \
-	OPT_S_SIGALGS, OPT_S_CLIENT_SIGALGS, OPT_S_CURVES, OPS_S_NAMED_CURVE, \
-	OPT_S_CIPHER, OPT_S_CERT, OPT_S_KEY, OPT_S_DHPARAM \
+	OPT_S_SIGALGS, OPT_S_CLIENT_SIGALGS, OPT_S_CURVES, OPT_S_NAMED_CURVE, \
+	OPT_S_CIPHER, OPT_S_CERT, OPT_S_KEY, OPT_S_DHPARAM, \
 	OPT_S__LAST
 
 #define OPT_S_OPTIONS \
@@ -268,14 +268,14 @@ extern void unbuffer(FILE* fp);
 	{ "cipher", OPT_S_CIPHER, 's' }, \
 	{ "cert", OPT_S_CERT, '<' }, \
 	{ "key", OPT_S_KEY, '<' }, \
-	{ "dhparam", OPT_S_DHPARAM, '<' },
+	{ "dhparam", OPT_S_DHPARAM, '<' }
 
-#define OPS_S_CASES \
+#define OPT_S_CASES \
 	OPT_S__FIRST: case OPT_S__LAST: break; \
 	case OPT_S_SIGALGS: \
 	case OPT_S_CLIENT_SIGALGS: \
 	case OPT_S_CURVES: \
-	case OPS_S_NAMED_CURVE: \
+	case OPT_S_NAMED_CURVE: \
 	case OPT_S_CIPHER: \
 	case OPT_S_CERT: \
 	case OPT_S_KEY: \
@@ -318,6 +318,7 @@ extern int opt_pair(const char* arg, const OPT_PAIR* pairs, int* result);
 extern int opt_cipher(const char* name, const EVP_CIPHER** cipherp);
 extern int opt_md(const char* name, const EVP_MD** mdp);
 extern char* opt_arg(void);
+extern char* opt_flag(void);
 extern char* opt_unknown(void);
 extern char* opt_reset(void);
 extern char** opt_rest(void);
