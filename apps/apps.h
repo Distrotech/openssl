@@ -128,6 +128,16 @@
 #include <openssl/ossl_typ.h>
 #include "progs.h"
 
+#ifndef OPENSSL_SYS_NETWARE
+#include <signal.h>
+#endif
+#if defined(OPENSSL_SYSNAME_WIN32) || defined(OPENSSL_SYSNAME_WINCE)
+#  define openssl_fdset(a,b) FD_SET((unsigned int)a, b)
+#else
+#  define openssl_fdset(a,b) FD_SET(a, b)
+#endif
+
+
 int app_RAND_load_file(const char *file, BIO *bio_e, int dont_warn);
 int app_RAND_write_file(const char *file, BIO *bio_e);
 /* When `file' is NULL, use defaults.
@@ -147,10 +157,6 @@ BIO* dup_bio_in();
 BIO* dup_bio_out();
 BIO* bio_open_default(const char* filename, const char* mode);
 extern void unbuffer(FILE* fp);
-
-#ifndef OPENSSL_SYS_NETWARE
-#include <signal.h>
-#endif
 
 /*
  * Common verification options.
@@ -281,15 +287,11 @@ extern void unbuffer(FILE* fp);
 	case OPT_S_KEY: \
 	case OPT_S_DHPARAM
 
-#if defined(OPENSSL_SYSNAME_WIN32) || defined(OPENSSL_SYSNAME_WINCE)
-#  define openssl_fdset(a,b) FD_SET((unsigned int)a, b)
-#else
-#  define openssl_fdset(a,b) FD_SET(a, b)
-#endif
-
 /*
  * Option parsing.
  */
+extern char* OPT_HELP;
+extern char* OPT_CONTINUE;
 typedef struct options_st {
 	const char* name;
 	int retval;
@@ -299,6 +301,7 @@ typedef struct options_st {
 	 *   s string, < input file, > output file,
 	 *   f der/pem format, F any format identifier */
 	int valtype;
+	const char* helpstr;
 } OPTIONS;
 
 typedef struct opt_pair_st {
@@ -324,6 +327,8 @@ extern char* opt_reset(void);
 extern char** opt_rest(void);
 extern int opt_num_rest(void);
 extern int opt_verify(int i, X509_VERIFY_PARAM* vpm);
+extern void printhelp(const char**);
+extern void opt_help(const OPTIONS* list);
 
 
 #define RB(xformat)  ((xformat) == FORMAT_ASN1 ? "rb" : "r")
@@ -488,7 +493,6 @@ int app_isdir(const char *);
 int raw_read_stdin(void *,int);
 int raw_write_stdout(const void *,int);
 
-void printhelp(const char**);
 #define TM_START	0
 #define TM_STOP		1
 double app_tminterval (int stop,int usertime);
