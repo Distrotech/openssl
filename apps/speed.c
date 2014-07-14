@@ -1018,6 +1018,7 @@ int speed_main(int argc, char **argv)
 		}
 	}
 
+	/* Remaining arguments are algorithms. */
 	argc = opt_num_rest();
 	for (argv = opt_rest(); *argv; argv++) {
 		if (strcmp(*argv, "prime") == 0) {
@@ -1090,27 +1091,30 @@ int speed_main(int argc, char **argv)
 		}
 #endif
 #ifndef OPENSSL_NO_ECDSA
-		if (found(*argv, ecdsa_choices, &i)) {
-			ecdsa_doit[i] = 2;
-			continue;
-		}
 		if (strcmp(*argv, "ecdsa") == 0) {
 			for (i = 0; i < EC_NUM; i++)
 				ecdsa_doit[i] = 1;
 			continue;
 		}
-#endif
-#ifndef OPENSSL_NO_ECDH
-		if (found(*argv, ecdh_choices, &i)) {
-			ecdh_doit[i] = 2;
+		if (found(*argv, ecdsa_choices, &i)) {
+			ecdsa_doit[i] = 2;
 			continue;
 		}
+#endif
+#ifndef OPENSSL_NO_ECDH
 		if (strcmp(*argv,"ecdh") == 0) {
 			for (i = 0; i < EC_NUM; i++)
 				ecdh_doit[i] = 1;
 			continue;
 		}
+		if (found(*argv, ecdh_choices, &i)) {
+			ecdh_doit[i] = 2;
+			continue;
+		}
 #endif
+		BIO_printf(bio_err, "%s: Unknown algorithm %s\n",
+				prog, *argv);
+		goto end;
 	}
 
 #ifndef NO_FORK
