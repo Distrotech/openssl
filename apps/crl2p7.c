@@ -73,28 +73,18 @@
 
 static int add_certs_from_file(STACK_OF(X509) *stack, char *certfile);
 
-const char* crl2pkcs7_help[] = {
-	"-inform arg    input format - DER or PEM",
-	"-outform arg   output format - DER or PEM",
-	"-in arg        input file",
-	"-out arg       output file",
-	"-certfile arg  certificates file of chain to a trusted CA",
-	"                (can be used more than once)",
-	"-nocrl         no crl to load, just certs from '-certfile'",
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT, OPT_NOCRL, OPT_CERTFILE,
 };
-static OPTIONS options[] = {
-	{ "inform", OPT_INFORM, 'F' },
-	{ "outform", OPT_OUTFORM, 'F' },
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "nocrl", OPT_NOCRL, '-' },
-	{ "certfile", OPT_CERTFILE, 's' },
+
+OPTIONS crl2pkcs7_options[] = {
+	{ "inform", OPT_INFORM, 'F', "Input format - DER or PEM" },
+	{ "outform", OPT_OUTFORM, 'F', "Output format - DER or PEM" },
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "nocrl", OPT_NOCRL, '-', "No crl to load, just certs from '-certfile'" },
+	{ "certfile", OPT_CERTFILE, '<', "File of chain of certs to a trusted CA; can be repeated" },
 	{ NULL }
 };
 
@@ -112,13 +102,12 @@ int crl2pkcs7_main(int argc, char **argv)
 	int ret=1,nocrl=0;
 	enum options o;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, crl2pkcs7_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(crl2pkcs7_help);
+			opt_help(crl2pkcs7_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);

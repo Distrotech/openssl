@@ -68,36 +68,24 @@
 #include <openssl/pkcs7.h>
 #include <openssl/pem.h>
 
-
-const char* pkcs7_help[] = {
-	"-inform arg   input format - DER or PEM",
-	"-outform arg  output format - DER or PEM",
-	"-in arg       input file",
-	"-out arg      output file",
-	"-print_certs  print any certs or crl in the input",
-	"-text         print full details of certificates",
-	"-noout        don't output encoded data",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e     use engine e, possibly a hardware device",
-#endif
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT, OPT_NOOUT,
 	OPT_TEXT, OPT_PRINT, OPT_PRINT_CERTS, OPT_ENGINE,
 };
-static OPTIONS options[] = {
-	{ "inform", OPT_INFORM, 'F' },
-	{ "outform", OPT_OUTFORM, 'F' },
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "noout", OPT_NOOUT, '-' },
-	{ "text", OPT_TEXT, '-' },
+
+OPTIONS pkcs7_options[] = {
+	{ "inform", OPT_INFORM, 'F', "Input format - DER or PEM" },
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "outform", OPT_OUTFORM, 'F', "Output format - DER or PEM" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "noout", OPT_NOOUT, '-', "Don't output encoded data" },
+	{ "text", OPT_TEXT, '-', "Print full details of certificates" },
 	{ "print", OPT_PRINT, '-' },
-	{ "print_certs", OPT_PRINT_CERTS, '-' },
-	{ "engine", OPT_ENGINE, 's' },
+	{ "print_certs", OPT_PRINT_CERTS, '-', "Print_certs  print any certs or crl in the input" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
 	{ NULL }
 };
 
@@ -114,13 +102,13 @@ int pkcs7_main(int argc, char **argv)
 	char *engine=NULL;
 
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, pkcs7_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(pkcs7_help);
+			opt_help(pkcs7_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);

@@ -72,35 +72,6 @@
 
 #define DEFBITS	512
 
-const char* gendsa_help[] = {
-	"-out file - output the key to 'file'",
-#ifndef OPENSSL_NO_DES
-	"-des      - encrypt the generated key with DES in cbc mode",
-	"-des3     - encrypt the generated key with DES in ede cbc mode (168 bit key)",
-#endif
-#ifndef OPENSSL_NO_SEED
-	"-seed           encrypt PEM output with cbc seed",
-#endif
-#ifndef OPENSSL_NO_AES
-	"-aes128, -aes192, -aes256",
-	"                encrypt PEM output with cbc aes",
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-	"-camellia128, -camellia192, -camellia256",
-	"                encrypt PEM output with cbc camellia",
-#endif
-#ifndef OPENSSL_NO_IDEA
-	"-idea     - encrypt the generated key with IDEA in cbc mode",
-#endif
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e - use engine e, possibly a hardware device.",
-#endif
-	"-rand file...  load the file(s) into the random number generator",
-
-	NULL
-};
-
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_OUT, OPT_PASSOUT, OPT_ENGINE, OPT_RAND,
@@ -120,30 +91,35 @@ enum options {
 	OPT_CAMELLIA128, OPT_CAMELLIA192, OPT_CAMELLIA256,
 #endif
 };
-static OPTIONS options[] = {
-	{ "out", OPT_OUT, '>' },
+
+OPTIONS gendsa_options[] = {
+	{ OPT_HELP_STR, 1, '-', "Usage: %s [args] dsaparam-file\n" },
+	{ OPT_HELP_STR, 1, '-', "Valid options are:\n" },
+	{ "out", OPT_OUT, '>', "Output the key to the specified file" },
 	{ "passout", OPT_PASSOUT, 's' },
-	{ "engine", OPT_ENGINE, 's' },
-	{ "rand", OPT_RAND, 's' },
+	{ "rand", OPT_RAND, 's', "Load the file(s) into the random number generator" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
 #ifndef OPENSSL_NO_DES
-	{ "des", OPT_DES, '-' },
-	{ "des3", OPT_DES3, '-' },
+	{ "des", OPT_DES, '-', "Encrypt the output with CBC DES" },
+	{ "des3", OPT_DES3, '-', "Encrypt the output with CBC 3DES" },
 #endif
 #ifndef OPENSSL_NO_IDEA
-	{ "idea", OPT_IDEA, '-' },
+	{ "idea", OPT_IDEA, '-', "Encrypt the output with CBC IDEA" },
 #endif
 #ifndef OPENSSL_NO_SEED
-	{ "seed", OPT_SEED, '-' },
+	{ "seed", OPT_SEED, '-', "Encrypt key output with CBC seed" },
 #endif
 #ifndef OPENSSL_NO_AES
-	{ "aes128", OPT_AES128, '-' },
-	{ "aes192", OPT_AES192, '-' },
-	{ "aes256", OPT_AES256, '-' },
+	{ "aes128", OPT_AES128, '-', "Encrypt the output with CBC AES 128" },
+	{ "aes192", OPT_AES192, '-', "Encrypt the output with CBC AES 192" },
+	{ "aes256", OPT_AES256, '-', "Encrypt the output with CBC AES 256" },
 #endif
 #ifndef OPENSSL_NO_CAMELLIA
-	{ "camellia128", OPT_CAMELLIA128, '-' },
-	{ "camellia192", OPT_CAMELLIA192, '-' },
-	{ "camellia256", OPT_CAMELLIA256, '-' },
+	{ "camellia128", OPT_CAMELLIA128, '-', "Encrypt the output with CBC camellia 128" },
+	{ "camellia192", OPT_CAMELLIA192, '-', "Encrypt the output with CBC camellia 192" },
+	{ "camellia256", OPT_CAMELLIA256, '-', "Encrypt the output with CBC camellia 256" },
 #endif
 	{ NULL }
 };
@@ -161,16 +137,13 @@ int gendsa_main(int argc, char **argv)
 	enum options o;
 	char* prog;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, gendsa_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 bad:
-			BIO_printf(bio_err,"usage: %s [args] dsaparam-file\n",
-					prog);
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(gendsa_help);
+			opt_help(gendsa_options);
 			goto end;
 		case OPT_OUT:
 			outfile= opt_arg();

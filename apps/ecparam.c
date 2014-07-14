@@ -87,61 +87,42 @@
 
 static int ecparam_print_var(BIO *,BIGNUM *,const char *,int,unsigned char *);
 
-const char* ecparam_help[] = {
-	"-inform arg       input format - default PEM (DER or PEM)",
-	"-outform arg      output format - default PEM",
-	"-in  arg          input file  - default stdin",
-	"-out arg          output file - default stdout",
-	"-noout            do not print the ec parameter",
-	"-text             print the ec parameters in text form",
-	"-check            validate the ec parameters",
-	"-C                print a 'C' function creating the parameters",
-	"-name arg         use the ec parameters with 'short name' name",
-	"-list_curves      prints a list of all currently available curve 'short names'",
-	"-conv_form arg  specifies the point conversion form ",
-	"                possible values: compressed",
-	"                    uncompressed (default) or hybrid",
-	"-param_enc arg  specifies the way the ec parameters are encoded",
-	"                 in the asn1 der encoding",
-	"                 possible values: named_curve (default) or explicit",
-	"-no_seed          if 'explicit' parameters are chosen do not use the seed",
-	"-genkey           generate ec key",
-	"-rand file        files to use for random number input",
-	"-engine e         use engine e, possibly a hardware device",
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT, OPT_TEXT, OPT_C,
 	OPT_CHECK, OPT_LIST_CURVES, OPT_NO_SEED, OPT_NOOUT, OPT_NAME,
 	OPT_CONV_FORM, OPT_PARAM_ENC, OPT_GENKEY, OPT_RAND, OPT_ENGINE,
 };
-static OPTIONS options[] = {
-	{ "inform", OPT_INFORM, 'F' },
-	{ "outform", OPT_OUTFORM, 'F' },
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "text", OPT_TEXT, '-' },
-	{ "C", OPT_C, '-' },
-	{ "check", OPT_CHECK, '-' },
-	{ "list_curves", OPT_LIST_CURVES, '-' },
-	{ "no_seed", OPT_NO_SEED, '-' },
-	{ "noout", OPT_NOOUT, '-' },
-	{ "name", OPT_NAME, 's' },
-	{ "conv_form", OPT_CONV_FORM, 's' },
-	{ "param_enc", OPT_PARAM_ENC, 's' },
-	{ "genkey", OPT_GENKEY, '-' },
-	{ "rand", OPT_RAND, 's' },
-	{ "engine", OPT_ENGINE, 's' },
+
+OPTIONS ecparam_options[] = {
+	{ "inform", OPT_INFORM, 'F', "Input format - default PEM (DER or PEM)" },
+	{ "outform", OPT_OUTFORM, 'F', "Output format - default PEM" },
+	{ "in", OPT_IN, '<', "Input file  - default stdin" },
+	{ "out", OPT_OUT, '>', "Output file - default stdout" },
+	{ "text", OPT_TEXT, '-', "Print the ec parameters in text form" },
+	{ "C", OPT_C, '-', "Print a 'C' function creating the parameters" },
+	{ "check", OPT_CHECK, '-', "Validate the ec parameters" },
+	{ "list_curves", OPT_LIST_CURVES, '-', "Prints a list of all curve 'short names'" },
+	{ "no_seed", OPT_NO_SEED, '-', "If 'explicit' parameters are chosen do not use the seed" },
+	{ "noout", OPT_NOOUT, '-', "Do not print the ec parameter" },
+	{ "name", OPT_NAME, 's', "Use the ec parameters with specified 'short name'" },
+	{ "conv_form", OPT_CONV_FORM, 's', "Specifies the point conversion form " },
+	{ "param_enc", OPT_PARAM_ENC, 's', "Specifies the way the ec parameters are encoded" },
+	{ "genkey", OPT_GENKEY, '-', "Generate ec key" },
+	{ "rand", OPT_RAND, 's', "Files to use for random number input" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
 	{ NULL }
 };
+
 OPT_PAIR forms[] = {
 	{ "compressed", POINT_CONVERSION_COMPRESSED },
 	{ "uncompressed", POINT_CONVERSION_UNCOMPRESSED },
 	{ "hybrid", POINT_CONVERSION_HYBRID },
 	{ NULL }
 };
+
 OPT_PAIR encodings[] = {
 	{ "named_curve", OPENSSL_EC_NAMED_CURVE },
 	{ "explicit", 0 },
@@ -166,14 +147,13 @@ int ecparam_main(int argc, char **argv)
 	unsigned char *buffer=NULL;
 	enum options o;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, ecparam_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 err:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(ecparam_help);
+			opt_help(ecparam_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);

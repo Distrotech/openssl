@@ -78,29 +78,6 @@ static int do_keyop(EVP_PKEY_CTX *ctx, int pkey_op,
 		unsigned char *out, size_t *poutlen,
 		unsigned char *in, size_t inlen);
 
-const char* pkeyutl_help[] = {
-	 "-in file        input file",
-	 "-out file       output file",
-	 "-sigfile file   signature file (verify operation only)",
-	 "-inkey file     input key",
-	 "-keyform arg    private key format - default PEM",
-	 "-pubin          input is a public key",
-	 "-certin         input is a certificate carrying a public key",
-	 "-pkeyopt X:Y    public key options",
-	 "-sign           sign with private key",
-	 "-verify         verify with public key",
-	 "-verifyrecover  verify with public key, recover original data",
-	 "-encrypt        encrypt with public key",
-	 "-decrypt        decrypt with private key",
-	 "-derive         derive shared secret",
-	 "-hexdump        hex dump output",
-#ifndef OPENSSL_NO_ENGINE
-	 "-engine e       use engine e, possibly a hardware device.",
-#endif
-	 "-passin arg     pass phrase source",
-	 NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_ENGINE, OPT_IN, OPT_OUT,
@@ -110,30 +87,30 @@ enum options {
 	OPT_PEERFORM, OPT_KEYFORM, OPT_PKEYOPT,
 };
 
-static OPTIONS options[] = {
-#ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
-#endif
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "pubin", OPT_PUBIN, '-' },
-	{ "certin", OPT_CERTIN, '-' },
+OPTIONS pkeyutl_options[] = {
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "pubin", OPT_PUBIN, '-', "Input is a public key" },
+	{ "certin", OPT_CERTIN, '-', "Input is a cert with a public key" },
 	{ "asn1parse", OPT_ASN1PARSE, '-' },
-	{ "hexdump", OPT_HEXDUMP, '-' },
-	{ "sign", OPT_SIGN, '-' },
-	{ "verify", OPT_VERIFY, '-' },
-	{ "verifyrecover", OPT_VERIFYRECOVER, '-' },
+	{ "hexdump", OPT_HEXDUMP, '-', "Hex dump output" },
+	{ "sign", OPT_SIGN, '-', "Sign with private key" },
+	{ "verify", OPT_VERIFY, '-', "Verify with public key" },
+	{ "verifyrecover", OPT_VERIFYRECOVER, '-', "Verify with public key, recover original data" },
 	{ "rev", OPT_REV, '-' },
-	{ "encrypt", OPT_ENCRYPT, '-' },
-	{ "decrypt", OPT_DECRYPT, '-' },
-	{ "derive", OPT_DERIVE, '-' },
-	{ "sigfile", OPT_SIGFILE, '<' },
-	{ "inkey", OPT_INKEY, 's' },
+	{ "encrypt", OPT_ENCRYPT, '-', "Encrypt with public key" },
+	{ "decrypt", OPT_DECRYPT, '-', "Decrypt with private key" },
+	{ "derive", OPT_DERIVE, '-', "Derive shared secret" },
+	{ "sigfile", OPT_SIGFILE, '<', "Signature file (verify operation only)" },
+	{ "inkey", OPT_INKEY, 's', "Input key" },
 	{ "peerkey", OPT_PEERKEY, 's' },
-	{ "passin", OPT_PASSIN, 's' },
+	{ "passin", OPT_PASSIN, 's', "Pass phrase source" },
 	{ "peerform", OPT_PEERFORM, 'F' },
-	{ "keyform", OPT_KEYFORM, 'F' },
-	{ "pkeyopt", OPT_PKEYOPT, 's' },
+	{ "keyform", OPT_KEYFORM, 'F', "Private key format - default PEM" },
+	{ "pkeyopt", OPT_PKEYOPT, 's', "Public key options as opt:value" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
 	{ NULL }
 };
 
@@ -156,14 +133,13 @@ int pkeyutl_main(int argc, char **argv)
 	enum options o;
 	char* prog;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, pkeyutl_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 err:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(pkeyutl_help);
+			opt_help(pkeyutl_options);
 			goto end;
 		case OPT_IN:
 			infile = opt_arg();

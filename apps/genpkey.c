@@ -69,23 +69,6 @@ static int init_keygen_file(BIO *err, EVP_PKEY_CTX **pctx,
 				const char *file, ENGINE *e);
 static int genpkey_cb(EVP_PKEY_CTX *ctx);
 
-const char* genpkey_help[] = {
-	"-out file          output file",
-	"-outform X         output format (DER or PEM)",
-	"-pass arg          output file pass phrase source",
-	"-<cipher>          use cipher <cipher> to encrypt the key",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e          use engine e, possibly a hardware device.",
-#endif
-	"-paramfile file    parameters file",
-	"-algorithm alg     the public key algorithm",
-	"-pkeyopt opt:value set the public key algorithm option <opt>",
-	"                   to value <value>",
-	"-genparam          generate parameters, not key",
-	"-text              print the in text",
-	"Order of options may be important!  See the documentation.",
-	NULL
-};
 
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
@@ -93,19 +76,20 @@ enum options {
 	OPT_ALGORITHM, OPT_PKEYOPT, OPT_GENPARAM, OPT_TEXT, OPT_CIPHER,
 };
 
-static OPTIONS options[] = {
+OPTIONS genpkey_options[] = {
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "outform", OPT_OUTFORM, 'F', "output format (DER or PEM)" },
+	{ "pass", OPT_PASS, 's', "Output file pass phrase source" },
+	{ "paramfile", OPT_PARAMFILE, '<', "Parameters file" },
+	{ "algorithm", OPT_ALGORITHM, 's', "The public key algorithm" },
+	{ "pkeyopt", OPT_PKEYOPT, 's', "Set the public key algorithm option as opt:value" },
+	{ "genparam", OPT_GENPARAM, '-', "Generate parameters, not key" },
+	{ "text", OPT_TEXT, '-', "Print the in text" },
+	{ "", OPT_CIPHER, '-', "Cipher to use to encrypt the key" },
 #ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
 #endif
-	{ "outform", OPT_OUTFORM, 'F' },
-	{ "out", OPT_OUT, '>' },
-	{ "pass", OPT_PASS, 's' },
-	{ "paramfile", OPT_PARAMFILE, '<' },
-	{ "algorithm", OPT_ALGORITHM, 's' },
-	{ "pkeyopt", OPT_PKEYOPT, 's' },
-	{ "genparam", OPT_GENPARAM, '-' },
-	{ "text", OPT_TEXT, '-' },
-	{ "", OPT_CIPHER, '-' },
+	{ OPT_HELP_STR, 1, 1, "Order of options may be important!  See the documentation.\n" },
 	{ NULL }
 };
 
@@ -121,14 +105,13 @@ int genpkey_main(int argc, char **argv)
 	enum options o;
 	char* prog;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, genpkey_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 err:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(genpkey_help);
+			opt_help(genpkey_options);
 			goto end;
 		case OPT_OUTFORM:
 			opt_format(opt_arg(), 1, &outformat);
@@ -178,9 +161,8 @@ err:
 			text=1;
 			break;
 		case OPT_CIPHER:
-			if (!opt_cipher(opt_arg(), &cipher))
-				goto err;
-			if (do_param == 1)
+			if (!opt_cipher(opt_unknown(), &cipher)
+			 || do_param == 1)
 				goto err;
 		}
 	}

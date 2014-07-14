@@ -52,24 +52,17 @@
 #include "apps.h"
 #include <openssl/bn.h>
 
-const char* prime_help[] = {
-	"-bits n     size of number in bits",
-	"-hex        hex",
-	"-checks n   number of checks",
-	"-generate   generate a prime",
-	"-safe       when used with -generate, generate a safe prime",
-	NULL
-};
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_HEX, OPT_GENERATE, OPT_BITS, OPT_SAFE, OPT_CHECKS
 };
-static OPTIONS options[] = {
-	{ "hex", OPT_HEX, '-' },
-	{ "generate", OPT_GENERATE, '-' },
-	{ "bits", OPT_BITS, 'p' },
-	{ "safe", OPT_SAFE, '-' },
-	{ "checks", OPT_CHECKS, 'p' },
+
+OPTIONS prime_options[] = {
+	{ "hex", OPT_HEX, '-', "Hex output" },
+	{ "generate", OPT_GENERATE, '-', "Generate a prime" },
+	{ "bits", OPT_BITS, 'p', "Size of number in bits" },
+	{ "safe", OPT_SAFE, '-', "When used with -generate, generate a safe prime" },
+	{ "checks", OPT_CHECKS, 'p', "Number of checks" },
 	{ NULL }
 };
 
@@ -85,13 +78,12 @@ int prime_main(int argc, char **argv)
 	BIGNUM *bn=NULL;
 	char* prog;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, prime_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(req_help);
+			opt_help(prime_options);
 			return 1;
 		case OPT_HEX:
 			hex=1;

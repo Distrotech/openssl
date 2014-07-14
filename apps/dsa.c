@@ -72,64 +72,34 @@
 #include <openssl/bn.h>
 
 
-const char* dsa_help[] = {
-	"-inform arg     input format - DER or PEM",
-	"-outform arg    output format - DER or PEM",
-	"-in arg         input file",
-	"-passin arg     input file pass phrase source",
-	"-out arg        output file",
-	"-passout arg    output file pass phrase source",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e       use engine e, possibly a hardware device.",
-#endif
-	"-des            encrypt PEM output with cbc des",
-	"-des3           encrypt PEM output with ede cbc des using 168 bit key",
-#ifndef OPENSSL_NO_IDEA
-	"-idea           encrypt PEM output with cbc idea",
-#endif
-#ifndef OPENSSL_NO_AES
-	"-aes128, -aes192, -aes256",
-	"                 encrypt PEM output with cbc aes",
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-	"-camellia128, -camellia192, -camellia256",
-	"                 encrypt PEM output with cbc camellia",
-#endif
-#ifndef OPENSSL_NO_SEED
-	"-seed           encrypt PEM output with cbc seed",
-#endif
-	"-text           print the key in text",
-	"-noout          don't print key out",
-	"-modulus        print the DSA public value",
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT,
 	OPT_ENGINE, OPT_PVK_STRONG, OPT_PVK_WEAK,
 	OPT_PVK_NONE, OPT_NOOUT, OPT_TEXT, OPT_MODULUS, OPT_PUBIN,
-	OPT_PUBOUT, OPT_CIPHER, OPT_PASSIN, OPT_PASSOUT,
+	OPT_PUBOUT, OPT_CIPHER, OPT_PASSIN, OPT_PASSOUT, OPT_HELP,
 };
-static OPTIONS options[] = {
-	{ "inform", OPT_INFORM, 'F' },
-	{ "outform", OPT_OUTFORM, 'F' },
+
+OPTIONS dsa_options[] = {
+	{ "help", OPT_HELP, '-', "This summary" },
+	{ "inform", OPT_INFORM, 'F', "Input format - DER or PEM" },
+	{ "outform", OPT_OUTFORM, 'F', "Output format - DER or PEM" },
 #ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
+	{ "engine", OPT_ENGINE, 's', "Use engine e, possibly a hardware device" },
 #endif
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "out", OPT_OUT, '>', "Output file" },
 	{ "pvk-strong", OPT_PVK_STRONG, '-' },
 	{ "pvk-weak", OPT_PVK_WEAK, '-' },
 	{ "pvk-none", OPT_PVK_NONE, '-' },
-	{ "noout", OPT_NOOUT, '-' },
-	{ "text", OPT_TEXT, '-' },
-	{ "modulus", OPT_MODULUS, '-' },
+	{ "noout", OPT_NOOUT, '-', "Don't print key out" },
+	{ "text", OPT_TEXT, '-', "Print the key in text" },
+	{ "modulus", OPT_MODULUS, '-', "Print the DSA public value" },
 	{ "pubin", OPT_PUBIN, '-' },
 	{ "pubout", OPT_PUBOUT, '-' },
-	{ "passin", OPT_PASSIN, 's' },
-	{ "passout", OPT_PASSOUT, 's' },
-	{ "", OPT_CIPHER, '-' },
+	{ "passin", OPT_PASSIN, 's', "Input file pass phrase source" },
+	{ "passout", OPT_PASSOUT, 's', "Output file pass phrase source" },
+	{ "", OPT_CIPHER, '-', "Any supported CBC cipher" },
 	{ NULL }
 };
 
@@ -151,13 +121,13 @@ int dsa_main(int argc, char **argv)
 	int pvk_encr = 2;
 	enum options o;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, dsa_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(dsa_help);
+		case OPT_HELP:
+			opt_help(dsa_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);

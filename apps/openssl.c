@@ -113,8 +113,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#define APP_MAIN
 #include "apps.h"
+#include "progs.h"
 #include <openssl/bio.h>
 #include <openssl/crypto.h>
 #include <openssl/rand.h>

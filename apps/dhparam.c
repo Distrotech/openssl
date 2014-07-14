@@ -132,26 +132,6 @@
 
 static int dh_cb(int p, int n, BN_GENCB *cb);
 
-const char* dhparam_help[] = {
-	"-inform arg    input format, DER or PEM",
-	"-outform arg   output format, DER or PEM",
-	"-in arg        input file",
-	"-out arg       output file",
-	"-check         check the DH parameters",
-	"-text          print a text form of the DH parameters",
-	"-C             Output C code",
-	"-2             generate parameters using  2 as the generator value",
-	"-5             generate parameters using  5 as the generator value",
-	"-rand file...  load the file(s) into the random number generator",
-#ifndef OPENSSL_NO_DSA
-	"-dsaparam      read or generate DSA parameters, convert to DH",
-#endif
-#ifndef OPENSSL_NO_ENGINE
-	" -engine e     use engine e, possibly a hardware device.",
-#endif
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT,
@@ -159,23 +139,25 @@ enum options {
 	OPT_RAND, OPT_DSAPARAM, OPT_C, OPT_2, OPT_5,
 };
 
-static OPTIONS options[] = {
-	{ "inform", OPT_INFORM, 'F' },
-	{ "outform", OPT_OUTFORM, 'F' },
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "check", OPT_CHECK, '-' },
-	{ "text", OPT_TEXT, '-' },
+OPTIONS dhparam_options[] = {
+	{ OPT_HELP_STR, 1, '-', "Usage: %s [flags] [numbits]\n" },
+	{ OPT_HELP_STR, 1, '-', "Valid options are:\n" },
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "inform", OPT_INFORM, 'F', "Input format, DER or PEM" },
+	{ "outform", OPT_OUTFORM, 'F', "Output format, DER or PEM" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "check", OPT_CHECK, '-', "Check the DH parameters" },
+	{ "text", OPT_TEXT, '-', "Print a text form of the DH parameters" },
 	{ "noout", OPT_NOOUT, '-' },
-	{ "rand", OPT_RAND, 's' },
-	{ "C", OPT_C, '-' },
-	{ "2", OPT_2, '-' },
-	{ "5", OPT_5, '-' },
+	{ "rand", OPT_RAND, 's', "Load the file(s) into the random number generator" },
+	{ "C", OPT_C, '-', "Print C code" },
+	{ "2", OPT_2, '-', "Generate parameters using 2 as the generator value" },
+	{ "5", OPT_5, '-', "Generate parameters using 5 as the generator value" },
 #ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
+	{ "engine", OPT_ENGINE, 's', "Use engine e, possibly a hardware device" },
 #endif
 #ifndef OPENSSL_NO_DSA
-	{ "dsaparam", OPT_DSAPARAM, '-' },
+	{ "dsaparam", OPT_DSAPARAM, '-', "-dsaparam      read or generate DSA parameters, convert to DH" },
 #endif
 	{ NULL }
 };
@@ -192,14 +174,12 @@ int dhparam_main(int argc, char **argv)
 	int dsaparam=0;
 	char *engine=NULL;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, dhparam_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Usage: %s [flags] [numbits]", prog);
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(dhparam_help);
+			opt_help(dhparam_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);

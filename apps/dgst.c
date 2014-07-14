@@ -76,29 +76,6 @@ int do_fp(BIO *out, unsigned char *buf, BIO *bp, int sep, int binout,
 	  const char *sig_name, const char *md_name,
 	  const char *file,BIO *bmd);
 
-
-const char *dgst_help[] = {
-	"-c              to output the digest with separating colons",
-	"-r              to output the digest in coreutils format",
-	"-d              to output debug info",
-	"-hex            output as hex dump",
-	"-binary         output in binary form",
-	"-sign   file    sign digest using private key in file",
-	"-verify file    verify a signature using public key in file",
-	"-prverify file  verify a signature using private key in file",
-	"-keyform arg    key file format (PEM or ENGINE)",
-	"-out filename   output to filename rather than stdout",
-	"-signature file signature to verify",
-	"-sigopt nm:v    signature parameter",
-	"-hmac key       create hashed MAC with key",
-	"-mac algorithm  create MAC (not neccessarily HMAC)", 
-	"-macopt nm:v    MAC algorithm parameters or key",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e       use engine e, possibly a hardware device.",
-#endif
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_C, OPT_R, OPT_RAND, OPT_OUT, OPT_SIGN, OPT_PASSIN, OPT_VERIFY,
@@ -108,52 +85,34 @@ enum options {
 	OPT_DIGEST,
 };
 
-static OPTIONS options[] = {
-	{ "c", OPT_C, '-' },
-	{ "r", OPT_R, '-' },
+static OPTIONS dgst_options[] = {
+	{ "c", OPT_C, '-', "Print the digest with separating colons" },
+	{ "r", OPT_R, '-', "Print the digest in coreutils format" },
 	{ "rand", OPT_RAND, 's' },
-	{ "out", OPT_OUT, '>' },
-	{ "sign", OPT_SIGN, '<' },
+	{ "out", OPT_OUT, '>', "Output to filename rather than stdout" },
 	{ "passin", OPT_PASSIN, 's' },
-	{ "verify", OPT_VERIFY, '<' },
-	{ "prverify", OPT_PRVERIFY, '<' },
-	{ "signature", OPT_SIGNATURE, '<' },
-	{ "keyform", OPT_KEYFORM, 'F', },
-	{ "engine", OPT_ENGINE, 's' },
+	{ "sign", OPT_SIGN, '<', "Sign digest using private key in file" },
+	{ "verify", OPT_VERIFY, '<', "Verify a signature using public key in file" },
+	{ "prverify", OPT_PRVERIFY, '<', "Verify a signature using private key in file" },
+	{ "signature", OPT_SIGNATURE, '<', "File with signature to verify" },
+	{ "keyform", OPT_KEYFORM, 'f', "Key file format (PEM or ENGINE)" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine e, possibly a hardware device" },
+#endif
 	{ "engine_impl", OPT_ENGINE_IMPL, '-' },
-	{ "hex", OPT_HEX, '-' },
-	{ "binary", OPT_BINARY, '-' },
-	{ "d", OPT_DEBUG, '-' },
+	{ "hex", OPT_HEX, '-', "Print as hex dump" },
+	{ "binary", OPT_BINARY, '-', "Print in binary form" },
+	{ "d", OPT_DEBUG, '-', "Print debug info" },
 	{ "debug", OPT_DEBUG, '-' },
 	{ "fips-fingerprint", OPT_FIPS_FINGERPRINT, '-' },
 	{ "non-fips-allow", OPT_NON_FIPS_ALLOW, '-' },
-	{ "hmac", OPT_HMAC, 's' },
-	{ "mac", OPT_MAC, 's' },
-	{ "sigop", OPT_SIGOPT, 's' },
-	{ "macop", OPT_MACOPT, 's' },
-	{ "", OPT_DIGEST, '-' },
+	{ "hmac", OPT_HMAC, 's', "Create hashed MAC with key" },
+	{ "mac", OPT_MAC, 's', "Create MAC (not neccessarily HMAC)" }, 
+	{ "sigop", OPT_SIGOPT, 's', "Signature parameter in n:v form" },
+	{ "macop", OPT_MACOPT, 's', "MAC algorithm parameters in n:v form or key" }, 
+	{ "", OPT_DIGEST, '-', "Any supported digest" },
 	{ NULL }
 };
-
-static void list_md_fn(const EVP_MD *m,
-			const char *from, const char *to, void *arg)
-	{
-	const char *mname;
-	/* Skip aliases */
-	if (!m)
-		return;
-	mname = OBJ_nid2ln(EVP_MD_type(m));
-	/* Skip shortnames */
-	if (strcmp(from, mname))
-		return;
-	/* Skip clones */
-	if (EVP_MD_flags(m) & EVP_MD_FLAG_PKEY_DIGEST)
-		return;
-	if (strchr(mname, ' '))
-		mname= EVP_MD_name(m);
-	BIO_printf(arg, "-%-14s to use the %s message digest algorithm\n",
-			mname, mname);
-	}
 
 int dgst_main(int argc, char **argv)
 	{
@@ -187,14 +146,13 @@ int dgst_main(int argc, char **argv)
 	md=EVP_get_digestbyname(prog);
 
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, dgst_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 err:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(dgst_help);
+			opt_help(dgst_options);
 			goto end;
 
 		case OPT_C:
@@ -284,15 +242,6 @@ err:
 		BIO_printf(bio_err, "No signature to verify: use the -signature option\n");
 		goto end;
 	}
-
-	if ((argc > 0) && (argv[0][0] == '-')) /* bad option */
-		{
-		BIO_printf(bio_err,"unknown option '%s'\n",*argv);
-		BIO_printf(bio_err,"options are\n");
-		printhelp(dgst_help);
-		EVP_MD_do_all_sorted(list_md_fn, bio_err);
-		goto end;
-		}
 
 #ifndef OPENSSL_NO_ENGINE
 	if (engine_impl)

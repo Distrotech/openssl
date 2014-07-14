@@ -91,25 +91,6 @@ static void timebomb_sigalarm(int foo)
 
 static int dsa_cb(int p, int n, BN_GENCB *cb);
 
-const char* dsaparam_help[] = {
-	"-inform arg   input format - DER or PEM",
-	"-outform arg  output format - DER or PEM",
-	"-in arg       input file",
-	"-out arg      output file",
-	"-text         print as text",
-	"-C            Output C code",
-	"-noout        no output",
-	"-genkey       generate a DSA key",
-	"-rand         files to use for random number input",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e     use engine e, possibly a hardware device.",
-#endif
-#ifdef GENCB_TEST
-	"-timebomb n   interrupt keygen after <n> seconds",
-#endif
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT, OPT_TEXT, OPT_C,
@@ -117,22 +98,22 @@ enum options {
 	OPT_TIMEBOMB,
 };
 
-static OPTIONS options[] = {
-	{ "inform", OPT_INFORM, 'F' },
-	{ "outform", OPT_OUTFORM, 'F' },
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "text", OPT_TEXT, '-' },
-	{ "C", OPT_C, '-' },
-	{ "noout", OPT_NOOUT, '-' },
-	{ "genkey", OPT_GENKEY, '-' },
-	{ "rand", OPT_RAND, 's' },
+OPTIONS dsaparam_options[] = {
+	{ "inform", OPT_INFORM, 'F', "Input format - DER or PEM" },
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "outform", OPT_OUTFORM, 'F', "Output format - DER or PEM" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "text", OPT_TEXT, '-', "Print as text" },
+	{ "C", OPT_C, '-', "Output C code" },
+	{ "noout", OPT_NOOUT, '-', "No output" },
+	{ "genkey", OPT_GENKEY, '-', "Generate a DSA key" },
+	{ "rand", OPT_RAND, 's', "Files to use for random number input" },
 	{ "non-fips-allow", OPT_NON_FIPS_ALLOW, '-' },
 #ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
+	{ "engine", OPT_ENGINE, 's', "Use engine e, possibly a hardware device" },
 #endif
 #ifdef GENCB_TEST
-	{ "timebomb", OPT_TIMEBOMB, 'p' },
+	{ "timebomb", OPT_TIMEBOMB, 'p', "Interrupt keygen after 'pnum' seconds" },
 #endif
 	{ NULL }
 };
@@ -149,13 +130,12 @@ int dsaparam_main(int argc, char **argv)
 	int timebomb=0;
 	enum options o;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, dsaparam_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(dsaparam_help);
+			opt_help(dsaparam_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);

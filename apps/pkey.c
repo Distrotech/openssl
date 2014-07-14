@@ -62,48 +62,31 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 
-const char* pkey_help[] = {
-	"-in file        input file",
-	"-inform X       input format (DER or PEM)",
-	"-passin arg     input file pass phrase source",
-	"-outform X      output format (DER or PEM)",
-	"-out file       output file",
-	"-passout arg    output file pass phrase source",
-	"-cipher         cipher algorithm to use",
-	"-text           output in plaintext as well",
-	"-text_pub       only output public key components",
-	"-noout          do not output the key",
-	"-pubin          read public key from input (default is private key)",
-	"-pubout         output public key, not private"
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e       use engine e, possibly a hardware device.",
-#endif
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_INFORM, OPT_OUTFORM, OPT_PASSIN, OPT_PASSOUT, OPT_ENGINE,
 	OPT_IN, OPT_OUT, OPT_PUBIN, OPT_PUBOUT, OPT_TEXT_PUB,
 	OPT_TEXT, OPT_NOOUT, OPT_MD,
 };
-static OPTIONS options[] = {
-	{ "inform", OPT_INFORM, 'F' },
-	{ "outform", OPT_OUTFORM, 'F' },
-	{ "passin", OPT_PASSIN, 's' },
-	{ "passout", OPT_PASSOUT, 's' },
-	{ "engine", OPT_ENGINE, 's' },
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "pubin", OPT_PUBIN, '-' },
-	{ "pubout", OPT_PUBOUT, '-' },
-	{ "text_pub", OPT_TEXT_PUB, '-' },
-	{ "text", OPT_TEXT, '-' },
-	{ "noout", OPT_NOOUT, '-' },
-	{ "", OPT_MD, '-' },
+
+OPTIONS pkey_options[] = {
+	{ "inform", OPT_INFORM, 'F', "Input format (DER or PEM)" },
+	{ "outform", OPT_OUTFORM, 'F', "Output format (DER or PEM)" },
+	{ "passin", OPT_PASSIN, 's', "Input file pass phrase source" },
+	{ "passout", OPT_PASSOUT, 's', "Output file pass phrase source" },
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "pubin", OPT_PUBIN, '-', "Read public key from input (default is private key)" },
+	{ "pubout", OPT_PUBOUT, '-', "Output public key, not private" },
+	{ "text_pub", OPT_TEXT_PUB, '-', "Only output public key components" },
+	{ "text", OPT_TEXT, '-', "Output in plaintext as well" },
+	{ "noout", OPT_NOOUT, '-', "Don't output the key" },
+	{ "", OPT_MD, '-', "Any supported cipher" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
 	{ NULL }
 };
-
 
 
 int pkey_main(int argc, char **argv)
@@ -121,14 +104,13 @@ int pkey_main(int argc, char **argv)
 	enum options o;
 	char* prog, *engine=NULL;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, pkey_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 bad:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(pkey_help);
+			opt_help(pkey_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);

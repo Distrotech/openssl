@@ -72,55 +72,13 @@
 #endif
 #include <ctype.h>
 
-const char* enc_help[] = {
-	"-in file    input file",
-	"-out <file> output file"
-	"-pass arg   phrase source",
-	"-e          encrypt",
-	"-d          decrypt",
-	"-a base64   encode/decode, depending on encryption flag",
-	"-base64     same as -a",
-	"-k pass     passphrase",
-	"-kfile name  read passphrase from file",
-	"-md digest  use specified digest to create key from passphrase",
-	"-S salt     salt, in hex",
-	"-iv iv      IV in hex",
-	"-K iv       same as -iv",
-	"-p          print the iv/key",
-	"-P          print the iv/key and exit",
-	"-bufsize n  buffer size",
-	"-nopad      disable standard block padding",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e   use engine e, possibly a hardware device",
-#endif
-	NULL
-};
-
-
-int set_hex(char *in,unsigned char *out,int size);
-
 #undef SIZE
 #undef BSIZE
 #define SIZE	(512)
 #define BSIZE	(8*1024)
 
-static void show_ciphers(const OBJ_NAME *name,void *bio_)
-	{
-	BIO *bio=bio_;
-	static int n;
-
-	if(!islower((unsigned char)*name->name))
-		return;
-
-	BIO_printf(bio,"-%-25s",name->name);
-	if(++n == 3)
-		{
-		BIO_printf(bio,"\n");
-		n=0;
-		}
-	else
-		BIO_printf(bio," ");
-	}
+static int set_hex(char *in,unsigned char *out,int size);
+static void show_ciphers(const OBJ_NAME *name,void *bio_);
 
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
@@ -130,34 +88,38 @@ enum options {
 	OPT_UPPER_S, OPT_IV, OPT_MD, OPT_NON_FIPS_ALLOW, OPT_CIPHER,
 };
 
-static OPTIONS options[] = {
-	{ "e", OPT_E, '-' },
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "pass", OPT_PASS, 's' },
-	{ "engine", OPT_ENGINE, 's' },
-	{ "d", OPT_D, '-' },
-	{ "p", OPT_P, '-' },
+OPTIONS enc_options[] = {
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "pass", OPT_PASS, 's', "Passphrase source" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
+	{ "e", OPT_E, '-', "Encrypt" },
+	{ "d", OPT_D, '-', "Decrypt" },
+	{ "p", OPT_P, '-', "Print the iv/key" },
+	{ "P", OPT_UPPER_P, '-', "Print the iv/key and exit" },
 	{ "v", OPT_V, '-' },
-	{ "nopad", OPT_NOPAD, '-' },
+	{ "nopad", OPT_NOPAD, '-', "Disable standard block padding" },
 	{ "salt", OPT_SALT, '-' },
 	{ "nosalt", OPT_NOSALT, '-' },
 	{ "debug", OPT_DEBUG, '-' },
-	{ "P", OPT_UPPER_P, '-' },
 	{ "A", OPT_UPPER_A, '-' },
-	{ "a", OPT_A, '-' },
-	{ "base64", OPT_A, '-' },
-	{ "z", OPT_Z, '-' },
-	{ "bufsize", OPT_BUFSIZE, 's' },
-	{ "k", OPT_K, 's' },
-	{ "kfile", OPT_KFILE, '<' },
-	{ "K", OPT_UPPER_K, '-' },
-	{ "S", OPT_UPPER_S, 's' },
-	{ "iv", OPT_IV, 's' },
-	{ "md", OPT_MD, 's' },
+	{ "a", OPT_A, '-', "base64 encode/decode, depending on encryption flag" },
+	{ "base64", OPT_A, '-', "Base64 output as a single line" },
+#ifdef ZLIB
+	{ "z", OPT_Z, '-', "Use zlib as the 'encryption'" },
+#endif
+	{ "bufsize", OPT_BUFSIZE, 's', "Buffer size" },
+	{ "k", OPT_K, 's', "Passphrase" },
+	{ "kfile", OPT_KFILE, '<', "Fead passphrase from file" },
+	{ "K", OPT_UPPER_K, '-', "Same as -iv" },
+	{ "S", OPT_UPPER_S, 's', "Salt, in hex" },
+	{ "iv", OPT_IV, 's', "IV in hex" },
+	{ "md", OPT_MD, 's', "Use specified digest to create key from passphrase" },
 	{ "non-fips-allow", OPT_NON_FIPS_ALLOW, '-' },
+	{ "none", OPT_NONE, '-', "Any supported cipher" },
 	{ "", OPT_CIPHER, '-' },
-	{ "none", OPT_NONE, '-' },
 	{ NULL }
 };
 
@@ -204,14 +166,13 @@ int enc_main(int argc, char **argv)
 		}
 	}
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, enc_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 err:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(enc_help);
+			opt_help(enc_options);
 			BIO_printf(bio_err,"Cipher Types\n");
 			OBJ_NAME_do_all_sorted(OBJ_NAME_TYPE_CIPHER_METH,
 					       show_ciphers,
@@ -640,7 +601,25 @@ end:
 	return(ret);
 	}
 
-int set_hex(char *in, unsigned char *out, int size)
+static void show_ciphers(const OBJ_NAME *name,void *bio_)
+	{
+	BIO *bio=bio_;
+	static int n;
+
+	if(!islower((unsigned char)*name->name))
+		return;
+
+	BIO_printf(bio,"-%-25s",name->name);
+	if(++n == 3)
+		{
+		BIO_printf(bio,"\n");
+		n=0;
+		}
+	else
+		BIO_printf(bio," ");
+	}
+
+static int set_hex(char *in, unsigned char *out, int size)
 	{
 	int i,n;
 	unsigned char j;

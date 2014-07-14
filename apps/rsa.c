@@ -118,9 +118,6 @@ enum options {
 static OPTIONS options[] = {
 	{ "inform", OPT_INFORM, 'F' },
 	{ "outform", OPT_OUTFORM, 'F' },
-#ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
-#endif
 	{ "in", OPT_IN, '<' },
 	{ "out", OPT_OUT, '>' },
 	{ "sgckey", OPT_SGCKEY, '-' },
@@ -137,7 +134,10 @@ static OPTIONS options[] = {
 	{ "text", OPT_TEXT, '-' },
 	{ "modulus", OPT_MODULUS, '-' },
 	{ "check", OPT_CHECK, '-' },
-	{ "cipher", OPT_CIPHER, '-' },
+	{ "", OPT_CIPHER, '-', "Any supported cipher" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
 	{ NULL }
 };
 

@@ -40,41 +40,28 @@ static int do_passwd(int passed_salt, char **salt_p, char **salt_malloc_p,
 	char *passwd, BIO *out, int quiet, int table, int reverse,
 	size_t pw_maxlen, int usecrypt, int use1, int useapr1);
 
-const char* passwd_help[] = {
-#ifndef OPENSSL_NO_DES
-	"-crypt             standard Unix password algorithm (default)",
-#endif
-#ifndef NO_MD5CRYPT_1
-	"-1                 MD5-based password algorithm",
-	"-apr1              MD5-based password algorithm, Apache variant",
-#endif
-	"-salt string       use provided salt",
-	"-in file           read passwords from file",
-	"-stdin             read passwords from stdin",
-	"-noverify          never verify when reading password from terminal",
-	"-quiet             no warnings",
-	"-table             format output as table",
-	"-reverse           switch table columns",
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_IN,
 	OPT_NOVERIFY, OPT_QUIET, OPT_TABLE, OPT_REVERSE, OPT_APR1,
 	OPT_1, OPT_CRYPT, OPT_SALT, OPT_STDIN,
 };
-static OPTIONS options[] = {
-	{ "in", OPT_IN, '<' },
-	{ "noverify", OPT_NOVERIFY, '-' },
-	{ "quiet", OPT_QUIET, '-' },
-	{ "table", OPT_TABLE, '-' },
-	{ "reverse", OPT_REVERSE, '-' },
-	{ "apr1", OPT_APR1, '-' },
-	{ "1", OPT_1, '-' },
-	{ "crypt", OPT_CRYPT, '-' },
-	{ "salt", OPT_SALT, 's' },
-	{ "stdin", OPT_STDIN, '-' },
+
+OPTIONS passwd_options[] = {
+	{ "in", OPT_IN, '<', "Pead passwords from file" },
+	{ "noverify", OPT_NOVERIFY, '-', "Never verify when reading password from terminal" },
+	{ "quiet", OPT_QUIET, '-', "No warnings" },
+	{ "table", OPT_TABLE, '-', "Format output as table" },
+	{ "reverse", OPT_REVERSE, '-', "Switch table columns" },
+#ifndef NO_MD5CRYPT_1
+	{ "apr1", OPT_APR1, '-', "MD5-based password algorithm, Apache variant" },
+	{ "1", OPT_1, '-', "MD5-based password algorithm" },
+#endif
+#ifndef OPENSSL_NO_DES
+	{ "crypt", OPT_CRYPT, '-', "Standard Unix password algorithm (default)" },
+#endif
+	{ "salt", OPT_SALT, 's', "Use provided salt" },
+	{ "stdin", OPT_STDIN, '-', "Read passwords from stdin" },
 	{ NULL }
 };
 		
@@ -97,14 +84,14 @@ int passwd_main(int argc, char **argv)
 	enum options o;
 	char* prog;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, passwd_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 bad:
 			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(passwd_help);
+			opt_help(passwd_options);
 			goto err;
 		case OPT_IN:
 			if (pw_source_defined)

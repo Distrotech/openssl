@@ -64,26 +64,21 @@
 #include <openssl/rand.h>
 
 
-const char *rand_help[] = {
-	"-out file        write to file",
-	"-rand file...    seed PRNG from files",
-	"-base64          base64 encode output",
-	"-hex             hex encode output",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e        use engine e, possibly a hardware device",
-#endif
-	NULL
-};
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_OUT, OPT_ENGINE, OPT_RAND, OPT_BASE64, OPT_HEX
 };
-static OPTIONS options[] = {
-	{ "out", OPT_OUT, '>' },
-	{ "engine", OPT_ENGINE, 's' },
-	{ "rand", OPT_RAND, 's' },
-	{ "base64", OPT_BASE64, '-' },
-	{ "hex", OPT_HEX, '-' },
+
+OPTIONS rand_options[] = {
+	{ OPT_HELP_STR, 1, '-', "Usage: %s [flags] num\n" },
+	{ OPT_HELP_STR, 1, '-', "Valid options are:\n" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "rand", OPT_RAND, 's', "Load the file(s) into the random number generator" },
+	{ "base64", OPT_BASE64, '-', "Base64 encode output" },
+	{ "hex", OPT_HEX, '-', "Hex encode output" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
 	{ NULL }
 };
 
@@ -101,16 +96,13 @@ int rand_main(int argc, char **argv)
 	char* prog;
 	char *engine=NULL;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, rand_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 bad:
-			BIO_printf(bio_err,"Usage: %s [flags] num\n",
-					prog);
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(rand_help);
+			opt_help(rand_options);
 			goto end;
 		case OPT_OUT:
 			outfile=opt_arg();
