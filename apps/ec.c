@@ -67,26 +67,17 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 
-const char* ec_help[] = {
-	"-inform arg     input format - DER or PEM",
-	"-outform arg    output format - DER or PEM",
-	"-in arg         input file",
-	"-passin arg     input file pass phrase source",
-	"-out arg        output file",
-	"-passout arg    output file pass phrase source",
-	"-engine e       use engine e, possibly a hardware device.",
-	"-des            encrypt PEM output, instead of 'des' every other ",
-				"                 cipher supported by OpenSSL can be used",
-	"-text           print the key",
-	"-noout          don't print key out",
-	"-param_out      print the elliptic curve parameters",
-	"-conv_form arg  specifies the point conversion form ",
-	"                possible values: compressed",
-	"                    uncompressed (default) or hybrid",
-	"-param_enc arg  specifies the way the ec parameters are encoded",
-	"                 in the asn1 der encoding",
-	"                 possible values: named_curve (default) or explicit",
-	NULL
+static OPT_PAIR conv_forms[] = {
+	{ "compressed", POINT_CONVERSION_COMPRESSED },
+	{ "uncompressed", POINT_CONVERSION_UNCOMPRESSED },
+	{ "hybrid", POINT_CONVERSION_HYBRID },
+	{ NULL }
+};
+
+static OPT_PAIR param_enc[] = {
+	{ "named_curve", OPENSSL_EC_NAMED_CURVE },
+	{ "explicit", 0 },
+	{ NULL }
 };
 
 enum options {
@@ -95,24 +86,25 @@ enum options {
 	OPT_NOOUT, OPT_TEXT, OPT_PARAM_OUT, OPT_PUBIN, OPT_PUBOUT,
 	OPT_PASSIN, OPT_PASSOUT, OPT_PARAM_ENC, OPT_CONV_FORM, OPT_CIPHER,
 };
-static OPTIONS options[] = {
-	{ "inform", OPT_INFORM, 'F' },
-	{ "outform", OPT_OUTFORM, 'F' },
+
+OPTIONS ec_options[] = {
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "inform", OPT_INFORM, 'F', "Input format - DER or PEM" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "outform", OPT_OUTFORM, 'F', "Output format - DER or PEM" },
 #ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
 #endif
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "noout", OPT_NOOUT, '-' },
-	{ "text", OPT_TEXT, '-' },
-	{ "param_out", OPT_PARAM_OUT, '-' },
+	{ "noout", OPT_NOOUT, '-', "Don't print key out" },
+	{ "text", OPT_TEXT, '-', "Print the key" },
+	{ "param_out", OPT_PARAM_OUT, '-', "Print the elliptic curve parameters" },
 	{ "pubin", OPT_PUBIN, '-' },
 	{ "pubout", OPT_PUBOUT, '-' },
-	{ "passin", OPT_PASSIN, 's' },
-	{ "passout", OPT_PASSOUT, 's' },
-	{ "param_enc", OPT_PARAM_ENC, 's' },
-	{ "conv_form", OPT_CONV_FORM, 's' },
-	{ "", OPT_CIPHER, '-' },
+	{ "passin", OPT_PASSIN, 's', "Input file pass phrase source" },
+	{ "passout", OPT_PASSOUT, 's', "Output file pass phrase source" },
+	{ "param_enc", OPT_PARAM_ENC, 's', "Specifies the way the ec parameters are encoded" },
+	{ "conv_form", OPT_CONV_FORM, 's', "specifies the point conversion form " },
+	{ "", OPT_CIPHER, '-', "Any supported cipher" },
 	{ NULL }
 };
 
@@ -135,14 +127,13 @@ int ec_main(int argc, char **argv)
 	int 	new_asn1_flag = 0;
 	enum options o;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, ec_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 bad:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(ec_help);
+			opt_help(ec_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);
@@ -184,24 +175,16 @@ bad:
 			if (!opt_cipher(opt_unknown(), &enc))
 				goto bad;
 		case OPT_CONV_FORM:
-			new_form = 1;
-			if (strcmp(*argv, "compressed") == 0)
-				form = POINT_CONVERSION_COMPRESSED;
-			else if (strcmp(*argv, "uncompressed") == 0)
-				form = POINT_CONVERSION_UNCOMPRESSED;
-			else if (strcmp(*argv, "hybrid") == 0)
-				form = POINT_CONVERSION_HYBRID;
-			else
+			if (!opt_pair(opt_arg(), conv_forms, &i))
 				goto bad;
+			new_form = 1;
+			form = i;
 			break;
 		case OPT_PARAM_ENC:
-			new_asn1_flag = 1;
-			if (strcmp(*argv, "named_curve") == 0)
-				asn1_flag = OPENSSL_EC_NAMED_CURVE;
-			else if (strcmp(*argv, "explicit") == 0)
-				asn1_flag = 0;
-			else
+			if (!opt_pair(opt_arg(), param_enc, &i))
 				goto bad;
+			new_asn1_flag = 1;
+			asn1_flag = i;
 			break;
 		}
 	}

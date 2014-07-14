@@ -67,16 +67,6 @@
 #include <openssl/ssl.h>
 
 
-const char *ciphers_help[]={
-	"-v          verbose textual listing of the SSL/TLS ciphers in OpenSSL",
-	"-V          even more verbose",
-	"-ssl2       SSL2 mode",
-	"-ssl3       SSL3 mode",
-	"-tls1       TLS1 mode",
-	NULL
-};
-
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_V, OPT_UPPER_V, OPT_S,
@@ -93,21 +83,21 @@ enum options {
 	OPT_TLS1,
 #endif
 };
-static OPTIONS options[] = {
-	{ "v", OPT_V, '-' },
-	{ "V", OPT_UPPER_V, '-' },
-	{ "s", OPT_S, '-' },
+OPTIONS ciphers_options[] = {
+	{ "v", OPT_V, '-', "Verbose listing of the SSL/TLS ciphers" },
+	{ "V", OPT_UPPER_V, '-', "Even more verbose" },
+	{ "s", OPT_S, '-', "Only supported ciphers" },
 #ifndef OPENSSL_NO_SSL_TRACE
-	{ "stdname", OPT_STDNAME, '-' },
+	{ "stdname", OPT_STDNAME, '-', "Show standard cipher names" },
 #endif
 #ifndef OPENSSL_NO_SSL2
-	{ "ssl2", OPT_SSL2, '-' },
+	{ "ssl2", OPT_SSL2, '-', "SSL2 mode" },
 #endif
 #ifndef OPENSSL_NO_SSL3
-	{ "ssl3", OPT_SSL3, '-' },
+	{ "ssl3", OPT_SSL3, '-', "SSL3 mode" },
 #endif
 #ifndef OPENSSL_NO_TLS1
-	{ "tls1", OPT_TLS1, '-' },
+	{ "tls1", OPT_TLS1, '-', "TLS1 mode" },
 #endif
 	{ NULL }
 };
@@ -131,14 +121,13 @@ int ciphers_main(int argc, char **argv)
 	enum options o;
 	char* prog;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, ciphers_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 bad:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(ciphers_help);
+			opt_help(ciphers_options);
 			goto end;
 		case OPT_V:
 			verbose = 1;

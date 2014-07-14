@@ -12,6 +12,10 @@
 #include <ctype.h>
 #include <openssl/bio.h>
 
+#define MAX_OPT_HELP_WIDTH 30
+const char OPT_HELP_STR[] = "--";
+const char OPT_MORE_STR[] = "---";
+
 /* Our state */
 static char** argv;
 static int argc;
@@ -110,16 +114,13 @@ char *opt_init(int ac, char** av, const OPTIONS* o)
 	unknown = NULL;
 
 	for ( ; o->name; ++o) {
-		const OPTIONS* next;
-		if (o->name[0] == '\0') {
-			assert(unknown == NULL);
-			unknown = o;
-			assert(unknown->valtype == 0
-				|| unknown->valtype == '-');
-		}
+		if (o->name == OPT_HELP_STR || o->name == OPT_MORE_STR)
+			continue;
 #ifndef NDEBUG
-		/* Make sure options are legit. */
+		const OPTIONS* next;
 		int i = o->valtype;
+
+		/* Make sure options are legit. */
 		assert(o->name[0] != '-');
 		assert(o->retval > 0);
 		assert(i == 0 || i == '-'
@@ -135,6 +136,12 @@ char *opt_init(int ac, char** av, const OPTIONS* o)
 			assert(strcmp(o->name, next->name) != 0);
 		}
 #endif
+		if (o->name[0] == '\0') {
+			assert(unknown == NULL);
+			unknown = o;
+			assert(unknown->valtype == 0
+				|| unknown->valtype == '-');
+		}
 	}
 	return prog;
 }
@@ -592,24 +599,138 @@ int opt_num_rest(void)
 	return i;
 }
 
+/* Return a string describing the parameter type. */
+static const char* valtype2param(const OPTIONS* o)
+{
+	switch (o->valtype) {
+	case '-':
+		return "";
+	case 's':
+		return "val";
+	case '/':
+		return "dir";
+	case '<':
+		return "infile";
+	case '>':
+		return "outfile";
+	case 'p':
+		return "pnum";
+	case 'n':
+		return "num";
+	case 'u':
+		return "unum";
+	case 'F':
+		return "der/pem";
+	case 'f':
+		return "fmt";
+	}
+	return "parm";
+}
+
+
+void opt_help(const OPTIONS* list)
+{
+	const OPTIONS* o;
+	int i;
+	int standard_prolog = 1;
+	int width = 5;
+	char start[80 + 1];
+	char *p;
+	const char *help;
+
+	/* Starts with its own help message? */
+	standard_prolog = list[0].name != OPT_HELP_STR;
+
+	/* Find the widest help. */
+	for (standard_prolog = 1, o = list; o->name; o++) {
+		if (o->name == OPT_MORE_STR)
+			continue;
+		i = 2 + (int)strlen(o->name);
+		if (o->valtype != '-')
+			i += 1 + strlen(valtype2param(o));
+		if (i < MAX_OPT_HELP_WIDTH && i > width)
+			width = i;
+		assert(i < sizeof start);
+	}
+
+	if (standard_prolog)
+		BIO_printf(bio_err, "Valid options are:\n");
+
+	/* Now let's print. */
+	for (o = list; o->name; o++) {
+		help = o->helpstr ? o->helpstr : "(No additional info)";
+		if (o->name == OPT_HELP_STR) {
+			BIO_printf(bio_err, help, prog);
+			continue;
+		}
+
+		/* Pad out prefix */
+		memset(start, ' ', sizeof start - 1);
+		start[sizeof start - 1] - '\0';
+
+		if (o->name == OPT_MORE_STR) {
+			/* Continuation of previous line; padd and print. */
+			start[width] = '\0';
+			BIO_printf(bio_err, "%s  %s\n", start, help);
+			continue;
+		}
+
+		/* Build up the "-flag [param]" part. */
+		p = start;
+		*p++ = ' ';
+		*p++ = '-';
+		if (o->name[0])
+			p += strlen(strcpy(p, o->name));
+		else
+			*p++ = '*';
+		if (o->valtype != '-') {
+			*p++ = ' ';
+			p += strlen(strcpy(p, valtype2param(o)));
+		}
+		*p = ' ';
+		if ((int)(p - start) >= MAX_OPT_HELP_WIDTH) {
+			*p = '\0';
+			BIO_printf(bio_err, "%s\n", start);
+			memset(start, ' ', sizeof start);
+		}
+		start[width] = '\0';
+		BIO_printf(bio_err, "%s  %s\n", start, help);
+	}
+}
+
 
 #ifdef TEST
+#include <sys/stat.h>
+
 enum options {
 	OPT_ERR=-1, OPT_EOF=0, OPT_NOTUSED,
 	OPT_IN, OPT_INFORM, OPT_OUT, OPT_COUNT, OPT_U, OPT_FLAG,
-	OPT_STR };
+	OPT_STR, OPT_HELP
+};
 static OPTIONS options[] = {
-	{ "in",     OPT_IN,     '<' },
-	{ "inform", OPT_INFORM, 'f' },
-	{ "out",    OPT_OUT,    '>' },
-	{ "count",  OPT_COUNT,  'p' },
-	{ "u",      OPT_U,      'u' },
-	{ "flag",   OPT_FLAG,     0 },
-	{ "str",    OPT_STR,    's' },
+	{ OPT_HELP_STR, 1, '-', "Usage: %s flags\n" },
+	{ "in",     OPT_IN,     '<', "input file" },
+	{ OPT_MORE_STR, 1, '-',       "more detail about input" },
+	{ "inform", OPT_INFORM, 'f', "input file format; defaults to pem" },
+	{ "out",    OPT_OUT,    '>', "output file" },
+	{ "count",  OPT_COUNT,  'p', "a counter greater than zero" },
+	{ "u",      OPT_U,      'u', "an unsigned number" },
+	{ "flag",   OPT_FLAG,     0, "just some flag" },
+	{ "str",    OPT_STR,    's', "the magic word" },
+	{ "help",   OPT_HELP,   '-', "get this output" },
+	{ "areallyverylongoption", OPT_HELP, '-', "long way for help" },
 	{ NULL }
 };
 
 BIO* bio_err;
+
+int app_isdir(const char *name)
+{
+	struct stat sb;
+
+	return name != NULL && stat(name, &sb) >= 0 && S_ISDIR(sb.st_mode);
+}
+
 int main(int ac, char **av)
 {
 	enum options c;
@@ -620,9 +741,14 @@ int main(int ac, char **av)
 
 	while ((c = opt_next()) != OPT_EOF) {
 		switch (c) {
+		case OPT_NOTUSED:
+		case OPT_EOF:
 		case OPT_ERR:
-			printf("Usage error");
+			printf("Usage error; try -help.");
 			return -1;
+		case OPT_HELP:
+			opt_help(options);
+			return 0;
 		case OPT_IN:
 			printf("in %s\n", opt_arg());
 			break;

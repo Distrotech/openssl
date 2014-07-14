@@ -191,48 +191,6 @@ static char *section=NULL;
 static int preserve=0;
 static int msie_hack=0;
 
-const char *ca_help[] = {
-	"-verbose        - Talk a lot while doing things",
-	"-config file    - A config file",
-	"-name arg       - The particular CA definition to use",
-	"-gencrl         - Generate a new CRL",
-	"-crldays days   - Days is when the next CRL is due",
-	"-crlhours hours - Hours is when the next CRL is due",
-	"-startdate YYMMDDHHMMSSZ  - certificate validity notBefore",
-	"-enddate YYMMDDHHMMSSZ    - certificate validity notAfter (overrides -days)",
-	"-days arg       - number of days to certify the certificate for",
-	"-md arg         - md to use, one of md2, md5, sha or sha1",
-	"-policy arg     - The CA 'policy' to support",
-	"-keyfile arg    - private key file",
-	"-keyform arg    - private key file format (PEM or ENGINE)",
-	"-key arg        - key to decode the private key if it is encrypted",
-	"-cert file      - The CA certificate",
-	"-selfsign       - sign a certificate with the key associated with it",
-	"-in file        - The input PEM encoded certificate request(s)",
-	"-out file       - Where to put the output file(s)",
-	"-outdir dir     - Where to put output certificates",
-	"-infiles ....   - The last argument, requests to process",
-	"-spkac file     - File contains DN and signed public key and challenge",
-	"-ss_cert file   - File contains a self signed cert to sign",
-	"-preserveDN     - Don't re-order the DN",
-	"-noemailDN      - Don't add the EMAIL field into certificate' subject",
-	"-batch          - Don't ask questions",
-	"-msie_hack      - msie modifications to handle all those universal strings",
-	"-revoke file    - Revoke a certificate (given in file)",
-	"-subj arg       - Use arg instead of request's subject",
-	"-utf8           - input characters are UTF8 (default ASCII)",
-	"-multivalue-rdn - enable support for multivalued RDNs",
-	"-extensions ..  - Extension section (override value in config file)",
-	"-extfile file   - Configuration file with X509v3 extensions to add",
-	"-crlexts ..     - CRL extension section (override value in config file)",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e       - use engine e, possibly a hardware device.",
-#endif
-	"-status serial  - Shows certificate status given the serial number",
-	"-updatedb       - Updates db for expired certificates",
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_ENGINE, OPT_VERBOSE, OPT_CONFIG, OPT_NAME, OPT_SUBJ, OPT_UTF8,
@@ -246,51 +204,51 @@ enum options {
 	OPT_CRL_REASON, OPT_CRL_HOLD, OPT_CRL_COMPROMISE, OPT_CRL_CA_COMPROMISE,
 };
 
-static OPTIONS options[] = {
+OPTIONS ca_options[] = {
 #ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
 #endif
-	{ "verbose", OPT_VERBOSE, '-' },
-	{ "config", OPT_CONFIG, 's' },
-	{ "name", OPT_NAME, 's' },
-	{ "subj", OPT_SUBJ, 's' },
-	{ "utf8", OPT_UTF8, '-' },
+	{ "verbose", OPT_VERBOSE, '-', "Verbose output during processing" },
+	{ "config", OPT_CONFIG, 's', "A config file" },
+	{ "name", OPT_NAME, 's', "The particular CA definition to use" },
+	{ "subj", OPT_SUBJ, 's', "Use arg instead of request's subject" },
+	{ "utf8", OPT_UTF8, '-', "Input characters are UTF8 (default ASCII)" },
 	{ "create_serial", OPT_CREATE_SERIAL, '-' },
-	{ "multivalue-rdn", OPT_MULTIVALUE_RDN, '-' },
-	{ "startdate", OPT_STARTDATE, 's' },
-	{ "enddate", OPT_ENDDATE, 's' },
-	{ "days", OPT_DAYS, 'p' },
-	{ "md", OPT_MD, 's' },
-	{ "policy", OPT_POLICY, 's' },
-	{ "keyfile", OPT_KEYFILE, '<' },
-	{ "keyform", OPT_KEYFORM, 'F' },
+	{ "multivalue-rdn", OPT_MULTIVALUE_RDN, '-', "Enable support for multivalued RDNs" },
+	{ "startdate", OPT_STARTDATE, 's', "Cert notBefore, YYMMDDHHMMSSZ" },
+	{ "enddate", OPT_ENDDATE, 's', "YYMMDDHHMMSSZ cert notAfter (overrides -days)" },
+	{ "days", OPT_DAYS, 'p', "Number of days to certify the cert for" },
+	{ "md", OPT_MD, 's', "md to use; one of md2, md5, sha or sha1" },
+	{ "policy", OPT_POLICY, 's', "The CA 'policy' to support" },
+	{ "keyfile", OPT_KEYFILE, '<', "Private key file" },
+	{ "keyform", OPT_KEYFORM, 'f', "Private key file format (PEM or ENGINE)" },
 	{ "passin", OPT_PASSIN, 's' },
-	{ "key", OPT_KEY, 's' },
-	{ "cert", OPT_CERT, '<' },
-	{ "selfsign", OPT_SELFSIGN, '-' },
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "outdir", OPT_OUTDIR, '/' },
+	{ "key", OPT_KEY, 's', "Key to decode the private key if it is encrypted" },
+	{ "cert", OPT_CERT, '<', "The CA cert" },
+	{ "selfsign", OPT_SELFSIGN, '-', "Sign a cert with the key associated with it" },
+	{ "in", OPT_IN, '<', "The input PEM encoded cert request(s)" },
+	{ "out", OPT_OUT, '>', "Where to put the output file(s)" },
+	{ "outdir", OPT_OUTDIR, '/', "Where to put output cert" },
 	{ "sigopt", OPT_SIGOPT, 's' },
 	{ "notext", OPT_NOTEXT, '-' },
-	{ "batch", OPT_BATCH, '-' },
-	{ "preserveDN", OPT_PRESERVEDN, '-' },
-	{ "noemailDN", OPT_NOEMAILDN, '-' },
-	{ "gencrl", OPT_GENCRL, '-' },
-	{ "msie_hack", OPT_MSIE_HACK, '-' },
-	{ "crldays", OPT_CRLDAYS, 'p' },
-	{ "crlhours", OPT_CRLHOURS, 'p' },
+	{ "batch", OPT_BATCH, '-', "Don't ask questions" },
+	{ "preserveDN", OPT_PRESERVEDN, '-', "Don't re-order the DN" },
+	{ "noemailDN", OPT_NOEMAILDN, '-', "Don't add the EMAIL field into cert' subject" },
+	{ "gencrl", OPT_GENCRL, '-', "Generate a new CRL" },
+	{ "msie_hack", OPT_MSIE_HACK, '-', "msie modifications to handle all those universal strings" },
+	{ "crldays", OPT_CRLDAYS, 'p', "Days is when the next CRL is due" },
+	{ "crlhours", OPT_CRLHOURS, 'p', "Hours is when the next CRL is due" },
 	{ "crlsec", OPT_CRLSEC, 'p' },
-	{ "infiles", OPT_INFILES, 's' },
-	{ "ss_cert", OPT_SS_CERT, '<' },
-	{ "spkac", OPT_SPKAC, '<' },
-	{ "revoke", OPT_REVOKE, '<' },
+	{ "infiles", OPT_INFILES, 's', "The last argument, requests to process" },
+	{ "ss_cert", OPT_SS_CERT, '<', "File contains a self signed cert to sign" },
+	{ "spkac", OPT_SPKAC, '<', "File contains DN and signed public key and challenge" },
+	{ "revoke", OPT_REVOKE, '<', "Revoke a cert (given in file)" },
 	{ "valid", OPT_VALID, 's' },
-	{ "extensions", OPT_EXTENSIONS, 's' },
-	{ "extfile", OPT_EXTFILE, '<' },
-	{ "status", OPT_STATUS, 's' },
-	{ "updatedb", OPT_UPDATEDB, '-' },
-	{ "crlexts", OPT_CRLEXTS, 's' },
+	{ "extensions", OPT_EXTENSIONS, 's', "Extension section (override value in config file)" },
+	{ "extfile", OPT_EXTFILE, '<', "Configuration file with X509v3 extensions to add" },
+	{ "status", OPT_STATUS, 's', "Shows cert status given the serial number" },
+	{ "updatedb", OPT_UPDATEDB, '-', "Updates db for expired cert" },
+	{ "crlexts", OPT_CRLEXTS, 's', "CRL extension section (override value in config file)" },
 	{ "crl_reason", OPT_CRL_REASON, 's' },
 	{ "crl_hold", OPT_CRL_HOLD, 's' },
 	{ "crl_compromise", OPT_CRL_COMPROMISE, 's' },
@@ -341,13 +299,12 @@ int ca_main(int argc, char **argv)
 	enum options o;
 	char* prog;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, ca_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(ca_help);
+			opt_help(ca_options);
 			goto err;
 		case OPT_IN:
 			infile = opt_arg();

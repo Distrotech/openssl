@@ -87,64 +87,6 @@ int alg_print(BIO *x, X509_ALGOR *alg);
 int cert_load(BIO *in, STACK_OF(X509) *sk);
 static int set_pbe(BIO *err, int *ppbe, const char *str);
 
-const char* pkcs12_help[] = {
-	"-export       output PKCS12 file",
-	"-chain        add certificate chain",
-	"-inkey file   private key if not infile",
-	"-certfile f   add all certs in f",
-	"-CApath arg   PEM format directory of CA's",
-	"-CAfile arg   PEM format file of CA's",
-	"-name name   use name as friendly name",
-	"-caname name use name as CA friendly name (can be repeated)",
-	"-in  infile   input filename",
-	"-out outfile  output filename",
-	"-noout        don't output anything, just verify.",
-	"-nomacver     don't verify MAC.",
-	"-nocerts      don't output certificates.",
-	"-clcerts      only output client certificates.",
-	"-cacerts      only output CA certificates.",
-	"-nokeys       don't output private keys.",
-	"-info         give info about PKCS#12 structure.",
-	"-des          encrypt private keys with DES",
-	"-des3         encrypt private keys with triple DES (default)",
-#ifndef OPENSSL_NO_IDEA
-	"-idea         encrypt private keys with idea",
-#endif
-#ifndef OPENSSL_NO_SEED
-	"-seed         encrypt private keys with seed",
-#endif
-#ifndef OPENSSL_NO_AES
-	"-aes128, -aes192, -aes256",
-	"              encrypt PEM output with cbc aes",
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-	"-camellia128, -camellia192, -camellia256",
-	"              encrypt PEM output with cbc camellia",
-#endif
-	"-nodes        don't encrypt private keys",
-	"-noiter       don't use encryption iteration",
-	"-nomaciter    don't use MAC iteration",
-	"-maciter      use MAC iteration",
-	"-nomac        don't generate MAC",
-	"-twopass      separate MAC, encryption passwords",
-	"-descert      encrypt PKCS#12 certificates with 3DES (default RC2-40)",
-	"-certpbe alg  specify certificate PBE algorithm (default RC2-40)",
-	"-keypbe alg   specify private key PBE algorithm (default 3DES)",
-	"-macalg alg   digest algorithm used in MAC (default SHA1)",
-	"-keyex        set MS key exchange type",
-	"-keysig       set MS key signature type",
-	"-password p   set import/export password source",
-	"-passin p     input file pass phrase source",
-	"-passout p    output file pass phrase source",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e     use engine e, possibly a hardware device.",
-#endif
-	"-rand file...  load the file(s) into the random number generator",
-	"-CSP name     Microsoft CSP name",
-	"-LMK          Add local machine keyset attribute to private key",
-	NULL
-};
-
 enum options {
     OPT_ERR = -1, OPT_EOF = 0,
     OPT_CIPHER, OPT_NOKEYS, OPT_KEYEX, OPT_KEYSIG, OPT_NOCERTS, OPT_CLCERTS,
@@ -156,46 +98,46 @@ enum options {
     OPT_CAFILE, OPT_ENGINE,
 };
 
-static OPTIONS optionlist[] = {
-    { "", OPT_CIPHER, '-' },
-    { "nokeys", OPT_NOKEYS, '-' },
-    { "keyex", OPT_KEYEX, '-' },
-    { "keysig", OPT_KEYSIG, '-' },
-    { "nocerts", OPT_NOCERTS, '-' },
-    { "clcerts", OPT_CLCERTS, '-' },
-    { "cacerts", OPT_CACERTS, '-' },
-    { "noout", OPT_NOOUT, '-' },
-    { "info", OPT_INFO, '-' },
-    { "chain", OPT_CHAIN, '-' },
-    { "twopass", OPT_TWOPASS, '-' },
-    { "nomacver", OPT_NOMACVER, '-' },
-    { "descert", OPT_DESCERT, '-' },
-    { "export", OPT_EXPORT, '-' },
-    { "noiter", OPT_NOITER, '-' },
-    { "maciter", OPT_MACITER, '-' },
-    { "nomaciter", OPT_NOMACITER, '-' },
-    { "nomac", OPT_NOMAC, '-' },
-    { "LMK", OPT_LMK, '-' },
-    { "nodes", OPT_NODES, '-' },
-    { "macalg", OPT_MACALG, 's' },
-    { "certpbe", OPT_CERTPBE, 's' },
-    { "keypbe", OPT_KEYPBE, 's' },
-    { "rand", OPT_RAND, 's' },
-    { "inkey", OPT_INKEY, '<' },
-    { "certfile", OPT_CERTFILE, '<' },
-    { "name", OPT_NAME, 's' },
-    { "CSP", OPT_CSP, 's' },
-    { "caname", OPT_CANAME, 's' },
-    { "in", OPT_IN, '<' },
-    { "out", OPT_OUT, '>' },
-    { "passin", OPT_PASSIN, 's' },
-    { "passout", OPT_PASSOUT, 's' },
-    { "password", OPT_PASSWORD, 's' },
-    { "CApath", OPT_CAPATH, '/' },
-    { "CAfile", OPT_CAFILE, '<' },
+OPTIONS pkcs12_options[] = {
+    { "nokeys", OPT_NOKEYS, '-', "Don't output private keys" },
+    { "keyex", OPT_KEYEX, '-', "Set MS key exchange type" },
+    { "keysig", OPT_KEYSIG, '-', "Set MS key signature type" },
+    { "nocerts", OPT_NOCERTS, '-', "Don't output certificates" },
+    { "clcerts", OPT_CLCERTS, '-', "Only output client certificates" },
+    { "cacerts", OPT_CACERTS, '-', "Only output CA certificates" },
+    { "noout", OPT_NOOUT, '-', "Don't output anything, just verify" },
+    { "info", OPT_INFO, '-', "Print info about PKCS#12 structure" },
+    { "chain", OPT_CHAIN, '-', "Add certificate chain" },
+    { "twopass", OPT_TWOPASS, '-', "Separate MAC, encryption passwords" },
+    { "nomacver", OPT_NOMACVER, '-', "-Don't verify MAC" },
+    { "descert", OPT_DESCERT, '-', "Encrypt output with 3DES (default RC2-40)" },
+    { "export", OPT_EXPORT, '-', "Output PKCS12 file" },
+    { "noiter", OPT_NOITER, '-', "Don't use encryption iteration" },
+    { "maciter", OPT_MACITER, '-', "Use MAC iteration" },
+    { "nomaciter", OPT_NOMACITER, '-', "Don't use MAC iteration" },
+    { "nomac", OPT_NOMAC, '-', "Don't generate MAC" },
+    { "LMK", OPT_LMK, '-', "Add local machine keyset attribute to private key" },
+    { "nodes", OPT_NODES, '-', "Don't encrypt private keys" },
+    { "macalg", OPT_MACALG, 's', "Digest algorithm used in MAC (default SHA1)" },
+    { "certpbe", OPT_CERTPBE, 's', "Certificate PBE algorithm (default RC2-40)" },
+    { "keypbe", OPT_KEYPBE, 's', "Private key PBE algorithm (default 3DES)" },
+    { "rand", OPT_RAND, 's', "Load the file(s) into the random number generator" },
+    { "inkey", OPT_INKEY, '<', "Private key if not infile" },
+    { "certfile", OPT_CERTFILE, '<', "Load certs from file" },
+    { "name", OPT_NAME, 's', "Use name as friendly name" },
+    { "CSP", OPT_CSP, 's', "Microsoft CSP name" },
+    { "caname", OPT_CANAME, 's', "Use name as CA friendly name (can be repeated)" },
+    { "in", OPT_IN, '<', "Input filename" },
+    { "out", OPT_OUT, '>', "Output filename" },
+    { "passin", OPT_PASSIN, 's', "Input file pass phrase source" },
+    { "passout", OPT_PASSOUT, 's', "Output file pass phrase source" },
+    { "password", OPT_PASSWORD, 's', "Set import/export password source" },
+    { "CApath", OPT_CAPATH, '/', "PEM-format directory of CA's" },
+    { "CAfile", OPT_CAFILE, '<', "PEM-format file of CA's" },
 #ifndef OPENSSL_NO_ENGINE
-    { "engine", OPT_ENGINE, 's' },
+    { "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
 #endif
+    { "", OPT_CIPHER, '-', "Any supported cipher" },
     { NULL }
 };
 
@@ -220,14 +162,13 @@ int pkcs12_main(int argc, char **argv)
     const EVP_CIPHER *enc = EVP_des_ede3_cbc();
     enum options o;
 
-    prog = opt_init(argc, argv, optionlist);
+    prog = opt_init(argc, argv, pkcs12_options);
     while ((o = opt_next()) != OPT_EOF) {
 	    switch (o) {
 	    case OPT_EOF:
 	    case OPT_ERR:
 err:
-		    BIO_printf(bio_err,"Valid options are:\n");
-		    printhelp(pkcs12_help);
+		    opt_help(pkcs12_options);
 		    goto end;
 	    case OPT_NOKEYS:
 		    options |= NOKEYS;

@@ -82,34 +82,6 @@
 
 static int genrsa_cb(int p, int n, BN_GENCB *cb);
 
-const char* genrsa_help[] = {
-	"-des            encrypt the generated key with DES in cbc mode",
-	"-des3           encrypt the generated key with DES in ede cbc mode (168 bit key)",
-#ifndef OPENSSL_NO_IDEA
-	"-idea           encrypt the generated key with IDEA in cbc mode",
-#endif
-#ifndef OPENSSL_NO_SEED
-	"-seed           encrypt PEM output with cbc seed",
-#endif
-#ifndef OPENSSL_NO_AES
-	"-aes128, -aes192, -aes256",
-	"                encrypt PEM output with cbc aes",
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-	"-camellia128, -camellia192, -camellia256",
-	"                encrypt PEM output with cbc camellia",
-#endif
-	"-out file       output the key to 'file",
-	"-passout arg    output file pass phrase source",
-	"-f4             use F4 (0x10001) for the E value",
-	"-3              use 3 for the E value",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e       use engine e, possibly a hardware device.",
-#endif
-	"-rand file...  load the file(s) into the random number generator",
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_3, OPT_F4, OPT_NON_FIPS_ALLOW, OPT_ENGINE,
@@ -130,45 +102,66 @@ enum options {
 	OPT_CAMELLIA128, OPT_CAMELLIA192, OPT_CAMELLIA256,
 #endif
 };
-static OPTIONS options[] = {
-	{ "3", OPT_3, '-' },
-	{ "F4", OPT_F4, '-' },
-	{ "f4", OPT_F4, '-' },
+
+static OPTIONS genrsa_options[] = {
+	{ "3", OPT_3, '-', "Use 3 for the E value" },
+	{ "F4", OPT_F4, '-', "Use F4 (0x10001) for the E value" },
+	{ "f4", OPT_F4, '-', "Use F4 (0x10001) for the E value" },
 	{ "non-fips-allow", OPT_NON_FIPS_ALLOW, '-' },
-	{ "out", OPT_OUT, 's' },
-	{ "engine", OPT_ENGINE, 's' },
-	{ "rand", OPT_RAND, 's' },
-	{ "passout", OPT_PASSOUT, 's' },
+	{ "out", OPT_OUT, 's', "Output the key to specified file" },
+	{ "rand", OPT_RAND, 's', "Load the file(s) into the random number generator" },
+	{ "passout", OPT_PASSOUT, 's', "Output file pass phrase source" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
+#ifndef OPENSSL_NO_DES
+	{ "des", OPT_DES, '-', "Encrypt the output with CBC DES" },
+	{ "des3", OPT_DES3, '-', "Encrypt the output with CBC 3DES" },
+#endif
+#ifndef OPENSSL_NO_IDEA
+	{ "idea", OPT_IDEA, '-', "Encrypt the output with CBC IDEA" },
+#endif
+#ifndef OPENSSL_NO_SEED
+	{ "seed", OPT_SEED, '-', "Encrypt key output with CBC seed" },
+#endif
+#ifndef OPENSSL_NO_AES
+	{ "aes128", OPT_AES128, '-', "Encrypt the output with CBC AES 128" },
+	{ "aes192", OPT_AES192, '-', "Encrypt the output with CBC AES 192" },
+	{ "aes256", OPT_AES256, '-', "Encrypt the output with CBC AES 256" },
+#endif
+#ifndef OPENSSL_NO_CAMELLIA
+	{ "camellia128", OPT_CAMELLIA128, '-', "Encrypt the output with CBC camellia 128" },
+	{ "camellia192", OPT_CAMELLIA192, '-', "Encrypt the output with CBC camellia 192" },
+	{ "camellia256", OPT_CAMELLIA256, '-', "Encrypt the output with CBC camellia 256" },
+#endif
 	{ NULL }
 };
 
 int genrsa_main(int argc, char **argv)
 	{
 	BN_GENCB cb;
-	ENGINE *e = NULL;
-	int ret=1;
-	int non_fips_allow = 0,i,num=DEFBITS;
-	long l;
-	const EVP_CIPHER *enc=NULL;
-	unsigned long f4=RSA_F4;
-	char *outfile=NULL, *passoutarg = NULL, *passout = NULL;
-	char *engine=NULL, *inrand=NULL, *prog;
+	ENGINE *e=NULL;
+	BIGNUM *bn=BN_new();
 	BIO *out=NULL;
-	RSA *rsa = NULL;
+	RSA *rsa=NULL;
+	const EVP_CIPHER *enc=NULL;
+	int ret=1, non_fips_allow=0, i, num=DEFBITS;
+	long l;
+	unsigned long f4=RSA_F4;
+	char *outfile=NULL, *passoutarg=NULL, *passout=NULL;
+	char *engine=NULL, *inrand=NULL, *prog;
 	enum options o;
-	BIGNUM *bn = BN_new();
 
 	if(!bn) goto err;
 
 	BN_GENCB_set(&cb, genrsa_cb, bio_err);
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, genrsa_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(genrsa_help);
+			opt_help(genrsa_options);
 			goto err;
 		case OPT_3:
 			f4=3;

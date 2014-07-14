@@ -62,27 +62,18 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 
-const char* pkeyparam_help[] = {
-	"-in file        input file",
-	"-out file       output file",
-	"-text           print parameters as text",
-	"-noout          don't output encoded parameters",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e       use engine e, possibly a hardware device.",
-#endif
-	NULL
-};
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_IN, OPT_OUT, OPT_TEXT, OPT_NOOUT, OPT_ENGINE,
 };
-static OPTIONS options[] = {
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "text", OPT_TEXT, '-' },
-	{ "noout", OPT_NOOUT, '-' },
+
+OPTIONS pkeyparam_options[] = {
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "text", OPT_TEXT, '-', "Print parameters as text" },
+	{ "noout", OPT_NOOUT, '-', "Don't output encoded parameters" },
 #ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
 #endif
 	{ NULL }
 };
@@ -98,13 +89,12 @@ int pkeyparam_main(int argc, char **argv)
 	char* prog;
 	char *engine=NULL;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, pkeyparam_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(pkeyparam_help);
+			opt_help(pkeyparam_options);
 			goto end;
 		case OPT_IN:
 			infile = opt_arg();

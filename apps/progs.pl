@@ -17,24 +17,21 @@ typedef struct function_st {
 	int type;
 	const char *name;
 	int (*func)(int argc,char *argv[]);
-	const char **help;
+	const OPTIONS *help;
 } FUNCTION;
 
-#ifndef APP_MAIN
-extern FUNCTION functions[];
-#endif
 EOF
 
 grep(s/^asn1pars$/asn1parse/, @ARGV);
 foreach (@ARGV) {
 	printf "extern int %s_main(int argc,char *argv[]);\n", $_;
-	printf "extern const char *%s_help[];\n", $_;
+	printf "extern OPTIONS %s_options[];\n", $_;
 }
 
-printf "\n#ifdef APP_MAIN\n";
 printf "FUNCTION functions[] = {\n";
 foreach (@ARGV) {
-	$str="\t{ FUNC_TYPE_GENERAL, \"$_\", ${_}_main, ${_}_help },\n";
+	$str="\t{ FUNC_TYPE_GENERAL, \"$_\", ${_}_main, ${_}_options },\n";
+	$str="\t{ FUNC_TYPE_GENERAL, \"$_\", ${_}_main, NULL },\n"; # XXX
 	if (/^s_/ || /^ciphers$/) {
 		print "#if !defined(OPENSSL_NO_SOCK)\n${str}#endif\n";
 	} elsif (/^speed$/) {
@@ -68,7 +65,8 @@ foreach (
 	"sha", "sha1", "sha224", "sha256", "sha384", "sha512",
 	"mdc2", "rmd160"
 ) {
-	$str="\t{ FUNC_TYPE_MD, \"$_\", dgst_main, dgst_help },\n";
+	$str="\t{ FUNC_TYPE_MD, \"$_\", dgst_main, dgst_options },\n";
+	$str="\t{ FUNC_TYPE_MD, \"$_\", dgst_main, NULL },\n"; # XXX
 	printf "#ifndef OPENSSL_NO_".uc($_)."\n${str}#endif\n";
 }
 
@@ -93,7 +91,8 @@ foreach (
 	"cast5-cbc","cast5-ecb", "cast5-cfb","cast5-ofb",
 	"cast-cbc", "rc5-cbc",   "rc5-ecb",  "rc5-cfb",  "rc5-ofb"
 ) {
-	$str="\t{ FUNC_TYPE_CIPHER, \"$_\", enc_main, enc_help },\n";
+	$str="\t{ FUNC_TYPE_CIPHER, \"$_\", enc_main, enc_options },\n";
+	$str="\t{ FUNC_TYPE_CIPHER, \"$_\", enc_main, NULL },\n"; # XXX
 	if (/des/) {
 		printf "#ifndef OPENSSL_NO_DES\n${str}#endif\n";
 	} elsif (/aes/) {
@@ -122,4 +121,3 @@ foreach (
 }
 
 print "\t{0,NULL}\n\t};\n";
-printf "#endif\n";

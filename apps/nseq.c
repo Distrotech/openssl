@@ -62,42 +62,35 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 
-const char* nseq_help[] = {
-	"-in file  input file",
-	"-out file output file",
-	"-toseq    output NS Sequence file",
-	NULL
-};
+
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_TOSEQ, OPT_IN, OPT_OUT
 };
-static OPTIONS options[] = {
-	{ "toseq", OPT_TOSEQ, '-' },
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
+
+static OPTIONS nseq_options[] = {
+	{ "toseq", OPT_TOSEQ, '-', "Output NS Sequence file" },
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "out", OPT_OUT, '>', "Output file" },
 	{ NULL }
 };
-
 
 int nseq_main(int argc, char **argv)
 {
 	char *infile=NULL, *outfile=NULL;
 	BIO *in=NULL, *out=NULL;
-	int toseq=0;
 	X509 *x509=NULL;
 	NETSCAPE_CERT_SEQUENCE *seq=NULL;
 	enum options o;
-	int ret=1,i;
+	int toseq=0, ret=1,i;
 	char* prog;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, nseq_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(nseq_help);
+			opt_help(nseq_options);
 			goto end;
 		case OPT_TOSEQ:
 			toseq=1;

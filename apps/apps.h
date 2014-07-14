@@ -126,7 +126,6 @@
 #include <openssl/ocsp.h>
 #endif
 #include <openssl/ossl_typ.h>
-#include "progs.h"
 
 #ifndef OPENSSL_SYS_NETWARE
 #include <signal.h>
@@ -157,6 +156,10 @@ BIO* dup_bio_in();
 BIO* dup_bio_out();
 BIO* bio_open_default(const char* filename, const char* mode);
 extern void unbuffer(FILE* fp);
+
+/* Often used in calls to bio_open_default. */
+#define RB(xformat)  ((xformat) == FORMAT_ASN1 ? "rb" : "r")
+#define WB(xformat)  ((xformat) == FORMAT_ASN1 ? "wb" : "w")
 
 /*
  * Common verification options.
@@ -290,8 +293,8 @@ extern void unbuffer(FILE* fp);
 /*
  * Option parsing.
  */
-extern char* OPT_HELP;
-extern char* OPT_CONTINUE;
+extern const char OPT_HELP_STR[];
+extern const char OPT_MORE_STR[];
 typedef struct options_st {
 	const char* name;
 	int retval;
@@ -329,10 +332,6 @@ extern int opt_num_rest(void);
 extern int opt_verify(int i, X509_VERIFY_PARAM* vpm);
 extern void printhelp(const char**);
 extern void opt_help(const OPTIONS* list);
-
-
-#define RB(xformat)  ((xformat) == FORMAT_ASN1 ? "rb" : "r")
-#define WB(xformat)  ((xformat) == FORMAT_ASN1 ? "wb" : "w")
 
 typedef struct args_st
 	{

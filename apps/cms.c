@@ -106,71 +106,8 @@ struct cms_key_param_st
 	cms_key_param *next;
 	};
 
-const char* cms_help[] = {
-	"-encrypt       encrypt message",
-	"-decrypt       decrypt encrypted message",
-	"-sign          sign message",
-	"-verify        verify signed message",
-	"-cmsout        output CMS structure",
-#ifndef OPENSSL_NO_DES
-	"-des3          encrypt with triple DES",
-	"-des           encrypt with DES",
-#endif
-#ifndef OPENSSL_NO_SEED
-	"-seed          encrypt with SEED",
-#endif
-#ifndef OPENSSL_NO_RC2
-	"-rc2-40        encrypt with RC2-40 (default)",
-	"-rc2-64        encrypt with RC2-64",
-	"-rc2-128       encrypt with RC2-128",
-#endif
-#ifndef OPENSSL_NO_AES
-	"-aes128, -aes192, -aes256",
-	"               encrypt PEM output with cbc aes",
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-	"-camellia128, -camellia192, -camellia256",
-	"               encrypt PEM output with cbc camellia",
-#endif
-	"-nointern      don't search certificates in message for signer",
-	"-nosigs        don't verify message signature",
-	"-noverify      don't verify signers certificate",
-	"-nocerts       don't include signers certificate when signing",
-	"-nodetach      use opaque signing",
-	"-noattr        don't include any signed attributes",
-	"-binary        don't translate message to text",
-	"-certfile file other certificates file",
-	"-certsout file certificate output file",
-	"-signer file   signer certificate file",
-	"-recip  file   recipient certificate file for decryption",
-	"-keyid         use subject key identifier",
-	"-in file       input file",
-	"-inform arg    input format SMIME (default), PEM or DER",
-	"-inkey file    input private key (if not signer or recipient)",
-	"-keyform arg   input private key format (PEM or ENGINE)",
-	"-keyopt nm:v   set public key parameters",
-	"-out file      output file",
-	"-outform arg   output format SMIME (default), PEM or DER",
-	"-content file  supply or override content for detached signature",
-	"-to addr       to address",
-	"-from ad       from address",
-	"-subject s     subject",
-	"-text          include or delete text MIME headers",
-	"-CApath dir    trusted certificates directory",
-	"-CAfile file   trusted certificates file",
-	"-trusted_first use locally trusted certificates first when building trust chain",
-	"-crl_check     check revocation status of signer's certificate using CRLs",
-	"-crl_check_all check revocation status of signer's certificate chain using CRLs",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e      use engine e, possibly a hardware device.",
-#endif
-	"-passin arg    input file pass phrase source",
-	"-rand file...  load the file(s) into the random number generator",
-	NULL
-};
-
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT, OPT_ENCRYPT,
 	OPT_DECRYPT, OPT_SIGN, OPT_SIGN_RECEIPT, OPT_RESIGN,
 	OPT_VERIFY, OPT_VERIFY_RETCODE, OPT_VERIFY_RECEIPT,
@@ -191,21 +128,24 @@ enum options {
 	OPT_V_ENUM,
 };
 
-static OPTIONS options[] = {
-	OPT_V_OPTIONS,
-	{ "inform", OPT_INFORM, 'F' },
-	{ "outform", OPT_OUTFORM, 'F' },
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "encrypt", OPT_ENCRYPT, '-' },
-	{ "decrypt", OPT_DECRYPT, '-' },
-	{ "sign", OPT_SIGN, '-' },
+OPTIONS cms_options[] = {
+	{ OPT_HELP_STR, 1, '-', "Usage: %s [options] cert.pem...\n" },
+	{ "cert.pem", 1, '-', "Recipient certs for encryption" },
+	{ OPT_HELP_STR, 1, '-', "Valid options are:\n" },
+	{ "help", OPT_HELP, '-', "This summary" },
+	{ "inform", OPT_INFORM, 'F', "Input format SMIME (default), PEM or DER" },
+	{ "outform", OPT_OUTFORM, 'F', "Output format SMIME (default), PEM or DER" },
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "encrypt", OPT_ENCRYPT, '-', "Encrypt message" },
+	{ "decrypt", OPT_DECRYPT, '-', "Decrypt encrypted message" },
+	{ "sign", OPT_SIGN, '-', "Sign message" },
 	{ "sign_receipt", OPT_SIGN_RECEIPT, '-' },
 	{ "resign", OPT_RESIGN, '-' },
-	{ "verify", OPT_VERIFY, '-' },
+	{ "verify", OPT_VERIFY, '-', "Verify signed message" },
 	{ "verify_retcode", OPT_VERIFY_RETCODE, '-' },
 	{ "verify_receipt", OPT_VERIFY_RECEIPT, '<' },
-	{ "cmsout", OPT_CMSOUT, '-' },
+	{ "cmsout", OPT_CMSOUT, '-', "Output CMS structure" },
 	{ "data_out", OPT_DATA_OUT, '-' },
 	{ "data_create", OPT_DATA_CREATE, '-' },
 	{ "digest_verify", OPT_DIGEST_VERIFY, '-' },
@@ -215,17 +155,17 @@ static OPTIONS options[] = {
 	{ "EncryptedData_decrypt", OPT_ED_DECRYPT, '-' },
 	{ "EncryptedData_encrypt", OPT_ED_ENCRYPT, '-' },
 	{ "debug_decrypt", OPT_DEBUG_DECRYPT, '-' },
-	{ "text", OPT_TEXT, '-' },
+	{ "text", OPT_TEXT, '-', "Include or delete text MIME headers" },
 	{ "asciicrlf", OPT_ASCIICRLF, '-' },
-	{ "nointern", OPT_NOINTERN, '-' },
-	{ "noverify", OPT_NOVERIFY, '-' },
-	{ "nocerts", OPT_NOCERTS, '-' },
-	{ "noattr", OPT_NOATTR, '-' },
-	{ "nodetach", OPT_NODETACH, '-' },
+	{ "nointern", OPT_NOINTERN, '-', "Don't search certificates in message for signer" },
+	{ "noverify", OPT_NOVERIFY, '-', "Don't verify signers certificate" },
+	{ "nocerts", OPT_NOCERTS, '-', "Don't include signers certificate when signing" },
+	{ "noattr", OPT_NOATTR, '-', "Don't include any signed attributes" },
+	{ "nodetach", OPT_NODETACH, '-', "Use opaque signing" },
 	{ "nosmimecap", OPT_NOSMIMECAP, '-' },
-	{ "binary", OPT_BINARY, '-' },
-	{ "keyid", OPT_KEYID, '-' },
-	{ "nosigs", OPT_NOSIGS, '-' },
+	{ "binary", OPT_BINARY, '-', "Don't translate message to text" },
+	{ "keyid", OPT_KEYID, '-', "Use subject key identifier" },
+	{ "nosigs", OPT_NOSIGS, '-', "Don't verify message signature" },
 	{ "no_content_verify", OPT_NO_CONTENT_VERIFY, '-' },
 	{ "no_attr_verify", OPT_NO_ATTR_VERIFY, '-' },
 	{ "stream", OPT_INDEF, '-' },
@@ -238,31 +178,27 @@ static OPTIONS options[] = {
 	{ "receipt_request_all", OPT_RR_ALL, '-' },
 	{ "receipt_request_first", OPT_RR_FIRST, '-' },
 	{ "rctform", OPT_RCTFORM, 'F' },
-	{ "certfile", OPT_CERTFILE, '<' },
-	{ "CAfile", OPT_CAFILE, '<' },
-	{ "CApath", OPT_CAPATH, '/' },
-	{ "in", OPT_IN, '<' },
-	{ "inform", OPT_INFORM, 'F' },
-	{ "outform", OPT_OUTFORM, 'F' },
-	{ "out", OPT_OUT, '>' },
-	{ "content", OPT_CONTENT, '<' },
+	{ "certfile", OPT_CERTFILE, '<', "Other certificates file" },
+	{ "CAfile", OPT_CAFILE, '<', "Trusted certificates file" },
+	{ "CApath", OPT_CAPATH, '/', "trusted certificates directory" },
+	{ "content", OPT_CONTENT, '<', "Supply or override content for detached signature" },
 	{ "print", OPT_PRINT, '-' },
 	{ "secretkey", OPT_SECRETKEY, 's' },
 	{ "secretkeyid", OPT_SECRETKEYID, 's' },
 	{ "pwri_password", OPT_PWRI_PASSWORD, 's' },
 	{ "econtent_type", OPT_ECONTENT_TYPE, 's' },
-	{ "rand", OPT_RAND, 's' },
-	{ "passin", OPT_PASSIN, 's' },
-	{ "to", OPT_TO, 's' },
-	{ "from", OPT_FROM, 's' },
-	{ "subject", OPT_SUBJECT, 's' },
-	{ "signer", OPT_SIGNER, 's' },
-	{ "recip", OPT_RECIP, '<' },
-	{ "certsout", OPT_CERTSOUT, '>' },
+	{ "rand", OPT_RAND, 's', "Load the file(s) into the random number generator" },
+	{ "passin", OPT_PASSIN, 's', "Input file pass phrase source" },
+	{ "to", OPT_TO, 's', "To address" },
+	{ "from", OPT_FROM, 's', "From address" },
+	{ "subject", OPT_SUBJECT, 's', "Subject" },
+	{ "signer", OPT_SIGNER, 's', "Signer certificate file" },
+	{ "recip", OPT_RECIP, '<', "Recipient cert file for decryption" },
+	{ "certsout", OPT_CERTSOUT, '>', "Certificate output file" },
 	{ "md", OPT_MD, 's' },
-	{ "inkey", OPT_INKEY, '<' },
-	{ "keyform", OPT_KEYFORM, 'F' },
-	{ "keyopt", OPT_KEYOPT, 's' },
+	{ "inkey", OPT_INKEY, '<', "Input private key (if not signer or recipient)" },
+	{ "keyform", OPT_KEYFORM, 'f', "Input private key format (PEM or ENGINE)" },
+	{ "keyopt", OPT_KEYOPT, 's', "Set public key parameters as n:v pairs" },
 	{ "receipt_request_from", OPT_RR_FROM, 's' },
 	{ "receipt_request_to", OPT_RR_TO, 's' },
 #ifndef OPENSSL_NO_AES
@@ -271,9 +207,10 @@ static OPTIONS options[] = {
 	{ "aes256-wrap", OPT_AES256_WRAP, '-' },
 #endif
 #ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
+	{ "engine", OPT_ENGINE, 's', "Use engine e, possibly a hardware device" },
 #endif
-	{ "", OPT_CIPHER, '-' },
+	{ "", OPT_CIPHER, '-', "Any supported cipher" },
+	OPT_V_OPTIONS,
 	{ NULL },
 };
 
@@ -300,7 +237,7 @@ int cms_main(int argc, char **argv)
 	const EVP_CIPHER *cipher=NULL, *wrap_cipher=NULL;
 	const EVP_MD *sign_md=NULL;
 	const char *inmode="r", *outmode="w";
-	int badarg=0, flags=CMS_DETACHED, noout=0, print=0;
+	int flags=CMS_DETACHED, noout=0, print=0;
 	int informat=FORMAT_SMIME, outformat=FORMAT_SMIME;
 	int need_rand=0, operation=0, ret=0, rr_print=0, rr_allorfirst=-1;
 	int verify_retcode=0, rctformat=FORMAT_SMIME, keyform=FORMAT_PEM;
@@ -314,13 +251,14 @@ int cms_main(int argc, char **argv)
 	if ((vpm = X509_VERIFY_PARAM_new()) == NULL)
 		return 1;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, cms_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(cms_help);
+		case OPT_HELP:
+argerr:
+			opt_help(cms_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);
@@ -583,7 +521,7 @@ int cms_main(int argc, char **argv)
 				recipfile = opt_arg();
 			break;
 		case OPT_CIPHER:
-			if (!opt_cipher(opt_arg(), &cipher))
+			if (!opt_cipher(opt_unknown(), &cipher))
 				goto end;
 			break;
 		case OPT_KEYOPT:
@@ -676,7 +614,7 @@ int cms_main(int argc, char **argv)
 		if (!sksigners)
 			{
 			BIO_printf(bio_err, "No signer certificate specified\n");
-			badarg = 1;
+			goto argerr;
 			}
 		signerfile = NULL;
 		keyfile = NULL;
@@ -688,7 +626,7 @@ int cms_main(int argc, char **argv)
 		if (!recipfile && !keyfile && !secret_key && !pwri_pass)
 			{
 			BIO_printf(bio_err, "No recipient certificate or key specified\n");
-			badarg = 1;
+			goto argerr;
 			}
 		}
 	else if (operation == SMIME_ENCRYPT)
@@ -696,22 +634,12 @@ int cms_main(int argc, char **argv)
 		if (*argv == NULL && !secret_key && !pwri_pass && !encerts)
 			{
 			BIO_printf(bio_err, "No recipient(s) certificate(s) specified\n");
-			badarg = 1;
+			goto argerr;
 			}
 		need_rand = 1;
 		}
 	else if (!operation)
-		badarg = 1;
-
-	if (badarg)
-		{
-		argerr:
-		BIO_printf (bio_err, "Usage cms [options] cert.pem ...\n");
-		BIO_printf (bio_err, "where options are\n");
-		printhelp(cms_help);
-		BIO_printf (bio_err, "cert.pem       recipient certificate(s) for encryption\n");
-		goto end;
-		}
+		goto argerr;
 
 #ifndef OPENSSL_NO_ENGINE
         e = setup_engine(bio_err, engine, 0);

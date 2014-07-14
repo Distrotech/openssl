@@ -69,48 +69,29 @@
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 
-const char *asn1parse_help[] = {
-	"-inform arg   input format - one of DER PEM",
-	"-in arg       input file",
-	"-out arg      output file (output format is always DER",
-	"-noout arg    don't produce any output",
-	"-offset arg   offset into file",
-	"-length arg   length of section in file",
-	"-i            indent entries",
-	"-dump         dump unknown data in hex form",
-	"-dlimit arg   dump the first arg bytes of unknown data in hex form",
-	"-oid file     file of extra oid definitions",
-	"-strparse offset",
-	"              a series of these can be used to 'dig' into multiple",
-	"              ASN1 blob wrappings",
-	"-genstr str   string to generate ASN1 structure from",
-	"-genconf file file to generate ASN1 structure from",
-	"-strictpem    do not attempt base64 decode outside PEM markers",
-	"              (-inform  will be ignored)",
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_INFORM, OPT_IN, OPT_OUT, OPT_INDENT, OPT_NOOUT,
 	OPT_OID, OPT_OFFSET, OPT_LENGTH, OPT_DUMP, OPT_DLIMIT,
 	OPT_STRPARSE, OPT_GENSTR, OPT_GENCONF, OPT_STRICTPEM
 };
-static OPTIONS options[] = {
-	{ "inform", OPT_INFORM, 'F' },
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "i", OPT_INDENT, 0 },
-	{ "noout", OPT_NOOUT, 0 },
-	{ "oid", OPT_OID, '<' },
-	{ "offset", OPT_OFFSET, 'p' },
-	{ "length", OPT_LENGTH, 'p' },
-	{ "dump", OPT_DUMP, 0 },
-	{ "dlimit", OPT_DLIMIT, 'p' },
-	{ "strparse", OPT_STRPARSE, 's' },
-	{ "genstr", OPT_GENSTR, 's' },
-	{ "genconf", OPT_GENCONF, 's' },
-	{ "strictpem", OPT_STRICTPEM, 0 },
+OPTIONS asn1parse_options[] = {
+	{ "inform", OPT_INFORM, 'F', "input format - one of DER PEM" },
+	{ "in", OPT_IN, '<', "input file" },
+	{ "out", OPT_OUT, '>', "output file (output format is always DER)" },
+	{ "i", OPT_INDENT, 0, "entries" },
+	{ "noout", OPT_NOOUT, 0, "don't produce any output" },
+	{ "offset", OPT_OFFSET, 'p', "offset into file" },
+	{ "length", OPT_LENGTH, 'p', "length of section in file" },
+	{ "oid", OPT_OID, '<', "file of extra oid definitions" },
+	{ "dump", OPT_DUMP, 0, "unknown data in hex form" },
+	{ "dlimit", OPT_DLIMIT, 'p', "dump the first arg bytes of unknown data in hex form" },
+	{ "strparse", OPT_STRPARSE, 's', "offset; a series of these can be used to 'dig'"  },
+	{ OPT_MORE_STR, 0, 0, "into multiple ASN1 blob wrappings" },
+	{ "genstr", OPT_GENSTR, 's', "string to generate ASN1 structure from" },
+	{ "genconf", OPT_GENCONF, 's', "file to generate ASN1 structure from" },
+	{ OPT_MORE_STR, 0, 0, "(-inform  will be ignored)" },
+	{ "strictpem", OPT_STRICTPEM, 0, "do not attempt base64 decode outside PEM markers" },
 	{ NULL }
 };
 
@@ -136,7 +117,7 @@ int asn1parse_main(int argc, char **argv)
 	STACK_OF(OPENSSL_STRING) *osk=NULL;
 	ASN1_TYPE *at=NULL;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, asn1parse_options);
 
 	if ((osk=sk_OPENSSL_STRING_new_null()) == NULL)
 		{
@@ -149,7 +130,7 @@ int asn1parse_main(int argc, char **argv)
 		case OPT_EOF:
 		case OPT_ERR:
 			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(asn1parse_help);
+			opt_help(asn1parse_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);

@@ -71,38 +71,26 @@
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 
-const char* dh_help[] = {
-	" -inform arg   input format - one of DER PEM",
-	" -outform arg  output format - one of DER PEM",
-	" -in arg       input file",
-	" -out arg      output file",
-	" -check        check the DH parameters",
-	" -text         print a text form of the DH parameters",
-	" -C            Output C code",
-	" -noout        no output",
-#ifndef OPENSSL_NO_ENGINE
-	" -engine e     use engine e, possibly a hardware device.",
-#endif
-	NULL
-};
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT, OPT_ENGINE,
 	OPT_CHECK, OPT_TEXT, OPT_C, OPT_NOOUT
 };
-static OPTIONS options[] = {
-	{ "inform", OPT_INFORM, 'F' },
-	{ "outform", OPT_OUTFORM, 'F' },
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "engine", OPT_ENGINE, 's' },
-	{ "check", OPT_CHECK, '-' },
-	{ "text", OPT_TEXT, '-' },
-	{ "C", OPT_C, '-' },
-	{ "noout", OPT_NOOUT, '-' },
+
+OPTIONS dh_options[] = {
+	{ "inform", OPT_INFORM, 'F', "Input format - one of DER PEM" },
+	{ "outform", OPT_OUTFORM, 'F', "Output format - one of DER PEM" },
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "out", OPT_OUT, '>', "Output file" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine e, possibly a hardware device" },
+#endif
+	{ "check", OPT_CHECK, '-', "Check the DH parameters" },
+	{ "text", OPT_TEXT, '-', "Print a text form of the DH parameters" },
+	{ "C", OPT_C, '-', "Output C code" },
+	{ "noout", OPT_NOOUT, '-', "Oo output" },
 	{ NULL }
 };
-
 
 int dh_main(int argc, char **argv)
 	{
@@ -114,13 +102,12 @@ int dh_main(int argc, char **argv)
 	char *engine=NULL;
 	enum options o;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, dh_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(dh_help);
+			opt_help(dh_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);

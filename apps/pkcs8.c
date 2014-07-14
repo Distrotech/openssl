@@ -64,27 +64,6 @@
 #include <openssl/evp.h>
 #include <openssl/pkcs12.h>
 
-const char* pkcs8_help[] = {
-	"-in file        input file",
-	"-inform X       input format (DER or PEM)",
-	"-passin arg     input file pass phrase source",
-	"-outform X      output format (DER or PEM)",
-	"-out file       output file",
-	"-passout arg    output file pass phrase source",
-	"-topk8          output PKCS8 file",
-	"-nooct          use (nonstandard) no octet format",
-	"-embed          use (nonstandard) embedded DSA parameters format",
-	"-nsdb           use (nonstandard) DSA Netscape DB format",
-	"-iter count     use count as iteration count",
-	"-noiter         use 1 as iteration count",
-	"-nocrypt        use or expect unencrypted private key",
-	"-v2 alg         use PKCS#5 v2.0 and cipher ",
-	"-v1 obj         use PKCS#5 v1.5 and cipher ",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e       use engine e, possibly a hardware device.",
-#endif
-	NULL
-};
 
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
@@ -92,26 +71,27 @@ enum options {
 	OPT_TOPK8, OPT_NOITER, OPT_NOCRYPT, OPT_NOOCT, OPT_NSDB, OPT_EMBED,
 	OPT_V2, OPT_V1, OPT_V2PRF, OPT_ITER, OPT_PASSIN, OPT_PASSOUT,
 };
-static OPTIONS options[] = {
-	{ "inform", OPT_INFORM, 'F' },
-	{ "outform", OPT_OUTFORM, 'F' },
-#ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
-#endif
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "topk8", OPT_TOPK8, '-' },
-	{ "noiter", OPT_NOITER, '-' },
-	{ "nocrypt", OPT_NOCRYPT, '-' },
-	{ "nooct", OPT_NOOCT, '-' },
-	{ "nsdb", OPT_NSDB, '-' },
-	{ "embed", OPT_EMBED, '-' },
-	{ "v2", OPT_V2, 's' },
-	{ "v1", OPT_V1, 's' },
+
+OPTIONS pkcs8_options[] = {
+	{ "inform", OPT_INFORM, 'F', "Input format (DER or PEM)" },
+	{ "outform", OPT_OUTFORM, 'F', "Output format (DER or PEM)" },
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "topk8", OPT_TOPK8, '-', "Output PKCS8 file" },
+	{ "noiter", OPT_NOITER, '-', "Use 1 as iteration count" },
+	{ "nocrypt", OPT_NOCRYPT, '-', "Use or expect unencrypted private key" },
+	{ "nooct", OPT_NOOCT, '-', "Use (nonstandard) no octet format" },
+	{ "nsdb", OPT_NSDB, '-', "Use (nonstandard) DSA Netscape DB format" },
+	{ "embed", OPT_EMBED, '-', "Use (nonstandard) embedded DSA parameters format" },
+	{ "v2", OPT_V2, 's', "Ase PKCS#5 v2.0 and cipher " },
+	{ "v1", OPT_V1, 's', "Use PKCS#5 v1.5 and cipher " },
 	{ "v2prf", OPT_V2PRF, 's' },
-	{ "iter", OPT_ITER, 'p' },
-	{ "passin", OPT_PASSIN, 's' },
-	{ "passout", OPT_PASSOUT, 's' },
+	{ "iter", OPT_ITER, 'p', "Specify the iteration count" },
+	{ "passin", OPT_PASSIN, 's', "Input file pass phrase source" },
+	{ "passout", OPT_PASSOUT, 's', "Output file pass phrase source" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
 	{ NULL }
 };
 
@@ -136,14 +116,13 @@ int pkcs8_main(int argc, char **argv)
 	enum options o;
 	char* prog;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, pkcs8_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 bad:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(pkcs8_help);
+			opt_help(pkcs8_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);

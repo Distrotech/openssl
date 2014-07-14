@@ -70,40 +70,22 @@
 #include <openssl/ssl.h>
 
 
-const char *engine_help[] = {
-	"-v          verbose mode; for each engine, list its 'control commands'",
-	"-vv         also display each command's description",
-	"-vvv        also add the input flags for each command",
-	"-vvvv       also show internal input flags",
-	"-c          for each engine, also list the capabilities",
-	"-t          check that each engine is available",
-	"-tt         display error trace for unavailable engines",
-	"-pre cmd    runs command 'cmd' against the ENGINE before any attempts",
-	"            to load it (if -t is used)",
-	"-post cmd   runs command 'cmd' against the ENGINE after loading it",
-	"            (only used if -t is also provided)",
-	"NB: -pre and -post will be applied to all ENGINEs supplied on the command",
-	"line, or all supported ENGINEs if none are specified.\n",
-	"Eg. '-pre \"SO_PATH:/lib/libdriver.so\"' calls command \"SO_PATH\" with",
-	"argument \"/lib/libdriver.so\".",
-NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_V, OPT_VV, OPT_VVV, OPT_VVVV, OPT_C,
 	OPT_T, OPT_TT, OPT_PRE, OPT_POST,
 };
-static OPTIONS options[] = {
-	{ "v", OPT_V, '-' },
-	{ "vv", OPT_VV, '-' },
-	{ "vvv", OPT_VVV, '-' },
-	{ "vvvv", OPT_VVVV, '-' },
-	{ "c", OPT_C, '-' },
-	{ "t", OPT_T, '-' },
-	{ "tt", OPT_TT, '-' },
-	{ "pre", OPT_PRE, 's' },
-	{ "post", OPT_POST, 's' },
+static OPTIONS engine_options[] = {
+	{ "v", OPT_V, '-', "For each engine, list its 'control commands'" },
+	{ "vv", OPT_VV, '-', "Also display each command's description" },
+	{ "vvv", OPT_VVV, '-', "Also add the input flags for each command" },
+	{ "vvvv", OPT_VVVV, '-', "Also show internal input flags" },
+	{ "c", OPT_C, '-', "List the capabilities of each engine" },
+	{ "t", OPT_T, '-', "Check that each engine is available" },
+	{ "tt", OPT_TT, '-', "Display error trace for unavailable engines" },
+	{ "pre", OPT_PRE, 's', "Run command against the ENGINE before loading it" },
+	{ "post", OPT_POST, 's', "Runs command against the ENGINE after loading it" },
+	{ OPT_MORE_STR, OPT_EOF, 1, "Commands are like \"SO_PATH:/lib/libdriver.so\"'" },
 	{ NULL }
 };
 
@@ -366,13 +348,12 @@ int engine_main(int argc, char **argv)
 	char* prog;
 
 	out=dup_bio_out();
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, engine_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(engine_help);
+			opt_help(engine_options);
 			goto end;
 		case OPT_VVVV:
 			verbose++;

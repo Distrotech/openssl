@@ -66,28 +66,6 @@
 #include <openssl/x509v3.h>
 #include <openssl/pem.h>
 
-
-const char *crl_help[]={
-	"-inform arg      input format - default PEM (DER or PEM)",
-	"-outform arg     output format - default PEM",
-	"-text            print out a text format version",
-	"-in arg          input file - default stdin",
-	"-out arg         output file - default stdout",
-	"-hash            print hash value",
-#ifndef OPENSSL_NO_MD5
-	"-hash_old        print old-style (MD5) hash value",
-#endif
-	"-fingerprint     print the crl fingerprint",
-	"-issuer          print issuer DN",
-	"-lastupdate      lastUpdate field",
-	"-nextupdate      nextUpdate field",
-	"-crlnumber       print CRL number",
-	"-noout           no CRL output",
-	"-CAfile name     verify CRL using certificates in file name",
-	"-CApath dir      verify CRL using certificates in dir",
-	"-nameopt arg     various certificate name options",
-NULL
-};
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_INFORM, OPT_IN, OPT_OUTFORM, OPT_OUT, OPT_KEYFORM, OPT_KEY,
@@ -95,30 +73,34 @@ enum options {
 	OPT_CRLNUMBER, OPT_BADSIG, OPT_GENDELTA, OPT_CAPATH, OPT_CAFILE,
 	OPT_VERIFY, OPT_TEXT, OPT_HASH, OPT_HASH_OLD, OPT_NOOUT,
 	OPT_NAMEOPT, OPT_MD
+
 };
-static OPTIONS options[] = {
-	{ "inform", OPT_INFORM, 'F' },
-	{ "in", OPT_IN, '<' },
-	{ "outform", OPT_OUTFORM, 'F' },
-	{ "out", OPT_OUT, '>' },
+
+OPTIONS crl_options[] = {
+	{ "inform", OPT_INFORM, 'F', "Input format; default PEM" },
+	{ "in", OPT_IN, '<', "Input file - default stdin" },
+	{ "outform", OPT_OUTFORM, 'F', "Output format - default PEM" },
+	{ "out", OPT_OUT, '>', "output file - default stdout" },
 	{ "keyform", OPT_KEYFORM, 'F' },
 	{ "key", OPT_KEY, '<' },
-	{ "issuer", OPT_ISSUER, '-' },
-	{ "lastupdate", OPT_LASTUPDATE, '-' },
-	{ "nextupdate", OPT_NEXTUPDATE, '-' },
-	{ "noout", OPT_NOOUT, '-' },
-	{ "fingerprint", OPT_FINGERPRINT, '-' },
-	{ "crlnumber", OPT_CRLNUMBER, '-' },
+	{ "issuer", OPT_ISSUER, '-', "Print issuer DN" },
+	{ "lastupdate", OPT_LASTUPDATE, '-', "Set lastUpdate field" },
+	{ "nextupdate", OPT_NEXTUPDATE, '-', "Set nextUpdate field" },
+	{ "noout", OPT_NOOUT, '-', "No CRL output" },
+	{ "fingerprint", OPT_FINGERPRINT, '-', "Print the crl fingerprint" },
+	{ "crlnumber", OPT_CRLNUMBER, '-', "Print CRL number" },
 	{ "badsig", OPT_BADSIG, '-' },
 	{ "gendelta", OPT_GENDELTA, '<' },
-	{ "CApath", OPT_CAPATH, '/' },
-	{ "CAfile", OPT_CAFILE, '<' },
+	{ "CApath", OPT_CAPATH, '/', "Verify CRL using certificates in dir" },
+	{ "CAfile", OPT_CAFILE, '<', "Verify CRL using certificates in file name" },
 	{ "verify", OPT_VERIFY, '-' },
-	{ "text", OPT_TEXT, '-' },
-	{ "hash", OPT_HASH, '-' },
-	{ "hash_old", OPT_HASH_OLD, '-' },
-	{ "nameopt", OPT_NAMEOPT, 's' },
-	{ "", OPT_MD, '-' },
+	{ "text", OPT_TEXT, '-', "Print out a text format version" },
+	{ "hash", OPT_HASH, '-', "Print hash value" },
+#ifndef OPENSSL_NO_MD5
+	{ "hash_old", OPT_HASH_OLD, '-', "Print old-style (MD5) hash value" },
+#endif
+	{ "nameopt", OPT_NAMEOPT, 's', "Various certificate name options" },
+	{ "", OPT_MD, '-', "Digest algorithm" },
 	{ NULL }
 };
 
@@ -144,16 +126,15 @@ int crl_main(int argc, char **argv)
 	X509_OBJECT xobj;
 	EVP_PKEY *pkey;
 	int i,do_ver = 0;
-	const EVP_MD *md_alg,*digest=EVP_sha1();
+	const EVP_MD *digest=EVP_sha1();
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, crl_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 bad:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(crl_help);
+			opt_help(crl_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);
@@ -224,7 +205,7 @@ bad:
 				goto bad;
 			break;
 		case OPT_MD:
-			if (!opt_md(opt_unknown(), &md_alg))
+			if (!opt_md(opt_unknown(), &digest))
 				goto bad;
 		}
 	}

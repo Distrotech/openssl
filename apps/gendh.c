@@ -82,26 +82,21 @@
 
 static int dh_cb(int p, int n, BN_GENCB *cb);
 
-const char* gendh_help[] = {
-	"-out file      output the key to 'file",
-	"-2             use 2 as the generator value",
-	"-5             use 5 as the generator value",
-	"-rand file...  load the file(s) into the random number generator",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e      use engine e, possibly a hardware device.",
-#endif
-	NULL
-};
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_OUT, OPT_2, OPT_5, OPT_ENGINE, OPT_RAND
 };
-static OPTIONS options[] = {
-	{ "out", OPT_OUT, '>' },
-	{ "2", OPT_2, '-' },
-	{ "5", OPT_5, '-' },
-	{ "engine", OPT_ENGINE, 's' },
-	{ "rand", OPT_RAND, 's' },
+
+OPTIONS gendh_options[] = {
+	{ OPT_HELP_STR, 1, '-', "Usage: %s [options] numbits\n" },
+	{ OPT_HELP_STR, 1, '-', "Valid options are:\n" },
+	{ "out", OPT_OUT, '>', "Output the key to specified file" },
+	{ "2", OPT_2, '-', "Use 2 as the generator value" },
+	{ "5", OPT_5, '-', "Use 5 as the generator value" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
+	{ "rand", OPT_RAND, 's', "Load the file(s) into the random number generator" },
 	{ NULL }
 };
 
@@ -120,15 +115,13 @@ int gendh_main(int argc, char **argv)
 #endif
 
 	BN_GENCB_set(&cb, dh_cb, bio_err);
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, gendh_options);
 	while ((i = opt_next()) != OPT_EOF) {
 		switch (i) {
-		default:
 		case OPT_EOF:
-			BIO_printf(bio_err,"%s: Unhandled flag %d\n", prog, i);
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(gendh_help);
+err:
+			opt_help(gendh_options);
 			goto end;
 		case OPT_OUT:
 			outfile = opt_arg();
@@ -149,12 +142,8 @@ int gendh_main(int argc, char **argv)
 	}
 	argv = opt_rest();
 	if (argv[0] != NULL && (sscanf(*argv,"%d",&num) == 0 || num < 0))
-		{
-		BIO_printf(bio_err,"usage: gendh [args] [numbits]\n");
-		printhelp(gendh_help);
-		goto end;
-		}
-		
+		goto err;
+
 #ifndef OPENSSL_NO_ENGINE
         setup_engine(bio_err, engine, 0);
 #endif

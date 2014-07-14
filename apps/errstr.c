@@ -66,16 +66,14 @@
 #include <openssl/ssl.h>
 
 
-const char* errstr_help[] = {
-	"-stats    print internal hashtable statistics (long!)",
-	NULL
-};
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_STATS
 };
-static OPTIONS options[] = {
-	{ "stats", OPT_STATS, '-' },
+
+static OPTIONS errstr_options[] = {
+	{ "stats", OPT_STATS, '-',
+		"Print internal hashtable statistics (long!)" },
 	{ NULL }
 };
 
@@ -87,13 +85,12 @@ int errstr_main(int argc, char **argv)
 	char* prog;
 	unsigned long l;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, errstr_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(errstr_help);
+			opt_help(errstr_options);
 			return 1;
 		case OPT_STATS:
 			lh_ERR_STRING_DATA_node_stats_bio(
