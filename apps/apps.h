@@ -188,8 +188,8 @@ extern void unbuffer(FILE* fp);
 	{ "verify_ip", OPT_V_VERIFY_IP, 's' }, \
 	{ "ignore_critical", OPT_V_IGNORE_CRITICAL, '-' }, \
 	{ "issuer_checks", OPT_V_ISSUER_CHECKS, '-' }, \
-	{ "crl_check", OPT_V_CRL_CHECK, '-' }, \
-	{ "crl_check_all", OPT_V_CRL_CHECK_ALL, '-' }, \
+	{ "crl_check", OPT_V_CRL_CHECK, '-', "Check the cert has not been revoked" }, \
+	{ "crl_check_all", OPT_V_CRL_CHECK_ALL, '-', "Also check all certs in the chain" }, \
 	{ "policy_check", OPT_V_POLICY_CHECK, '-' }, \
 	{ "explicit_policy", OPT_V_EXPLICIT_POLICY, '-' }, \
 	{ "inhibit_any", OPT_V_INHIBIT_ANY, '-' }, \
@@ -199,7 +199,7 @@ extern void unbuffer(FILE* fp);
 	{ "use_deltas", OPT_V_USE_DELTAS, '-' }, \
 	{ "policy_print", OPT_V_POLICY_PRINT, '-' }, \
 	{ "check_ss_sig", OPT_V_CHECK_SS_SIG, '-' }, \
-	{ "trusted_first", OPT_V_TRUSTED_FIRST, '-' }, \
+	{ "trusted_first", OPT_V_TRUSTED_FIRST, '-', "Use locally-trusted CA's first in building chain" }, \
 	{ "suiteB_128_only", OPT_V_SUITEB_128_ONLY, '-' }, \
 	{ "suiteB_128", OPT_V_SUITEB_128, '-' }, \
 	{ "suiteB_192", OPT_V_SUITEB_192, '-' }, \

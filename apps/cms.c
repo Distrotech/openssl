@@ -1276,7 +1276,8 @@ static int cms_cb(int ok, X509_STORE_CTX *ctx)
 		&& ((error != X509_V_OK) || (ok != 2)))
 		return ok;
 
-	policies_print(NULL, ctx);
+	/* Should be bio_err? */
+	policies_print(bio_out, ctx);
 
 	return ok;
 
