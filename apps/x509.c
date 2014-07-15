@@ -100,7 +100,7 @@ static int force_version=2;
 #endif
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_INFORM, OPT_OUTFORM, OPT_KEYFORM, OPT_REQ, OPT_CAFORM,
 	OPT_CAKEYFORM, OPT_SIGOPT, OPT_DAYS, OPT_PASSIN, OPT_EXTFILE,
 	OPT_EXTENSIONS, OPT_IN, OPT_OUT, OPT_SIGNKEY, OPT_CA,
@@ -123,6 +123,7 @@ enum options {
 };
 
 OPTIONS x509_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "inform", OPT_INFORM, 'f', "Input format - default PEM (one of DER, NET or PEM)" },
 	{ "in", OPT_IN, '<', "Input file - default stdin" },
 	{" outform", OPT_OUTFORM, 'f', "Output format - default PEM (one of DER, NET or PEM)" },
@@ -243,6 +244,7 @@ int x509_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 err:
 			opt_help(x509_options);
 			goto end;

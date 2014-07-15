@@ -231,13 +231,14 @@ static char *srp_create_user(char *user, char **srp_verifier,
 	}
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_VERBOSE, OPT_CONFIG, OPT_NAME, OPT_SRPVFILE, OPT_ADD,
 	OPT_DELETE, OPT_MODIFY, OPT_LIST, OPT_GN, OPT_USERINFO,
 	OPT_PASSIN, OPT_PASSOUT, OPT_ENGINE,
 };
 
 static OPTIONS srp_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "verbose", OPT_VERBOSE, '-', "Talk a lot while doing things" },
 	{ "config", OPT_CONFIG, '<', "A config file" },
 	{ "name", OPT_NAME, 's', "The particular srp definition to use" },
@@ -275,6 +276,7 @@ int srp_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 err:
 			opt_help(srp_options);
 			goto end;

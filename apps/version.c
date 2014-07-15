@@ -133,11 +133,12 @@
 #endif
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_B, OPT_D, OPT_F, OPT_O, OPT_P, OPT_V, OPT_A
 };
 
 OPTIONS version_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "a", OPT_A, '-', "Show all data" },
 	{ "b", OPT_B, '-', "Show build date" },
 	{ "d", OPT_D, '-', "Show configuration directory" },
@@ -160,6 +161,7 @@ int version_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 			opt_help(version_options);
 			goto end;
 		case OPT_B: date=1; break;

@@ -83,7 +83,7 @@
 static int genrsa_cb(int p, int n, BN_GENCB *cb);
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_3, OPT_F4, OPT_NON_FIPS_ALLOW, OPT_ENGINE,
 	OPT_OUT, OPT_RAND, OPT_PASSOUT,
 #ifndef OPENSSL_NO_DES
@@ -103,7 +103,8 @@ enum options {
 #endif
 };
 
-static OPTIONS genrsa_options[] = {
+OPTIONS genrsa_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "3", OPT_3, '-', "Use 3 for the E value" },
 	{ "F4", OPT_F4, '-', "Use F4 (0x10001) for the E value" },
 	{ "f4", OPT_F4, '-', "Use F4 (0x10001) for the E value" },
@@ -161,6 +162,7 @@ int genrsa_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 			opt_help(genrsa_options);
 			goto err;
 		case OPT_3:

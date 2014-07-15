@@ -83,13 +83,14 @@
 static int dh_cb(int p, int n, BN_GENCB *cb);
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_OUT, OPT_2, OPT_5, OPT_ENGINE, OPT_RAND
 };
 
 OPTIONS gendh_options[] = {
 	{ OPT_HELP_STR, 1, '-', "Usage: %s [options] numbits\n" },
 	{ OPT_HELP_STR, 1, '-', "Valid options are:\n" },
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "out", OPT_OUT, '>', "Output the key to specified file" },
 	{ "2", OPT_2, '-', "Use 2 as the generator value" },
 	{ "5", OPT_5, '-', "Use 5 as the generator value" },
@@ -120,6 +121,7 @@ int gendh_main(int argc, char **argv)
 		switch (i) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 err:
 			opt_help(gendh_options);
 			goto end;

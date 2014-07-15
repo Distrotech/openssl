@@ -81,13 +81,14 @@ static OPT_PAIR param_enc[] = {
 };
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_INFORM, OPT_OUTFORM, OPT_ENGINE, OPT_IN, OPT_OUT,
 	OPT_NOOUT, OPT_TEXT, OPT_PARAM_OUT, OPT_PUBIN, OPT_PUBOUT,
 	OPT_PASSIN, OPT_PASSOUT, OPT_PARAM_ENC, OPT_CONV_FORM, OPT_CIPHER,
 };
 
 OPTIONS ec_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "in", OPT_IN, '<', "Input file" },
 	{ "inform", OPT_INFORM, 'F', "Input format - DER or PEM" },
 	{ "out", OPT_OUT, '>', "Output file" },
@@ -132,6 +133,7 @@ int ec_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 bad:
 			opt_help(ec_options);
 			goto end;

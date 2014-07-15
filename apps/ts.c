@@ -115,7 +115,7 @@ static int verify_cb(int ok, X509_STORE_CTX *ctx);
 
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_ENGINE, OPT_CONFIG, OPT_SECTION, OPT_QUERY, OPT_DATA,
 	OPT_DIGEST, OPT_RAND, OPT_POLICY, OPT_NO_NONCE, OPT_CERT,
 	OPT_IN, OPT_TOKEN_IN, OPT_OUT, OPT_TOKEN_OUT, OPT_TEXT,
@@ -125,6 +125,7 @@ enum options {
 };
 
 OPTIONS ts_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "config", OPT_CONFIG, '<' },
 	{ "section", OPT_SECTION, 's' },
 	{ "query", OPT_QUERY, '-' },
@@ -176,6 +177,7 @@ int ts_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 err:
 			opt_help(ts_options);
 			goto end;

@@ -70,12 +70,13 @@
 #include <openssl/pem.h>
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_INFORM, OPT_IN, OPT_OUT, OPT_INDENT, OPT_NOOUT,
 	OPT_OID, OPT_OFFSET, OPT_LENGTH, OPT_DUMP, OPT_DLIMIT,
 	OPT_STRPARSE, OPT_GENSTR, OPT_GENCONF, OPT_STRICTPEM
 };
 OPTIONS asn1parse_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "inform", OPT_INFORM, 'F', "input format - one of DER PEM" },
 	{ "in", OPT_IN, '<', "input file" },
 	{ "out", OPT_OUT, '>', "output file (output format is always DER)" },
@@ -129,6 +130,7 @@ int asn1parse_main(int argc, char **argv)
 		switch (i) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 			opt_help(asn1parse_options);
 			goto end;
 		case OPT_INFORM:

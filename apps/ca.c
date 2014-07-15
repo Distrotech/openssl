@@ -192,7 +192,7 @@ static int preserve=0;
 static int msie_hack=0;
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_ENGINE, OPT_VERBOSE, OPT_CONFIG, OPT_NAME, OPT_SUBJ, OPT_UTF8,
 	OPT_CREATE_SERIAL, OPT_MULTIVALUE_RDN, OPT_STARTDATE, OPT_ENDDATE,
 	OPT_DAYS, OPT_MD, OPT_POLICY, OPT_KEYFILE, OPT_KEYFORM, OPT_PASSIN,
@@ -205,9 +205,7 @@ enum options {
 };
 
 OPTIONS ca_options[] = {
-#ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
-#endif
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "verbose", OPT_VERBOSE, '-', "Verbose output during processing" },
 	{ "config", OPT_CONFIG, 's', "A config file" },
 	{ "name", OPT_NAME, 's', "The particular CA definition to use" },
@@ -253,6 +251,9 @@ OPTIONS ca_options[] = {
 	{ "crl_hold", OPT_CRL_HOLD, 's' },
 	{ "crl_compromise", OPT_CRL_COMPROMISE, 's' },
 	{ "crl_CA_compromise", OPT_CRL_CA_COMPROMISE, 's' },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
 	{ NULL }
 };
 
@@ -304,6 +305,7 @@ int ca_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 			opt_help(ca_options);
 			goto err;
 		case OPT_IN:

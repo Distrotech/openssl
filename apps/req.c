@@ -128,7 +128,7 @@ static CONF *req_conf=NULL;
 static int batch=0;
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_INFORM, OPT_OUTFORM, OPT_ENGINE, OPT_KEYGEN_ENGINE, OPT_KEY,
 	OPT_PUBKEY, OPT_NEW, OPT_CONFIG, OPT_KEYFORM, OPT_IN, OPT_OUT,
 	OPT_KEYOUT, OPT_PASSIN, OPT_PASSOUT, OPT_RAND, OPT_NEWKEY,
@@ -140,6 +140,7 @@ enum options {
 };
 
 OPTIONS req_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "inform", OPT_INFORM, 'F', "Input format - DER or PEM" },
 	{ "outform", OPT_OUTFORM, 'F', "Output format - DER or PEM" },
 	{ "in", OPT_IN, '<', "Input file" },
@@ -231,6 +232,7 @@ int req_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 bad:
 			opt_help(req_options);
 			goto end;

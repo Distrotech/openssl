@@ -72,13 +72,14 @@
 
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_NOOUT, OPT_PUBKEY, OPT_VERIFY, OPT_IN, OPT_OUT,
 	OPT_ENGINE, OPT_KEY, OPT_CHALLENGE, OPT_PASSIN, OPT_SPKAC,
 	OPT_SPKSECT,
 };
 
 OPTIONS spkac_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "in", OPT_IN, '<', "Input file" },
 	{ "out", OPT_OUT, '>', "Output file" },
 	{ "key", OPT_KEY, '<', "Create SPKAC using private key" },
@@ -117,6 +118,7 @@ int spkac_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 			opt_help(spkac_options);
 			goto end;
 		case OPT_IN:

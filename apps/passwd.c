@@ -41,13 +41,14 @@ static int do_passwd(int passed_salt, char **salt_p, char **salt_malloc_p,
 	size_t pw_maxlen, int usecrypt, int use1, int useapr1);
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_IN,
 	OPT_NOVERIFY, OPT_QUIET, OPT_TABLE, OPT_REVERSE, OPT_APR1,
 	OPT_1, OPT_CRYPT, OPT_SALT, OPT_STDIN,
 };
 
 OPTIONS passwd_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "in", OPT_IN, '<', "Pead passwords from file" },
 	{ "noverify", OPT_NOVERIFY, '-', "Never verify when reading password from terminal" },
 	{ "quiet", OPT_QUIET, '-', "No warnings" },
@@ -89,6 +90,7 @@ int passwd_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 bad:
 			opt_help(passwd_options);
 			goto err;

@@ -69,12 +69,13 @@
 #include <openssl/pem.h>
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT, OPT_NOOUT,
 	OPT_TEXT, OPT_PRINT, OPT_PRINT_CERTS, OPT_ENGINE,
 };
 
 OPTIONS pkcs7_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "inform", OPT_INFORM, 'F', "Input format - DER or PEM" },
 	{ "in", OPT_IN, '<', "Input file" },
 	{ "outform", OPT_OUTFORM, 'F', "Output format - DER or PEM" },
@@ -107,6 +108,7 @@ int pkcs7_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 			opt_help(pkcs7_options);
 			goto end;
 		case OPT_INFORM:

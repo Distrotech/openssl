@@ -63,11 +63,12 @@
 #include <openssl/evp.h>
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_IN, OPT_OUT, OPT_TEXT, OPT_NOOUT, OPT_ENGINE,
 };
 
 OPTIONS pkeyparam_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "in", OPT_IN, '<', "Input file" },
 	{ "out", OPT_OUT, '>', "Output file" },
 	{ "text", OPT_TEXT, '-', "Print parameters as text" },
@@ -94,6 +95,7 @@ int pkeyparam_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 			opt_help(pkeyparam_options);
 			goto end;
 		case OPT_IN:

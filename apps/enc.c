@@ -81,7 +81,7 @@ static int set_hex(char *in,unsigned char *out,int size);
 static void show_ciphers(const OBJ_NAME *name,void *bio_);
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_E, OPT_IN, OPT_OUT, OPT_PASS, OPT_ENGINE, OPT_D, OPT_P, OPT_V,
 	OPT_NOPAD, OPT_SALT, OPT_NOSALT, OPT_DEBUG, OPT_UPPER_P, OPT_UPPER_A,
 	OPT_A, OPT_Z, OPT_BUFSIZE, OPT_K, OPT_KFILE, OPT_UPPER_K, OPT_NONE,
@@ -89,6 +89,7 @@ enum options {
 };
 
 OPTIONS enc_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "in", OPT_IN, '<', "Input file" },
 	{ "out", OPT_OUT, '>', "Output file" },
 	{ "pass", OPT_PASS, 's', "Passphrase source" },
@@ -171,6 +172,7 @@ int enc_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 err:
 			opt_help(enc_options);
 			BIO_printf(bio_err,"Cipher Types\n");

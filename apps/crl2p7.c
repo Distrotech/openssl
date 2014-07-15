@@ -74,11 +74,12 @@
 static int add_certs_from_file(STACK_OF(X509) *stack, char *certfile);
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT, OPT_NOCRL, OPT_CERTFILE,
 };
 
 OPTIONS crl2pkcs7_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "inform", OPT_INFORM, 'F', "Input format - DER or PEM" },
 	{ "outform", OPT_OUTFORM, 'F', "Output format - DER or PEM" },
 	{ "in", OPT_IN, '<', "Input file" },
@@ -107,6 +108,7 @@ int crl2pkcs7_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 			opt_help(crl2pkcs7_options);
 			goto end;
 		case OPT_INFORM:
