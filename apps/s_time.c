@@ -112,33 +112,6 @@ extern int verify_error;
 
 static SSL *doConnection(SSL *scon, const char* host, SSL_CTX* ctx);
 
-const char* s_time_help[] = {
-	"-time arg      max number of seconds to collect data, default" SECONDSSTR,
-	"-verify arg    turn on peer certificate verification, arg == depth",
-	"-cert arg      certificate file to use, PEM format assumed",
-	"-key arg       RSA file to use, PEM format assumed, key is in cert file",
-	"               file if not specified by this option",
-	"-CApath arg    PEM format directory of CA's",
-	"-CAfile arg    PEM format file of CA's",
-	"-cipher        preferred cipher to use, play with 'openssl ciphers'",
-
-	"-connect host:port  where to connect to (default is "SSL_CONNECT_NAME ")",
-#ifndef OPENSSL_NO_SSL2
-	"-ssl2          just use SSLv2",
-#endif
-#ifndef OPENSSL_NO_SSL3
-	"-ssl3          just use SSLv3",
-#endif
-	"-bugs          turn on SSL bug compatibility",
-	"-new           just time new connections",
-	"-reuse         just time connection reuse",
-	"-www page      retrieve 'page' from the site",
-#ifdef FIONBIO
-	"-nbio          use non-blocking IO",
-#endif
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0, OPT_CONNECT, OPT_CIPHER, OPT_CERT,
 	OPT_KEY, OPT_CAPATH, OPT_CAFILE, OPT_NEW, OPT_REUSE, OPT_BUGS,
@@ -154,27 +127,27 @@ enum options {
 #endif
 };
 
-static OPTIONS options[] = {
-	{ "connect", OPT_CONNECT, 's' },
-	{ "cipher", OPT_CIPHER, 's' },
-	{ "cert", OPT_CERT, '<' },
-	{ "key", OPT_KEY, '<' },
-	{ "CApath", OPT_CAPATH, '/' },
-	{ "cafile", OPT_CAFILE, '<' },
-	{ "new", OPT_NEW, '-' },
-	{ "reuse", OPT_REUSE, '-' },
-	{ "bugs", OPT_BUGS, '-' },
-	{ "verify", OPT_VERIFY, 'p' },
-	{ "time", OPT_TIME, 'p' },
-	{ "www", OPT_WWW, 's' },
+OPTIONS s_time_options[] = {
+	{ "connect", OPT_CONNECT, 's', "Where to connect as post:port (default is "SSL_CONNECT_NAME ")" },
+	{ "cipher", OPT_CIPHER, 's', "Cipher to use, see 'openssl ciphers'" },
+	{ "cert", OPT_CERT, '<', "Cert file to use, PEM format assumed" },
+	{ "key", OPT_KEY, '<', "File with key, PEM; default is -cert file" },
+	{ "CApath", OPT_CAPATH, '/', "PEM format directory of CA's" },
+	{ "cafile", OPT_CAFILE, '<', "PEM format file of CA's" },
+	{ "new", OPT_NEW, '-', "Just time new connections" },
+	{ "reuse", OPT_REUSE, '-', "Just time connection reuse" },
+	{ "bugs", OPT_BUGS, '-', "Turn on SSL bug compatibility" },
+	{ "verify", OPT_VERIFY, 'p', "Turn on peer certificate verification, set depth" },
+	{ "time", OPT_TIME, 'p', "Sf seconds to collect data, default" SECONDSSTR },
+	{ "www", OPT_WWW, 's', "Fetch specified page from the site" },
 #ifndef OPENSSL_NO_SSL2
-	{ "ssl2", OPT_SSL2, '-' },
+	{ "ssl2", OPT_SSL2, '-', "Just use SSLv2" },
 #endif
 #ifndef OPENSSL_NO_SSL3
-	{ "ssl3", OPT_SSL3, '-' },
+	{ "ssl3", OPT_SSL3, '-', "Just use SSLv3" },
 #endif
 #ifdef FIONBIO
-	{ "nbio", OPT_NBIO, '-' },
+	{ "nbio", OPT_NBIO, '-', "Use non-blocking IO" },
 #endif
 	{ NULL }
 };
@@ -190,23 +163,15 @@ static double tm_Time_F(int s)
 
 int s_time_main(int argc, char **argv)
 	{
-	double totalTime=0.0;
-	int nConn=0;
-	SSL *scon=NULL;
-	long finishtime=0;
-	int ret=1,i;
 	MS_STATIC char buf[1024*8];
-	int ver;
-	char* prog;
-	char *host=SSL_CONNECT_NAME, *certfile =NULL, *keyfile=NULL;
-	char *CApath=NULL, *CAfile=NULL, *cipher=NULL;
-	int maxtime=SECONDS;
-	const SSL_METHOD *meth=NULL;
+	SSL *scon=NULL;
 	SSL_CTX *ctx=NULL;
-	char *www_path=NULL;
-	long bytes_read=0; 
-	int st_bugs=0;
-	int perform=3;
+	const SSL_METHOD *meth=NULL;
+	char *CApath=NULL, *CAfile=NULL, *cipher=NULL, *www_path=NULL;
+	char *host=SSL_CONNECT_NAME, *certfile =NULL, *keyfile=NULL, *prog;
+	double totalTime=0.0;
+	int maxtime=SECONDS, nConn=0, perform=3, ret=1, i, st_bugs=0, ver;
+	long bytes_read=0, finishtime=0;
 	enum options o;
 #ifdef FIONBIO
 	int t_nbio=0;
@@ -227,28 +192,27 @@ int s_time_main(int argc, char **argv)
 	verify_depth=0;
 	verify_error=X509_V_OK;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, s_time_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 err:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(s_time_help);
+			opt_help(s_time_options);
 			goto end;
 		case OPT_CONNECT:
-			host= opt_arg();
+			host = opt_arg();
 			break;
 		case OPT_REUSE:
-			perform=2;
+			perform = 2;
 			break;
 		case OPT_NEW:
-			perform=1;
+			perform = 1;
 			break;
 		case OPT_VERIFY:
 			if (!opt_int(opt_arg(), &verify_depth))
 				goto err;
-			BIO_printf(bio_err, "%s verify depth is %d\n",
+			BIO_printf(bio_err, "%s: verify depth is %d\n",
 				prog, verify_depth);
 			break;
 		case OPT_CERT:

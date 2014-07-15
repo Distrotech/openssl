@@ -114,26 +114,6 @@ static X509_STORE *create_cert_store(char *ca_path, char *ca_file);
 static int verify_cb(int ok, X509_STORE_CTX *ctx);
 
 
-const char* ts_help[] = {
-	"ts -query [-rand filefile%c...] [-config configfile] "
-		   "[-data file_to_hash] [-digest digest_bytes]"
-		   "[-md2|-md4|-md5|-sha|-sha1|-mdc2|-ripemd160] "
-		   "[-policy object_id] [-no_nonce] [-cert] "
-		   "[-in request.tsq] [-out request.tsq] [-text]",
-	"ts -reply [-config configfile] [-section tsa_section] "
-		   "[-queryfile request.tsq] [-passin password] "
-		   "[-signer tsa_cert.pem] [-inkey private_key.pem] "
-		   "[-chain certs_file.pem] [-policy object_id] "
-		   "[-in response.tsr] [-token_in] "
-		   "[-out response.tsr] [-token_out] [-text] [-engine id]",
-	"ts -verify [-data file_to_hash] [-digest digest_bytes] "
-		"[-queryfile request.tsq] "
-		"-in response.tsr [-token_in] "
-		"-CApath ca_path -CAfile ca_file.pem "
-		"-untrusted cert_file.pem",
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_ENGINE, OPT_CONFIG, OPT_SECTION, OPT_QUERY, OPT_DATA,
@@ -144,10 +124,7 @@ enum options {
 	OPT_MD,
 };
 
-static OPTIONS options[] = {
-#ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
-#endif
+OPTIONS ts_options[] = {
 	{ "config", OPT_CONFIG, '<' },
 	{ "section", OPT_SECTION, 's' },
 	{ "query", OPT_QUERY, '-' },
@@ -172,7 +149,10 @@ static OPTIONS options[] = {
 	{ "CApath", OPT_CAPATH, '/' },
 	{ "CAfile", OPT_CAFILE, '<' },
 	{ "untrusted", OPT_UNTRUSTED, '<' },
-	{ "", OPT_MD, '-' },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
+	{ "", OPT_MD, '-', "Any supported digest" },
 	{ NULL }
 };
 
@@ -191,14 +171,14 @@ int ts_main(int argc, char **argv)
 	int token_out=0; /* Output is ContentInfo instead of TimeStampResp. */
 	enum options o;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, ts_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 err:
 			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(ts_help);
+			opt_help(ts_options);
 			goto end;
 		case OPT_CONFIG:
 			configfile = opt_arg();

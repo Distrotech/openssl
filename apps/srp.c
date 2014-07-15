@@ -78,28 +78,6 @@
 #define ENV_DATABASE		"srpvfile"
 #define ENV_DEFAULT_SRP		"default_srp"
 
-const char *srp_help[]={
-	"-verbose        Talk a lot while doing things",
-	"-config file    A config file",
-	"-name arg       The particular srp definition to use",
-	"-srpvfile arg   The srp verifier file name",
-	"-add            add an user and srp verifier",
-	"-modify         modify the srp verifier of an existing user",
-	"-delete         delete user from verifier file",
-	"-list           list user",
-	"-gn arg         g and N values to be used for new verifier",
-	"-userinfo arg   additional info to be set for user",
-	"-passin arg     input file pass phrase source",
-	"-passout arg    output file pass phrase source",
-	/* XXX rsalz; has LIST_SEP_CHAR */
-	"-rand file...   load the file(s) into the random number generator",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e       use engine e, possibly a hardware device.",
-#endif
-NULL
-};
-
-
 static int get_index(CA_DB *db, char* id, char type)
 	{
 	char ** pp;
@@ -258,49 +236,47 @@ enum options {
 	OPT_DELETE, OPT_MODIFY, OPT_LIST, OPT_GN, OPT_USERINFO,
 	OPT_PASSIN, OPT_PASSOUT, OPT_ENGINE,
 };
-static OPTIONS options[] = {
-	{ "verbose", OPT_VERBOSE, '-' },
-	{ "config", OPT_CONFIG, '<' },
-	{ "name", OPT_NAME, 's' },
-	{ "srpvfile", OPT_SRPVFILE, '<' },
-	{ "add", OPT_ADD, '-' },
-	{ "delete", OPT_DELETE, '-' },
-	{ "modify", OPT_MODIFY, '-' },
-	{ "list", OPT_LIST, '-' },
-	{ "gn", OPT_GN, 's' },
-	{ "userinfo", OPT_USERINFO, 's' },
-	{ "passin", OPT_PASSIN, 's' },
-	{ "passout", OPT_PASSOUT, 's' },
-	{ "engine", OPT_ENGINE, 's' },
+
+static OPTIONS srp_options[] = {
+	{ "verbose", OPT_VERBOSE, '-', "Talk a lot while doing things" },
+	{ "config", OPT_CONFIG, '<', "A config file" },
+	{ "name", OPT_NAME, 's', "The particular srp definition to use" },
+	{ "srpvfile", OPT_SRPVFILE, '<', "The srp verifier file name" },
+	{ "add", OPT_ADD, '-', "Add a user and srp verifier" },
+	{ "modify", OPT_MODIFY, '-', "Modify the srp verifier of an existing user" },
+	{ "delete", OPT_DELETE, '-', "Delete user from verifier file" },
+	{ "list", OPT_LIST, '-', "List users" },
+	{ "gn", OPT_GN, 's', "Set g and N values to be used for new verifier" },
+	{ "userinfo", OPT_USERINFO, 's', "Additional info to be set for user" },
+	{ "passin", OPT_PASSIN, 's', "Input file pass phrase source" },
+	{ "passout", OPT_PASSOUT, 's', "Output file pass phrase source" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
 	{ NULL }
 };
 
 int srp_main(int argc, char **argv)
 	{
-	int gNindex=-1, maxgN=-1, ret=1, errors=0, verbose=0;
-	int i, doupdatedb=0;
-	char *user=NULL, *passinarg=NULL, *passoutarg=NULL;
-	char *passin=NULL, *passout=NULL, *gN=NULL, *userinfo=NULL;
-	char **gNrow=NULL;
-	char *configfile=NULL, *dbfile=NULL;
 	CA_DB *db=NULL;
-	char **pp;
-	long errorline=-1;
-	char *randfile=NULL, *engine=NULL, *tofree=NULL, *section=NULL;
 	DB_ATTR db_attr;
 	CONF *conf=NULL;
-	enum options o;
-	char* prog;
+	int gNindex=-1, maxgN=-1, ret=1, errors=0, verbose=0, i, doupdatedb=0;
 	int mode = OPT_ERR;
+	char *user=NULL, *passinarg=NULL, *passoutarg=NULL;
+	char *passin=NULL, *passout=NULL, *gN=NULL, *userinfo=NULL;
+	char *randfile=NULL, *engine=NULL, *tofree=NULL, *section=NULL;
+	char **gNrow=NULL, *configfile=NULL, *dbfile=NULL, **pp, *prog;
+	long errorline=-1;
+	enum options o;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, srp_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 err:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(srp_help);
+			opt_help(srp_options);
 			goto end;
 		case OPT_VERBOSE:
 			verbose++;

@@ -330,7 +330,6 @@ extern char* opt_reset(void);
 extern char** opt_rest(void);
 extern int opt_num_rest(void);
 extern int opt_verify(int i, X509_VERIFY_PARAM* vpm);
-extern void printhelp(const char**);
 extern void opt_help(const OPTIONS* list);
 
 typedef struct args_st

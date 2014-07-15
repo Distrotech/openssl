@@ -99,75 +99,6 @@ static int purpose_print(BIO *bio, X509 *cert, X509_PURPOSE *pt);
 static int force_version=2;
 #endif
 
-
-const char *x509_help[]={
-	"-inform arg       input format - default PEM (one of DER, NET or PEM)",
-	"-outform arg      output format - default PEM (one of DER, NET or PEM)",
-	"-keyform arg      private key format - default PEM",
-	"-CAform arg       CA format - default PEM",
-	"-CAkeyform arg    CA key format - default PEM",
-	"-in arg           input file - default stdin",
-	"-out arg          output file - default stdout",
-	"-passin arg       private key password source",
-	"-serial           print serial number value",
-	"-subject_hash     print subject hash value",
-#ifndef OPENSSL_NO_MD5
-	"-subject_hash_old print old-style (MD5) subject hash value",
-#endif
-	"-issuer_hash      print issuer hash value",
-#ifndef OPENSSL_NO_MD5
-	"-issuer_hash_old  print old-style (MD5) issuer hash value",
-#endif
-	"-hash             synonym for -subject_hash",
-	"-subject          print subject DN",
-	"-issuer           print issuer DN",
-	"-email            print email address(es)",
-	"-startdate        notBefore field",
-	"-enddate          notAfter field",
-	"-purpose          print out certificate purposes",
-	"-dates            both Before and After dates",
-	"-modulus          print the RSA key modulus",
-	"-pubkey           output the public key",
-	"-fingerprint      print the certificate fingerprint",
-	"-alias            output certificate alias",
-	"-noout            no certificate output",
-	"-ocspid           print OCSP hash values for the subject name and public key",
-	"-ocsp_uri         print OCSP Responder URL(s)",
-	"-trustout         output a trusted certificate",
-	"-clrtrust         clear all trusted purposes",
-	"-clrreject        clear all rejected purposes",
-	"-addtrust arg     trust certificate for a given purpose",
-	"-addreject arg    reject certificate for a given purpose",
-	"-setalias arg     set certificate alias",
-	"-days arg         how long till expiry of a signed certificate - def 30 days",
-	"-checkend arg     check whether the cert expires in the next arg seconds",
-	"                  exit 1 if so, 0 if not",
-	"-signkey arg      self sign cert with arg",
-	"-x509toreq        output a certification request object",
-	"-req              input is a certificate request, sign and output.",
-	"-CA arg           set the CA certificate, must be PEM format.",
-	"-CAkey arg        set the CA key, must be PEM format",
-	"                  if missing, it is assumed to be in the CA file.",
-	"-CAcreateserial   create serial number file if it does not exist",
-	"-CAserial arg     serial file",
-	"-set_serial       serial number to use",
-	"-text             print the certificate in text form",
-	"-C                print out C code forms",
-	"-{digest}         digest to use",
-	"-extfile          configuration file with X509V3 extensions to add",
-	"-extensions       section from config file with X509V3 extensions to add",
-	"-clrext           delete extensions before signing and input certificate",
-	"-nameopt arg      various certificate name options",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e         use engine e, possibly a hardware device.",
-#endif
-	"-certopt arg      various certificate text options",
-	"-checkhost host   check certificate matches host",
-	"-checkemail email check certificate matches email",
-	"-checkip ipaddr   check certificate matches ipaddr",
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_INFORM, OPT_OUTFORM, OPT_KEYFORM, OPT_REQ, OPT_CAFORM,
@@ -189,82 +120,76 @@ enum options {
 #ifdef OPENSSL_SSL_DEBUG_BROKEN_PROTOCOL
 	OPT_FORCE_VERSION,
 #endif
-#if 0
-	/* stay backwards-compatible with 0.9.5; this should go away soon */
-	OPT_OPT_CLREXT,
-#endif
 };
 
-static OPTIONS options[] = {
-	{ "inform", OPT_INFORM, 'F' },
-	{" outform", OPT_OUTFORM, 'F' },
-	{ "keyform", OPT_KEYFORM, 'F' },
-	{ "req", OPT_REQ, '-' },
-	{ "CAform", OPT_CAFORM, 'F' },
-	{ "CAkeyform", OPT_CAKEYFORM, 'F' },
-	{ "sigopt", OPT_SIGOPT, 's' },
-	{ "days", OPT_DAYS, 'p' },
-	{ "passin", OPT_PASSIN, 's' },
-	{ "extfile", OPT_EXTFILE, '<' },
-	{ "extensions", OPT_EXTENSIONS, 's' },
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "signkey", OPT_SIGNKEY, '<' },
-	{ "CA", OPT_CA, '<' },
-	{ "CAkey", OPT_CAKEY, '<' },
-	{ "CAserial", OPT_CASERIAL, '<' },
-	{ "set_serial", OPT_SET_SERIAL, 's' },
-	{ "force_pubkey", OPT_FORCE_PUBKEY, '<' },
-	{ "addtrust", OPT_ADDTRUST, 's' },
-	{ "addreject", OPT_ADDREJECT, 's' },
-	{ "setalias", OPT_SETALIAS, 's' },
-	{ "certopt", OPT_CERTOPT, 's' },
-	{ "nameopt", OPT_NAMEOPT, 's' },
-	{ "C", OPT_C, '-' },
-	{ "email", OPT_EMAIL, '-' },
-	{ "ocsp_uri", OPT_OCSP_URI, '-' },
-	{ "serial", OPT_SERIAL, '-' },
-	{ "next_serial", OPT_NEXT_SERIAL, '-' },
-	{ "modulus", OPT_MODULUS, '-' },
-	{ "pubkey", OPT_PUBKEY, '-' },
-	{ "x509toreq", OPT_X509TOREQ, '-' },
-	{ "text", OPT_TEXT, '-' },
-	{ "hash", OPT_HASH, '-' },
-	{ "subject_hash", OPT_HASH, '-' },
-	{ "issuer_hash", OPT_ISSUER_HASH, '-' },
-	{ "subject", OPT_SUBJECT, '-' },
-	{ "issuer", OPT_ISSUER, '-' },
-	{ "fingerprint", OPT_FINGERPRINT, '-' },
-	{ "dates", OPT_DATES, '-' },
-	{ "purpose", OPT_PURPOSE, '-' },
-	{ "startdate", OPT_STARTDATE, '-' },
-	{ "enddate", OPT_ENDDATE, '-' },
-	{ "checkend", OPT_CHECKEND, 'p' },
-	{ "checkhost", OPT_CHECKHOST, 's' },
-	{ "checkemail", OPT_CHECKEMAIL, 's' },
-	{ "checkip", OPT_CHECKIP, 's' },
-	{ "noout", OPT_NOOUT, '-' },
-	{ "trustout", OPT_TRUSTOUT, '-' },
-	{ "clrtrust", OPT_CLRTRUST, '-' },
-	{ "clrreject", OPT_CLRREJECT, '-' },
-	{ "alias", OPT_ALIAS, '-' },
-	{ "CAcreateserial", OPT_CACREATESERIAL, '-' },
-	{ "clrext", OPT_CLREXT, '-' },
-	{ "ocspid", OPT_OCSPID, '-' },
-	{ "badsig", OPT_BADSIG, '-' },
-	{ "", OPT_MD, '-' },
-#ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
-#endif
+OPTIONS x509_options[] = {
+	{ "inform", OPT_INFORM, 'f', "Input format - default PEM (one of DER, NET or PEM)" },
+	{ "in", OPT_IN, '<', "Input file - default stdin" },
+	{" outform", OPT_OUTFORM, 'f', "Output format - default PEM (one of DER, NET or PEM)" },
+	{ "out", OPT_OUT, '>', "Output file - default stdout" },
+	{ "keyform", OPT_KEYFORM, 'F', "Private key format - default PEM" },
+	{ "passin", OPT_PASSIN, 's', "Private key password source" },
+	{ "serial", OPT_SERIAL, '-', "Print serial number value" },
+	{ "subject_hash", OPT_HASH, '-', "Print subject hash value" },
+	{ "issuer_hash", OPT_ISSUER_HASH, '-', "Print issuer hash value" },
 #ifndef OPENSSL_NO_MD5
-	{ "subject_hash_old", OPT_SUBJECT_HASH_OLD, '-' },
-	{ "issuer_hash_old", OPT_ISSUER_HASH_OLD, '-' },
+	{ "subject_hash_old", OPT_SUBJECT_HASH_OLD, '-', "Print old-style (MD5) issuer hash value" },
+	{ "issuer_hash_old", OPT_ISSUER_HASH_OLD, '-', "Print old-style (MD5) subject hash value" },
+#endif
+	{ "hash", OPT_HASH, '-', "Synonym for -subject_hash" },
+	{ "subject", OPT_SUBJECT, '-', "Print subject DN" },
+	{ "issuer", OPT_ISSUER, '-', "Print issuer DN" },
+	{ "email", OPT_EMAIL, '-', "Print email address(es)" },
+	{ "startdate", OPT_STARTDATE, '-', "Set notBefore field" },
+	{ "enddate", OPT_ENDDATE, '-', "Set notAfter field" },
+	{ "purpose", OPT_PURPOSE, '-', "Print out certificate purposes" },
+	{ "dates", OPT_DATES, '-', "Both Before and After dates" },
+	{ "modulus", OPT_MODULUS, '-', "Print the RSA key modulus" },
+	{ "pubkey", OPT_PUBKEY, '-', "Output the public key" },
+	{ "fingerprint", OPT_FINGERPRINT, '-', "Print the certificate fingerprint" },
+	{ "alias", OPT_ALIAS, '-', "Output certificate alias" },
+	{ "noout", OPT_NOOUT, '-', "No certificate output" },
+	{ "ocspid", OPT_OCSPID, '-', "Print OCSP hash values for the subject name and public key" },
+	{ "ocsp_uri", OPT_OCSP_URI, '-', "Print OCSP Responder URL(s)" },
+	{ "trustout", OPT_TRUSTOUT, '-', "Output a trusted certificate" },
+	{ "clrtrust", OPT_CLRTRUST, '-', "Clear all trusted purposes" },
+	{ "clrext", OPT_CLREXT, '-', "Clear all rejected purposes" },
+	{ "addtrust", OPT_ADDTRUST, 's', "Trust certificate for a given purpose" },
+	{ "addreject", OPT_ADDREJECT, 's', "Reject certificate for a given purpose" },
+	{ "setalias", OPT_SETALIAS, 's', "Set certificate alias" },
+	{ "days", OPT_DAYS, 'p', "How long till expiry of a signed certificate - def 30 days" },
+	{ "checkend", OPT_CHECKEND, 'p', "Check whether the cert expires in the next arg seconds" },
+	{ OPT_MORE_STR, 1, 1, "Exit 1 if so, 0 if not" },
+	{ "signkey", OPT_SIGNKEY, '<', "Self sign cert with arg" },
+	{ "x509toreq", OPT_X509TOREQ, '-', "Output a certification request object" },
+	{ "req", OPT_REQ, '-', "Input is a certificate request, sign and output" },
+	{ "CA", OPT_CA, '<', "Set the CA certificate, must be PEM format" },
+	{ "CAkey", OPT_CAKEY, '<', "The CA key, must be PEM format; if not in CAfile" },
+	{ "CAcreateserial", OPT_CACREATESERIAL, '-', "Create serial number file if it does not exist" },
+	{ "CAserial", OPT_CASERIAL, '<', "Serial file" },
+	{ "set_serial", OPT_SET_SERIAL, 's', "Serial number to use" },
+	{ "text", OPT_TEXT, '-', "Print the certificate in text form" },
+	{ "C", OPT_C, '-', "Print out C code forms" },
+	{ "extfile", OPT_EXTFILE, '<', "File with X509V3 extensions to add" },
+	{ "extensions", OPT_EXTENSIONS, 's', "Section from config file to use" },
+	{ "nameopt", OPT_NAMEOPT, 's', "Various certificate name options" },
+	{ "certopt", OPT_CERTOPT, 's', "Various certificate text options" },
+	{ "checkhost", OPT_CHECKHOST, 's', "Check certificate matches host" },
+	{ "checkemail", OPT_CHECKEMAIL, 's', "Check certificate matches email" },
+	{ "checkip", OPT_CHECKIP, 's', "Check certificate matches ipaddr" },
+	{ "CAform", OPT_CAFORM, 'F', "CA format - default PEM" },
+	{ "CAkeyform", OPT_CAKEYFORM, 'F', "CA key format - default PEM" },
+	{ "sigopt", OPT_SIGOPT, 's' },
+	{ "force_pubkey", OPT_FORCE_PUBKEY, '<' },
+	{ "next_serial", OPT_NEXT_SERIAL, '-' },
+	{ "clrreject", OPT_CLRREJECT, '-' },
+	{ "badsig", OPT_BADSIG, '-' },
+	{ "", OPT_MD, '-', "Any supported digest algoritm" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
 #endif
 #ifdef OPENSSL_SSL_DEBUG_BROKEN_PROTOCOL
 	{ "force_version", OPT_FORCE_VERSION, 'p' },
-#endif
-#if 0 /* stay backwards-compatible with 0.9.5; this should go away soon */
-	{ "crlext", OPT_OPT_CLREXT, '-' },
 #endif
 	{ NULL }
 };
@@ -313,14 +238,13 @@ int x509_main(int argc, char **argv)
 	X509_STORE_set_verify_cb(ctx,callb);
 	STDout=dup_bio_out();
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, x509_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 err:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(x509_help);
+			opt_help(x509_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);

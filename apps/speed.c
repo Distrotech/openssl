@@ -350,8 +350,7 @@ static void *KDF1_SHA1(const void *in, size_t inlen, void *out, size_t *outlen)
 #ifndef OPENSSL_NO_SHA
 	if (*outlen < SHA_DIGEST_LENGTH)
 		return NULL;
-	else
-		*outlen = SHA_DIGEST_LENGTH;
+	*outlen = SHA_DIGEST_LENGTH;
 	return SHA1(in, inlen, out);
 #else
 	return NULL;
@@ -361,131 +360,6 @@ static void *KDF1_SHA1(const void *in, size_t inlen, void *out, size_t *outlen)
 
 static void multiblock_speed(const EVP_CIPHER *evp_cipher);
 
-const char* speed_help[] = {
-#if defined(TIMES) || defined(USE_TOD)
-	"-elapsed        measure time in real time instead of CPU user time",
-#endif
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e       use engine e, possibly a hardware device",
-#endif
-	"-evp e          use EVP e",
-	"-decrypt        time decryption instead of encryption (only EVP)",
-	"-mr             produce machine readable output",
-#ifndef NO_FORK
-	"-multi n        run n benchmarks in parallel.",
-#endif
-#ifndef OPENSSL_NO_MD2
-	"md2  "
-#endif
-#ifndef OPENSSL_NO_MDC2
-	"mdc2  "
-#endif
-#ifndef OPENSSL_NO_MD4
-	"md4  "
-#endif
-#ifndef OPENSSL_NO_MD5
-	"md5  "
-#ifndef OPENSSL_NO_HMAC
-	"hmac  "
-#endif
-#endif
-#ifndef OPENSSL_NO_SHA1
-	"sha1  "
-#endif
-#ifndef OPENSSL_NO_SHA256
-	"sha256  "
-#endif
-#ifndef OPENSSL_NO_SHA512
-	"sha512  "
-#endif
-#ifndef OPENSSL_NO_WHIRLPOOL
-	"whirlpool "
-#endif
-#ifndef OPENSSL_NO_RIPEMD160
-	"rmd160"
-#endif
-	,
-
-#ifndef OPENSSL_NO_IDEA
-	"idea-cbc "
-#endif
-#ifndef OPENSSL_NO_SEED
-	"seed-cbc "
-#endif
-#ifndef OPENSSL_NO_RC2
-	"rc2-cbc  "
-#endif
-#ifndef OPENSSL_NO_RC5
-	"rc5-cbc  "
-#endif
-#ifndef OPENSSL_NO_BF
-	"bf-cbc"
-#endif
-	,
-
-#ifndef OPENSSL_NO_DES
-	"des-cbc  des-ede3 ",
-#endif
-#ifndef OPENSSL_NO_AES
-	"aes-128-cbc aes-192-cbc aes-256-cbc ",
-	"aes-128-ige aes-192-ige aes-256-ige ",
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-	"camellia-128-cbc camellia-192-cbc camellia-256-cbc ",
-#endif
-#ifndef OPENSSL_NO_RC4
-	"rc4",
-#endif
-
-#ifndef OPENSSL_NO_RSA
-	"rsa512   rsa1024  rsa2048  rsa3072  rsa4096",
-	"rsa7680  rsa15360",
-#endif
-
-#ifndef OPENSSL_NO_DSA
-	"dsa512   dsa1024  dsa2048",
-#endif
-#ifndef OPENSSL_NO_ECDSA
-	"ecdsap160 ecdsap192 ecdsap224 ecdsap256 ecdsap384 ecdsap521",
-	"ecdsak163 ecdsak233 ecdsak283 ecdsak409 ecdsak571",
-	"ecdsab163 ecdsab233 ecdsab283 ecdsab409 ecdsab571",
-	"ecdsa",
-#endif
-#ifndef OPENSSL_NO_ECDH
-	"ecdhp160  ecdhp192  ecdhp224  ecdhp256  ecdhp384  ecdhp521",
-	"ecdhk163  ecdhk233  ecdhk283  ecdhk409  ecdhk571",
-	"ecdhb163  ecdhb233  ecdhb283  ecdhb409  ecdhb571",
-	"ecdh\n"
-#endif
-
-#ifndef OPENSSL_NO_IDEA
-	"idea  "
-#endif
-#ifndef OPENSSL_NO_SEED
-	"seed  "
-#endif
-#ifndef OPENSSL_NO_RC2
-	"rc2  "
-#endif
-#ifndef OPENSSL_NO_DES
-	"des  "
-#endif
-#ifndef OPENSSL_NO_AES
-	"aes  "
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-	"camellia  "
-#endif
-#ifndef OPENSSL_NO_RSA
-	"rsa   "
-#endif
-#ifndef OPENSSL_NO_BF
-	"blowfish  "
-#endif
-	,
-	"prime-trial-division  prime-coprime",
-	NULL
-};
 
 static int found(const char* name, const OPT_PAIR* pairs, int *result)
 {
@@ -502,18 +376,22 @@ enum options {
 	OPT_ELAPSED, OPT_EVP, OPT_DECRYPT, OPT_ENGINE, OPT_MULTI,
 	OPT_MR, OPT_MB,
 };
-static OPTIONS options[] = {
-	{ "elapsed", OPT_ELAPSED, '-' },
-	{ "evp", OPT_EVP, 's' },
-	{ "decrypt", OPT_DECRYPT, '-' },
-#ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
-#endif
-	{ "multi", OPT_MULTI, 'p' },
-	{ "mr", OPT_MR, '-' },
-	{ "mb", OPT_MB, '-' },
 
-	{ NULL }
+OPTIONS speed_options[] = {
+	{ OPT_HELP_STR, 1, '-', "Usage: %s [options] ciphers...\n" },
+#if defined(TIMES) || defined(USE_TOD)
+	{ "elapsed", OPT_ELAPSED, '-', "Measure time in real time instead of CPU user time" },
+#endif
+	{ "evp", OPT_EVP, 's', "Use specified EVP cipher" },
+	{ "decrypt", OPT_DECRYPT, '-', "Mime decryption instead of encryption (only EVP)" },
+#ifndef NO_FORK
+	{ "multi", OPT_MULTI, 'p', "Run benchmarks in parallel." },
+#endif
+	{ "mr", OPT_MR, '-', "Produce machine readable output" },
+	{ "mb", OPT_MB, '-' },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
 };
 
 #define	D_MD2		0
@@ -973,13 +851,12 @@ int speed_main(int argc, char **argv)
 		goto end;
 	}
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, speed_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(speed_help);
+			opt_help(speed_options);
 			goto end;
 		case OPT_ELAPSED:
 			usertime = 0;

@@ -71,43 +71,6 @@
 #include <openssl/pem.h>
 #include <openssl/bn.h>
 
-
-const char* rsa_help[] = {
-	"-inform arg     input format - one of DER NET PEM",
-	"-outform arg    output format - one of DER NET PEM",
-	"-in arg         input file",
-	"-sgckey         Use IIS SGC key format",
-	"-passin arg     input file pass phrase source",
-	"-out arg        output file",
-	"-passout arg    output file pass phrase source",
-	"-des            encrypt PEM output with cbc des",
-	"-des3           encrypt PEM output with ede cbc des using 168 bit key",
-#ifndef OPENSSL_NO_IDEA
-	"-idea           encrypt PEM output with cbc idea",
-#endif
-#ifndef OPENSSL_NO_SEED
-	"-seed           encrypt PEM output with cbc seed",
-#endif
-#ifndef OPENSSL_NO_AES
-	"-aes128, -aes192, -aes256",
-	"                encrypt PEM output with cbc aes",
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-	"-camellia128, -camellia192, -camellia256",
-	"                encrypt PEM output with cbc camellia",
-#endif
-	"-text           print the key in text",
-	"-noout          don't print key out",
-	"-modulus        print the RSA key modulus",
-	"-check          verify key consistency",
-	"-pubin          expect a public key in input file",
-	"-pubout         output a public key",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e       use engine e, possibly a hardware device.",
-#endif
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_INFORM, OPT_OUTFORM, OPT_ENGINE, OPT_IN, OPT_OUT,
@@ -115,25 +78,26 @@ enum options {
 	OPT_RSAPUBKEY_IN, OPT_RSAPUBKEY_OUT, OPT_PVK_STRONG, OPT_PVK_WEAK,
 	OPT_PVK_NONE, OPT_NOOUT, OPT_TEXT, OPT_MODULUS, OPT_CHECK, OPT_CIPHER,
 };
-static OPTIONS options[] = {
-	{ "inform", OPT_INFORM, 'F' },
-	{ "outform", OPT_OUTFORM, 'F' },
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "sgckey", OPT_SGCKEY, '-' },
-	{ "pubin", OPT_PUBIN, '-' },
-	{ "pubout", OPT_PUBOUT, '-' },
-	{ "passout", OPT_PASSOUT, 's' },
-	{ "passin", OPT_PASSIN, 's' },
-	{ "RSAPublicKey_in", OPT_RSAPUBKEY_IN, '-' },
-	{ "RSAPublicKey_out", OPT_RSAPUBKEY_OUT, '-' },
+
+OPTIONS rsa_options[] = {
+	{ "inform", OPT_INFORM, 'f', "Input format - one of DER NET PEM" },
+	{ "outform", OPT_OUTFORM, 'f', "Output format - one of DER NET PEM" },
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "sgckey", OPT_SGCKEY, '-', "Use IIS SGC key format" },
+	{ "pubin", OPT_PUBIN, '-', "Expect a public key in input file" },
+	{ "pubout", OPT_PUBOUT, '-', "Output a public key" },
+	{ "passout", OPT_PASSOUT, 's', "Output file pass phrase source" },
+	{ "passin", OPT_PASSIN, 's', "Input file pass phrase source" },
+	{ "RSAPublicKey_in", OPT_RSAPUBKEY_IN, '-', "Input is an RSAPublicKye" },
+	{ "RSAPublicKey_out", OPT_RSAPUBKEY_OUT, '-', "Output is an RSAPublicKye" },
 	{ "pvk-strong", OPT_PVK_STRONG, '-' },
 	{ "pvk-weak", OPT_PVK_WEAK, '-' },
 	{ "pvk-none", OPT_PVK_NONE, '-' },
-	{ "noout", OPT_NOOUT, '-' },
-	{ "text", OPT_TEXT, '-' },
-	{ "modulus", OPT_MODULUS, '-' },
-	{ "check", OPT_CHECK, '-' },
+	{ "noout", OPT_NOOUT, '-', "Don't print key out" },
+	{ "text", OPT_TEXT, '-', "Print the key in text" },
+	{ "modulus", OPT_MODULUS, '-', "Print the RSA key modulus" },
+	{ "check", OPT_CHECK, '-', "Verify key consistency" },
 	{ "", OPT_CIPHER, '-', "Any supported cipher" },
 #ifndef OPENSSL_NO_ENGINE
 	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
@@ -144,29 +108,23 @@ static OPTIONS options[] = {
 int rsa_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL;
-	int ret=1;
-	RSA *rsa=NULL;
-	int i, sgckey=0;
-	const EVP_CIPHER *enc=NULL;
 	BIO *out;
-	int informat=FORMAT_PEM,outformat=FORMAT_PEM,text=0,check=0,noout=0;
-	int pubin = 0, pubout = 0;
-	char *infile=NULL,*outfile=NULL,*prog;
-	char *passinarg = NULL, *passoutarg = NULL;
-	char *passin = NULL, *passout = NULL;
-	char *engine=NULL;
-	int modulus=0;
-	int pvk_encr = 2;
+	RSA *rsa=NULL;
+	const EVP_CIPHER *enc=NULL;
+	char *engine=NULL, *infile=NULL, *outfile=NULL, *prog;
+	char *passin=NULL, *passout=NULL, *passinarg=NULL, *passoutarg=NULL;
+	int i, sgckey=0;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM, text=0, check=0;
+	int noout=0, modulus=0, pubin=0, pubout=0, pvk_encr=2, ret=1;
 	enum options o;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, rsa_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 bad:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(rsa_help);
+			opt_help(rsa_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);

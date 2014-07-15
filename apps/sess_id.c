@@ -66,31 +66,21 @@
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 
-const char *sess_id_help[]={
-	"-inform arg      input format - default PEM (DER or PEM)",
-	"-outform arg     output format - default PEM (PEM, DER or NSS)",
-	"-in arg          input file - default stdin",
-	"-out arg         output file - default stdout",
-	"-text            print ssl session id details",
-	"-cert            output certificate ",
-	"-noout           no output of encoded session info",
-	"-context arg     set the session ID context",
-	NULL
-};
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT,
 	OPT_TEXT, OPT_CERT, OPT_NOOUT, OPT_CONTEXT
 };
-static OPTIONS options[] = {
-	{ "inform", OPT_INFORM, 'F' },
-	{ "outform", OPT_OUTFORM, 'F' },
-	{ "in", OPT_IN, 's' },
-	{ "out", OPT_OUT, 's' },
-	{ "text", OPT_TEXT, '-' },
-	{ "cert", OPT_CERT, '-' },
-	{ "noout", OPT_NOOUT, '-' },
-	{ "context", OPT_CONTEXT, 's' },
+
+OPTIONS sess_id_options[] = {
+	{ "inform", OPT_INFORM, 'F', "Input format - default PEM (DER or PEM)" },
+	{ "outform", OPT_OUTFORM, 'F', "Output format - default PEM (PEM, DER or NSS)" },
+	{ "in", OPT_IN, 's', "Input file - default stdin" },
+	{ "out", OPT_OUT, 's', "Output file - default stdout" },
+	{ "text", OPT_TEXT, '-', "Print ssl session id details" },
+	{ "cert", OPT_CERT, '-', "Output certificate " },
+	{ "noout", OPT_NOOUT, '-', "Don't output of encoded session info" },
+	{ "context", OPT_CONTEXT, 's', "Set the session ID context" },
 	{ NULL }
 };
 
@@ -107,13 +97,12 @@ int sess_id_main(int argc, char **argv)
 	int cert=0,noout=0,text=0;
 	enum options o;
 
-	opt_init(argc, argv, options);
+	opt_init(argc, argv, sess_id_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(sess_id_help);
+			opt_help(sess_id_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);
