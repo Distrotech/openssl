@@ -107,7 +107,6 @@ int pkcs7_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
 			opt_help(pkcs7_options);
 			goto end;
 		case OPT_INFORM:

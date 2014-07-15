@@ -96,6 +96,7 @@ enum options {
 OPTIONS smime_options[] = {
 	{ OPT_HELP_STR, 1, '-', "Usage: %s [options] cert.pem...\n" },
 	{ "cert.pem", 1, '-', "Recipient certs for encryption" },
+	{ OPT_HELP_STR, 1, '-', "Valid options are:\n" },
 	{ "encrypt", OPT_ENCRYPT, '-', "Encrypt message" },
 	{ "decrypt", OPT_DECRYPT, '-', "Decrypt encrypted message" },
 	{ "sign", OPT_SIGN, '-', "Sign message" },
@@ -179,7 +180,6 @@ int smime_main(int argc, char **argv)
 		case OPT_EOF:
 		case OPT_ERR:
 err:
-			BIO_printf(bio_err,"Valid options are:\n");
 			opt_help(smime_options);
 			goto end;
 		case OPT_INFORM:

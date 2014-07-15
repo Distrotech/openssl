@@ -266,18 +266,15 @@ extern void unbuffer(FILE* fp);
 #define OPT_S_ENUM \
 	OPT_S__FIRST=3000, \
 	OPT_S_SIGALGS, OPT_S_CLIENT_SIGALGS, OPT_S_CURVES, OPT_S_NAMED_CURVE, \
-	OPT_S_CIPHER, OPT_S_CERT, OPT_S_KEY, OPT_S_DHPARAM, \
+	OPT_S_CIPHER, \
 	OPT_S__LAST
 
 #define OPT_S_OPTIONS \
-	{ "sigalgs", OPT_S_SIGALGS, 's' }, \
-	{ "client_sigalgs", OPT_S_CLIENT_SIGALGS, 's' }, \
+	{ "sigalgs", OPT_S_SIGALGS, 's', "Server signing algorithms" }, \
+	{ "client_sigalgs", OPT_S_CLIENT_SIGALGS, 's', "Client signing algorithms" }, \
 	{ "curves", OPT_S_CURVES, 's' }, \
-	{ "named_curve", OPT_S_NAMED_CURVE, 's' }, \
-	{ "cipher", OPT_S_CIPHER, 's' }, \
-	{ "cert", OPT_S_CERT, '<' }, \
-	{ "key", OPT_S_KEY, '<' }, \
-	{ "dhparam", OPT_S_DHPARAM, '<' }
+	{ "named_curve", OPT_S_NAMED_CURVE, 's', "ECC curve to use" }, \
+	{ "cipher", OPT_S_CIPHER, 's', "Any supported cipher" }
 
 #define OPT_S_CASES \
 	OPT_S__FIRST: case OPT_S__LAST: break; \
@@ -285,10 +282,7 @@ extern void unbuffer(FILE* fp);
 	case OPT_S_CLIENT_SIGALGS: \
 	case OPT_S_CURVES: \
 	case OPT_S_NAMED_CURVE: \
-	case OPT_S_CIPHER: \
-	case OPT_S_CERT: \
-	case OPT_S_KEY: \
-	case OPT_S_DHPARAM
+	case OPT_S_CIPHER
 
 /*
  * Option parsing.

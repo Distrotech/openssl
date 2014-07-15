@@ -90,7 +90,6 @@ int passwd_main(int argc, char **argv)
 		case OPT_EOF:
 		case OPT_ERR:
 bad:
-			BIO_printf(bio_err,"Valid options are:\n");
 			opt_help(passwd_options);
 			goto err;
 		case OPT_IN:
