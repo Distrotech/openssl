@@ -75,12 +75,10 @@ int passwd_main(int argc, char **argv)
 	char *salt_malloc=NULL, *passwd_malloc=NULL;
 	size_t passwd_malloc_size=0;
 	int pw_source_defined=0;
-	BIO *in=NULL, *out=NULL;
+	BIO *in=NULL;
 	int passed_salt=0, quiet=0, table=0, reverse=0;
 	int usecrypt=0, use1=0, useapr1=0;
 	size_t pw_maxlen=256;
-
-	out = dup_bio_out();
 
 	enum options o;
 	char* prog;
@@ -202,7 +200,7 @@ bad:
 		do /* loop over list of passwords */
 			{
 			passwd = *passwds++;
-			if (!do_passwd(passed_salt, &salt, &salt_malloc, passwd, out,
+			if (!do_passwd(passed_salt, &salt, &salt_malloc, passwd, bio_out,
 				quiet, table, reverse, pw_maxlen, usecrypt, use1, useapr1))
 				goto err;
 			}
@@ -231,7 +229,7 @@ bad:
 					while ((r > 0) && (!strchr(trash, '\n')));
 					}
 				
-				if (!do_passwd(passed_salt, &salt, &salt_malloc, passwd, out,
+				if (!do_passwd(passed_salt, &salt, &salt_malloc, passwd, bio_out,
 					quiet, table, reverse, pw_maxlen, usecrypt, use1, useapr1))
 					goto err;
 				}
@@ -249,8 +247,6 @@ err:
 		OPENSSL_free(passwd_malloc);
 	if (in)
 		BIO_free(in);
-	if (out)
-		BIO_free_all(out);
 	return(ret);
 	}
 

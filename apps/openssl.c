@@ -161,29 +161,28 @@ static void apps_startup()
 	ERR_load_crypto_strings();
 	ERR_load_SSL_strings();
 	OpenSSL_add_all_algorithms();
+	setup_ui_method();
 #ifndef OPENSSL_NO_ENGINE
 	ENGINE_load_builtin_engines();
 #endif
-	setup_ui_method();
 	}
 
 static void apps_shutdown()
 	{
-	CONF_modules_unload(1);
-	destroy_ui_method();
-	OBJ_cleanup();
-	EVP_cleanup();
 #ifndef OPENSSL_NO_ENGINE
 	ENGINE_cleanup();
 #endif
+	destroy_ui_method();
+	CONF_modules_unload(1);
+#ifndef OPENSSL_NO_COMP
+	COMP_zlib_cleanup();
+#endif
+	OBJ_cleanup();
+	EVP_cleanup();
 	CRYPTO_cleanup_all_ex_data();
 	ERR_remove_thread_state(NULL);
 	RAND_cleanup();
 	ERR_free_strings();
-
-#ifndef OPENSSL_NO_COMP
-	COMP_zlib_cleanup();
-#endif
 	}
 
 static char *make_config_name()
@@ -535,7 +534,6 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 	FUNCTION f,*fp;
 	int i,ret=1,nl;
 	int tp;
-	BIO* out=NULL;
 
 	if ((argc <= 0) || (argv[0] == NULL))
 		{ ret=0; goto end; }
@@ -562,15 +560,12 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 		}
 	else if ((strncmp(argv[0],"no-",3)) == 0)
 		{
-		out = dup_bio_out();
 		f.name=argv[0]+3;
 		ret = (lh_FUNCTION_retrieve(prog,&f) != NULL);
 		if (!ret)
-			BIO_printf(out, "%s\n", argv[0]);
+			BIO_printf(bio_out, "%s\n", argv[0]);
 		else
-			BIO_printf(out, "%s\n", argv[0]+3);
-		BIO_free_all(out);
-		out = NULL;
+			BIO_printf(bio_out, "%s\n", argv[0]+3);
 		goto end;
 		}
 	else if ((strcmp(argv[0],"quit") == 0) ||
@@ -600,26 +595,23 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 			list_type = FUNC_TYPE_PKEY;
 		else if (strcmp(argv[0],LIST_CIPHER_ALGORITHMS) == 0)
 			list_type = FUNC_TYPE_CIPHER_ALG;
-		out = dup_bio_out();
 
 		if (!load_config(bio_err, NULL))
 			goto end;
 
 		if (list_type == FUNC_TYPE_PKEY)
-			list_pkey(out);	
+			list_pkey(bio_out);	
 		if (list_type == FUNC_TYPE_MD_ALG)
-			list_md(out);	
+			list_md(bio_out);	
 		if (list_type == FUNC_TYPE_CIPHER_ALG)
-			list_cipher(out);	
+			list_cipher(bio_out);	
 		else
 			{
 			for (fp=functions; fp->name != NULL; fp++)
 				if (fp->type == list_type)
-					BIO_printf(out, "%s\n",
+					BIO_printf(bio_out, "%s\n",
 								fp->name);
 			}
-		BIO_free_all(out);
-		out = NULL;
 		ret=0;
 		goto end;
 		}
@@ -668,7 +660,6 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 		ret=0;
 		}
 end:
-	if (out) BIO_free(out);
 	return(ret);
 	}
 

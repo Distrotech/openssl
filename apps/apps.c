@@ -2145,12 +2145,6 @@ void policies_print(BIO *out, X509_STORE_CTX *ctx)
 	{
 	X509_POLICY_TREE *tree;
 	int explicit_policy;
-	int free_out = 0;
-	if (out == NULL)
-		{
-		out = dup_bio_out();
-		free_out = 1;
-		}
 	tree = X509_STORE_CTX_get0_policy_tree(ctx);
 	explicit_policy = X509_STORE_CTX_get_explicit_policy(ctx);
 
@@ -2159,8 +2153,6 @@ void policies_print(BIO *out, X509_STORE_CTX *ctx)
 
 	nodes_print(out, "Authority", X509_policy_tree_get0_policies(tree));
 	nodes_print(out, "User", X509_policy_tree_get0_user_policies(tree));
-	if (free_out)
-		BIO_free(out);
 	}
 
 #if !defined(OPENSSL_NO_JPAKE) && !defined(OPENSSL_NO_PSK)
