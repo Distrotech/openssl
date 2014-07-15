@@ -73,7 +73,7 @@
 #define DEFBITS	512
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_OUT, OPT_PASSOUT, OPT_ENGINE, OPT_RAND,
 #ifndef OPENSSL_NO_DES
 	OPT_DES, OPT_DES3,
@@ -95,6 +95,7 @@ enum options {
 OPTIONS gendsa_options[] = {
 	{ OPT_HELP_STR, 1, '-', "Usage: %s [args] dsaparam-file\n" },
 	{ OPT_HELP_STR, 1, '-', "Valid options are:\n" },
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "out", OPT_OUT, '>', "Output the key to the specified file" },
 	{ "passout", OPT_PASSOUT, 's' },
 	{ "rand", OPT_RAND, 's', "Load the file(s) into the random number generator" },
@@ -142,6 +143,7 @@ int gendsa_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 bad:
 			opt_help(gendsa_options);
 			goto end;

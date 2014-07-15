@@ -88,13 +88,14 @@
 static int ecparam_print_var(BIO *,BIGNUM *,const char *,int,unsigned char *);
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT, OPT_TEXT, OPT_C,
 	OPT_CHECK, OPT_LIST_CURVES, OPT_NO_SEED, OPT_NOOUT, OPT_NAME,
 	OPT_CONV_FORM, OPT_PARAM_ENC, OPT_GENKEY, OPT_RAND, OPT_ENGINE,
 };
 
 OPTIONS ecparam_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "inform", OPT_INFORM, 'F', "Input format - default PEM (DER or PEM)" },
 	{ "outform", OPT_OUTFORM, 'F', "Output format - default PEM" },
 	{ "in", OPT_IN, '<', "Input file  - default stdin" },
@@ -152,6 +153,7 @@ int ecparam_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 err:
 			opt_help(ecparam_options);
 			goto end;

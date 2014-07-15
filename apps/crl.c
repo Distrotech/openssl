@@ -67,7 +67,7 @@
 #include <openssl/pem.h>
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_INFORM, OPT_IN, OPT_OUTFORM, OPT_OUT, OPT_KEYFORM, OPT_KEY,
 	OPT_ISSUER, OPT_LASTUPDATE, OPT_NEXTUPDATE, OPT_FINGERPRINT,
 	OPT_CRLNUMBER, OPT_BADSIG, OPT_GENDELTA, OPT_CAPATH, OPT_CAFILE,
@@ -77,6 +77,7 @@ enum options {
 };
 
 OPTIONS crl_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "inform", OPT_INFORM, 'F', "Input format; default PEM" },
 	{ "in", OPT_IN, '<', "Input file - default stdin" },
 	{ "outform", OPT_OUTFORM, 'F', "Output format - default PEM" },
@@ -133,6 +134,7 @@ int crl_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 bad:
 			opt_help(crl_options);
 			goto end;

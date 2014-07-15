@@ -120,7 +120,7 @@ static OCSP_RESPONSE *query_responder(BIO *err, BIO *cbio, const char *path,
 				      OCSP_REQUEST *req, int req_timeout);
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_OUTFILE, OPT_TIMEOUT, OPT_URL, OPT_HOST, OPT_PORT,
 	OPT_IGNORE_ERR, OPT_NOVERIFY, OPT_NONCE, OPT_NO_NONCE,
 	OPT_RESP_NO_CERTS, OPT_RESP_KEY_ID, OPT_NO_CERTS,
@@ -137,6 +137,7 @@ enum options {
 };
 
 OPTIONS ocsp_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "out", OPT_OUTFILE, '>', "Output filename" },
 	{ "timeout", OPT_TIMEOUT, 'p' },
 	{ "url", OPT_URL, 's', "Responder URL" },
@@ -234,6 +235,7 @@ int ocsp_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 err:
 			opt_help(ocsp_options);
 			goto end;

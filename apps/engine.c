@@ -71,11 +71,12 @@
 
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_V, OPT_VV, OPT_VVV, OPT_VVVV, OPT_C,
 	OPT_T, OPT_TT, OPT_PRE, OPT_POST,
 };
 static OPTIONS engine_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "v", OPT_V, '-', "For each engine, list its 'control commands'" },
 	{ "vv", OPT_VV, '-', "Also display each command's description" },
 	{ "vvv", OPT_VVV, '-', "Also add the input flags for each command" },
@@ -353,6 +354,7 @@ int engine_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 			opt_help(engine_options);
 			goto end;
 		case OPT_VVVV:

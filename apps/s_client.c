@@ -477,7 +477,7 @@ enum protocols {
 };
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_HOST, OPT_PORT, OPT_CONNECT, OPT_UNIX, OPT_XMPPHOST, OPT_VERIFY,
 	OPT_CERT, OPT_CRL, OPT_CRL_DOWNLOAD, OPT_SESS_OUT, OPT_SESS_IN,
 	OPT_CERTFORM, OPT_CRLFORM, OPT_VERIFY_RET_ERROR, OPT_VERIFY_QUIET,
@@ -501,6 +501,7 @@ enum options {
 };
 
 OPTIONS s_client_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "host", OPT_HOST, 's', "Use -connect instead" },
 	{ "port", OPT_PORT, 'p', "Use -connect instead" },
 	{ "connect", OPT_CONNECT, 's', "TCP/IP where to connect (default is " SSL_HOST_NAME ":" PORT_STR ")" },
@@ -722,6 +723,7 @@ int s_client_main(int argc, char **argv)
 #endif
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 			opt_help(s_client_options);
 			goto end;
 		case OPT_HOST:

@@ -53,11 +53,12 @@
 #include <openssl/bn.h>
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_HEX, OPT_GENERATE, OPT_BITS, OPT_SAFE, OPT_CHECKS
 };
 
 OPTIONS prime_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "hex", OPT_HEX, '-', "Hex output" },
 	{ "generate", OPT_GENERATE, '-', "Generate a prime" },
 	{ "bits", OPT_BITS, 'p', "Size of number in bits" },
@@ -83,6 +84,7 @@ int prime_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 			opt_help(prime_options);
 			return 1;
 		case OPT_HEX:

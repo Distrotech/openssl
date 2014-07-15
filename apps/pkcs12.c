@@ -88,7 +88,7 @@ int cert_load(BIO *in, STACK_OF(X509) *sk);
 static int set_pbe(BIO *err, int *ppbe, const char *str);
 
 enum options {
-    OPT_ERR = -1, OPT_EOF = 0,
+    OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
     OPT_CIPHER, OPT_NOKEYS, OPT_KEYEX, OPT_KEYSIG, OPT_NOCERTS, OPT_CLCERTS,
     OPT_CACERTS, OPT_NOOUT, OPT_INFO, OPT_CHAIN, OPT_TWOPASS, OPT_NOMACVER,
     OPT_DESCERT, OPT_EXPORT, OPT_NOITER, OPT_MACITER, OPT_NOMACITER,
@@ -99,6 +99,7 @@ enum options {
 };
 
 OPTIONS pkcs12_options[] = {
+    { "help", OPT_HELP, '-', "Display this summary" },
     { "nokeys", OPT_NOKEYS, '-', "Don't output private keys" },
     { "keyex", OPT_KEYEX, '-', "Set MS key exchange type" },
     { "keysig", OPT_KEYSIG, '-', "Set MS key signature type" },
@@ -167,6 +168,7 @@ int pkcs12_main(int argc, char **argv)
 	    switch (o) {
 	    case OPT_EOF:
 	    case OPT_ERR:
+		case OPT_HELP:
 err:
 		    opt_help(pkcs12_options);
 		    goto end;

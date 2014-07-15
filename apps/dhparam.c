@@ -133,7 +133,7 @@
 static int dh_cb(int p, int n, BN_GENCB *cb);
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT,
 	OPT_ENGINE, OPT_CHECK, OPT_TEXT, OPT_NOOUT,
 	OPT_RAND, OPT_DSAPARAM, OPT_C, OPT_2, OPT_5,
@@ -142,6 +142,7 @@ enum options {
 OPTIONS dhparam_options[] = {
 	{ OPT_HELP_STR, 1, '-', "Usage: %s [flags] [numbits]\n" },
 	{ OPT_HELP_STR, 1, '-', "Valid options are:\n" },
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "in", OPT_IN, '<', "Input file" },
 	{ "inform", OPT_INFORM, 'F', "Input format, DER or PEM" },
 	{ "outform", OPT_OUTFORM, 'F', "Output format, DER or PEM" },
@@ -179,6 +180,7 @@ int dhparam_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 			opt_help(dhparam_options);
 			goto end;
 		case OPT_INFORM:

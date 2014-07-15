@@ -73,15 +73,15 @@
 
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT,
 	OPT_ENGINE, OPT_PVK_STRONG, OPT_PVK_WEAK,
 	OPT_PVK_NONE, OPT_NOOUT, OPT_TEXT, OPT_MODULUS, OPT_PUBIN,
-	OPT_PUBOUT, OPT_CIPHER, OPT_PASSIN, OPT_PASSOUT, OPT_HELP,
+	OPT_PUBOUT, OPT_CIPHER, OPT_PASSIN, OPT_PASSOUT,
 };
 
 OPTIONS dsa_options[] = {
-	{ "help", OPT_HELP, '-', "This summary" },
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "inform", OPT_INFORM, 'F', "Input format - DER or PEM" },
 	{ "outform", OPT_OUTFORM, 'F', "Output format - DER or PEM" },
 #ifndef OPENSSL_NO_ENGINE

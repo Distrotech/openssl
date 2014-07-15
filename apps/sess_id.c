@@ -67,12 +67,13 @@
 #include <openssl/ssl.h>
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_INFORM, OPT_OUTFORM, OPT_IN, OPT_OUT,
 	OPT_TEXT, OPT_CERT, OPT_NOOUT, OPT_CONTEXT
 };
 
 OPTIONS sess_id_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "inform", OPT_INFORM, 'F', "Input format - default PEM (DER or PEM)" },
 	{ "outform", OPT_OUTFORM, 'F', "Output format - default PEM (PEM, DER or NSS)" },
 	{ "in", OPT_IN, 's', "Input file - default stdin" },
@@ -102,6 +103,7 @@ int sess_id_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 			opt_help(sess_id_options);
 			goto end;
 		case OPT_INFORM:

@@ -632,7 +632,7 @@ void opt_help(const OPTIONS* list)
 {
 	const OPTIONS* o;
 	int i;
-	int standard_prolog = 1;
+	int standard_prolog;
 	int width = 5;
 	char start[80 + 1];
 	char *p;
@@ -642,7 +642,7 @@ void opt_help(const OPTIONS* list)
 	standard_prolog = list[0].name != OPT_HELP_STR;
 
 	/* Find the widest help. */
-	for (standard_prolog = 1, o = list; o->name; o++) {
+	for (o = list; o->name; o++) {
 		if (o->name == OPT_MORE_STR)
 			continue;
 		i = 2 + (int)strlen(o->name);
@@ -654,7 +654,7 @@ void opt_help(const OPTIONS* list)
 	}
 
 	if (standard_prolog)
-		BIO_printf(bio_err, "Valid options are:\n");
+		BIO_printf(bio_err, "Usage: %s [options]\nValid options are:\n", prog);
 
 	/* Now let's print. */
 	for (o = list; o->name; o++) {
@@ -703,12 +703,14 @@ void opt_help(const OPTIONS* list)
 #include <sys/stat.h>
 
 enum options {
-	OPT_ERR=-1, OPT_EOF=0, OPT_NOTUSED,
+	OPT_ERR=-1, OPT_EOF=0, OPT_NOTUSED, OPT_HELP,
 	OPT_IN, OPT_INFORM, OPT_OUT, OPT_COUNT, OPT_U, OPT_FLAG,
 	OPT_STR, OPT_HELP
 };
 static OPTIONS options[] = {
 	{ OPT_HELP_STR, 1, '-', "Usage: %s flags\n" },
+	{ OPT_HELP_STR, 1, '-', "Valid options are:\n" },
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "in",     OPT_IN,     '<', "input file" },
 	{ OPT_MORE_STR, 1, '-',       "more detail about input" },
 	{ "inform", OPT_INFORM, 'f', "input file format; defaults to pem" },
@@ -744,6 +746,7 @@ int main(int ac, char **av)
 		case OPT_NOTUSED:
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 			printf("Usage error; try -help.");
 			return -1;
 		case OPT_HELP:

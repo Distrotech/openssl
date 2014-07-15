@@ -81,7 +81,7 @@ static int smime_cb(int ok, X509_STORE_CTX *ctx);
 #define SMIME_RESIGN	(6 | SMIME_IP | SMIME_OP | SMIME_SIGNERS)
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_ENCRYPT, OPT_DECRYPT, OPT_SIGN, OPT_RESIGN, OPT_VERIFY,
 	OPT_PK7OUT, OPT_TEXT, OPT_NOINTERN, OPT_NOVERIFY, OPT_NOCHAIN,
 	OPT_NOCERTS, OPT_NOATTR, OPT_NODETACH, OPT_NOSMIMECAP,
@@ -97,6 +97,7 @@ OPTIONS smime_options[] = {
 	{ OPT_HELP_STR, 1, '-', "Usage: %s [options] cert.pem...\n" },
 	{ "cert.pem", 1, '-', "Recipient certs for encryption" },
 	{ OPT_HELP_STR, 1, '-', "Valid options are:\n" },
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "encrypt", OPT_ENCRYPT, '-', "Encrypt message" },
 	{ "decrypt", OPT_DECRYPT, '-', "Decrypt encrypted message" },
 	{ "sign", OPT_SIGN, '-', "Sign message" },
@@ -179,6 +180,7 @@ int smime_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 err:
 			opt_help(smime_options);
 			goto end;

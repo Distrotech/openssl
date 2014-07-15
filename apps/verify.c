@@ -73,7 +73,7 @@ static int check(X509_STORE *ctx, char *file,
 static int v_verbose=0, vflags = 0;
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_ENGINE, OPT_CAPATH, OPT_CAFILE, OPT_UNTRUSTED, OPT_TRUSTED,
 	OPT_CRLFILE, OPT_CRL_DOWNLOAD, OPT_SHOW_CHAIN, OPT_VERBOSE,
 	OPT_V_ENUM,
@@ -82,6 +82,7 @@ enum options {
 OPTIONS verify_options[] = {
 	{ OPT_HELP_STR, 1, '-', "Usage: %s [options] cert.pem...\n" },
 	{ OPT_HELP_STR, 1, '-', "Valid options are:\n" },
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "verbose", OPT_VERBOSE, '-' },
 	{ "CApath", OPT_CAPATH, '/' },
 	{ "CAfile", OPT_CAFILE, '<' },
@@ -123,6 +124,7 @@ int verify_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 			opt_help(verify_options);
 			goto end;
 		case OPT_V_CASES:
@@ -233,7 +235,6 @@ int verify_main(int argc, char **argv)
 
 end:
 	if (ret == 1) {
-		opt_help(verify_options);
 		BIO_printf(bio_err, "Recognized usages:\n");
 		for(i = 0; i < X509_PURPOSE_get_count(); i++)
 			{

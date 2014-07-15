@@ -132,7 +132,7 @@ OPTIONS cms_options[] = {
 	{ OPT_HELP_STR, 1, '-', "Usage: %s [options] cert.pem...\n" },
 	{ "cert.pem", 1, '-', "Recipient certs for encryption" },
 	{ OPT_HELP_STR, 1, '-', "Valid options are:\n" },
-	{ "help", OPT_HELP, '-', "This summary" },
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "inform", OPT_INFORM, 'F', "Input format SMIME (default), PEM or DER" },
 	{ "outform", OPT_OUTFORM, 'F', "Output format SMIME (default), PEM or DER" },
 	{ "in", OPT_IN, '<', "Input file" },

@@ -79,7 +79,7 @@ static int do_keyop(EVP_PKEY_CTX *ctx, int pkey_op,
 		unsigned char *in, size_t inlen);
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
 	OPT_ENGINE, OPT_IN, OPT_OUT,
 	OPT_PUBIN, OPT_CERTIN, OPT_ASN1PARSE, OPT_HEXDUMP, OPT_SIGN,
 	OPT_VERIFY, OPT_VERIFYRECOVER, OPT_REV, OPT_ENCRYPT, OPT_DECRYPT,
@@ -88,6 +88,7 @@ enum options {
 };
 
 OPTIONS pkeyutl_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "in", OPT_IN, '<', "Input file" },
 	{ "out", OPT_OUT, '>', "Output file" },
 	{ "pubin", OPT_PUBIN, '-', "Input is a public key" },
@@ -138,6 +139,7 @@ int pkeyutl_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 err:
 			opt_help(pkeyutl_options);
 			goto end;

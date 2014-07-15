@@ -113,9 +113,10 @@ extern int verify_error;
 static SSL *doConnection(SSL *scon, const char* host, SSL_CTX* ctx);
 
 enum options {
-	OPT_ERR = -1, OPT_EOF = 0, OPT_CONNECT, OPT_CIPHER, OPT_CERT,
-	OPT_KEY, OPT_CAPATH, OPT_CAFILE, OPT_NEW, OPT_REUSE, OPT_BUGS,
-	OPT_VERIFY, OPT_TIME, OPT_WWW,
+	OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
+	OPT_CONNECT, OPT_CIPHER, OPT_CERT, OPT_KEY, OPT_CAPATH,
+	OPT_CAFILE, OPT_NEW, OPT_REUSE, OPT_BUGS, OPT_VERIFY, OPT_TIME,
+	OPT_WWW,
 #ifndef OPENSSL_NO_SSL2
 	OPT_SSL2,
 #endif
@@ -128,6 +129,7 @@ enum options {
 };
 
 OPTIONS s_time_options[] = {
+	{ "help", OPT_HELP, '-', "Display this summary" },
 	{ "connect", OPT_CONNECT, 's', "Where to connect as post:port (default is "SSL_CONNECT_NAME ")" },
 	{ "cipher", OPT_CIPHER, 's', "Cipher to use, see 'openssl ciphers'" },
 	{ "cert", OPT_CERT, '<', "Cert file to use, PEM format assumed" },
@@ -197,6 +199,7 @@ int s_time_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+		case OPT_HELP:
 err:
 			opt_help(s_time_options);
 			goto end;
