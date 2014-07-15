@@ -72,19 +72,6 @@ static int check(X509_STORE *ctx, char *file,
 		STACK_OF(X509_CRL) *crls, ENGINE *e, int show_chain);
 static int v_verbose=0, vflags = 0;
 
-const char* verify_help[] = {
-	"-verbose",
-	"-CApath path",
-	"-CAfile file",
-	"-trusted_first",
-	"-purpose purpose",
-	"-crl_check",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e",
-#endif
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_ENGINE, OPT_CAPATH, OPT_CAFILE, OPT_UNTRUSTED, OPT_TRUSTED,
@@ -92,11 +79,10 @@ enum options {
 	OPT_V_ENUM,
 };
 
-static OPTIONS options[] = {
-	OPT_V_OPTIONS,
-#ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
-#endif
+OPTIONS verify_options[] = {
+	{ OPT_HELP_STR, 1, '-', "Usage: %s [options] cert.pem...\n" },
+	{ OPT_HELP_STR, 1, '-', "Valid options are:\n" },
+	{ "verbose", OPT_VERBOSE, '-' },
 	{ "CApath", OPT_CAPATH, '/' },
 	{ "CAfile", OPT_CAFILE, '<' },
 	{ "untrusted", OPT_UNTRUSTED, '<' },
@@ -104,7 +90,10 @@ static OPTIONS options[] = {
 	{ "CRLfile", OPT_CRLFILE, '<' },
 	{ "crl_download", OPT_CRL_DOWNLOAD, '-' },
 	{ "show_chain", OPT_SHOW_CHAIN, '-' },
-	{ "verbose", OPT_VERBOSE, '-' },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
+	OPT_V_OPTIONS,
 	{ NULL }
 };
 
@@ -129,13 +118,12 @@ int verify_main(int argc, char **argv)
 	if ((vpm = X509_VERIFY_PARAM_new()) == NULL)
 		goto end;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, verify_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(verify_help);
+			opt_help(verify_options);
 			goto end;
 		case OPT_V_CASES:
 			if (!opt_verify(o, vpm))
@@ -245,11 +233,8 @@ int verify_main(int argc, char **argv)
 
 end:
 	if (ret == 1) {
-		BIO_printf(bio_err,"usage: verify [options] cert...\n");
-		BIO_printf(bio_err,"where options are:\n");
-		printhelp(verify_help);
-		/* rsalz XXX */
-		BIO_printf(bio_err,"recognized usages:\n");
+		opt_help(verify_options);
+		BIO_printf(bio_err, "Recognized usages:\n");
 		for(i = 0; i < X509_PURPOSE_get_count(); i++)
 			{
 			X509_PURPOSE *ptmp;
@@ -259,7 +244,7 @@ end:
 				   X509_PURPOSE_get0_name(ptmp));
 			}
 
-		BIO_printf(bio_err,"recognized verify names:\n");
+		BIO_printf(bio_err,"Recognized verify names:\n");
 		for(i = 0; i < X509_VERIFY_PARAM_get_count(); i++)
 			{
 			const X509_VERIFY_PARAM *vptmp;

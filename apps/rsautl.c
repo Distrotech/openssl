@@ -74,29 +74,6 @@
 #define KEY_PUBKEY	2
 #define KEY_CERT	3
 
-const char* rsautl_help[] = {
-	"-in file        input file",
-	"-out file       output file",
-	"-inkey file     input key",
-	"-keyform arg    private key format - default PEM",
-	"-pubin          input is an RSA public",
-	"-certin         input is a certificate carrying an RSA public key",
-	"-ssl            use SSL v2 padding",
-	"-raw            use no padding",
-	"-pkcs           use PKCS#1 v1.5 padding (default)",
-	"-oaep           use PKCS#1 OAEP",
-	"-sign           sign with private key",
-	"-verify         verify with public key",
-	"-encrypt        encrypt with public key",
-	"-decrypt        decrypt with private key",
-	"-hexdump        hex dump output",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e       use engine e, possibly a hardware device.",
-#endif
-	"-passin arg    pass phrase source",
-	NULL
-}; 
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_ENGINE, OPT_IN, OPT_OUT, OPT_ASN1PARSE, OPT_HEXDUMP,
@@ -104,32 +81,32 @@ enum options {
 	OPT_SIGN, OPT_VERIFY, OPT_REV, OPT_ENCRYPT, OPT_DECRYPT,
 	OPT_PUBIN, OPT_CERTIN, OPT_INKEY, OPT_PASSIN, OPT_KEYFORM,
 };
-static OPTIONS options[] = {
-	{ "keyform", OPT_KEYFORM, 'F' },
-#ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
-#endif
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
+
+OPTIONS rsautl_options[] = {
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "inkey", OPT_INKEY, '<', "Input key" },
+	{ "keyform", OPT_KEYFORM, 'F', "Private key format - default PEM" },
+	{ "pubin", OPT_PUBIN, '-', "Input is an RSA public" },
+	{ "certin", OPT_CERTIN, '-', "Input is a cert carrying an RSA public key" },
+	{ "ssl", OPT_SSL, '-', "Use SSL v2 padding" },
+	{ "raw", OPT_RAW, '-', "Use no padding" },
+	{ "pkcs", OPT_PKCS, '-', "Use PKCS#1 v1.5 padding (default)" },
+	{ "oaep", OPT_OAEP, '-', "Use PKCS#1 OAEP" },
+	{ "sign", OPT_SIGN, '-', "Sign with private key" },
+	{ "verify", OPT_VERIFY, '-', "Verify with public key" },
 	{ "asn1parse", OPT_ASN1PARSE, '-' },
-	{ "hexdump", OPT_HEXDUMP, '-' },
-	{ "raw", OPT_RAW, '-' },
-	{ "oaep", OPT_OAEP, '-' },
-	{ "ssl", OPT_SSL, '-' },
-	{ "pkcs", OPT_PKCS, '-' },
-	{ "x931", OPT_X931, '-' },
-	{ "sign", OPT_SIGN, '-' },
-	{ "verify", OPT_VERIFY, '-' },
+	{ "hexdump", OPT_HEXDUMP, '-', "Hex dump output" },
+	{ "x931", OPT_X931, '-', "Use ANSI X9.31 padding" },
 	{ "rev", OPT_REV, '-' },
-	{ "encrypt", OPT_ENCRYPT, '-' },
-	{ "decrypt", OPT_DECRYPT, '-' },
-	{ "pubin", OPT_PUBIN, '-' },
-	{ "certin", OPT_CERTIN, '-' },
-	{ "inkey", OPT_INKEY, '<' },
-	{ "passin", OPT_PASSIN, 's' },
+	{ "encrypt", OPT_ENCRYPT, '-', "Encrypt with public key" },
+	{ "decrypt", OPT_DECRYPT, '-', "Decrypt with private key" },
+	{ "passin", OPT_PASSIN, 's', "Pass phrase source" },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
 	{ NULL }
 };
-
 
 int rsautl_main(int argc, char **argv)
 {
@@ -153,13 +130,12 @@ int rsautl_main(int argc, char **argv)
 	enum options o;
 	char* prog;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, rsautl_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(rsautl_help);
+			opt_help(rsautl_options);
 			goto end;
 		case OPT_KEYFORM:
 			opt_format(opt_arg(), 1, &keyformat);

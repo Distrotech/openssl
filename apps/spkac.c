@@ -71,40 +71,27 @@
 #include <openssl/pem.h>
 
 
-const char* spkac_help[] = {
-	" -in arg        input file",
-	" -out arg       output file",
-	" -key arg       create SPKAC using private key",
-	" -passin arg    input file pass phrase source",
-	" -challenge arg challenge string",
-	" -spkac arg     alternative SPKAC name",
-	" -noout         don't print SPKAC",
-	" -pubkey        output public key",
-	" -verify        verify SPKAC signature",
-#ifndef OPENSSL_NO_ENGINE
-	" -engine e      use engine e, possibly a hardware device.",
-#endif
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_NOOUT, OPT_PUBKEY, OPT_VERIFY, OPT_IN, OPT_OUT,
 	OPT_ENGINE, OPT_KEY, OPT_CHALLENGE, OPT_PASSIN, OPT_SPKAC,
 	OPT_SPKSECT,
 };
-static OPTIONS options[] = {
-	{ "noout", OPT_NOOUT, '-' },
-	{ "pubkey", OPT_PUBKEY, '-' },
-	{ "verify", OPT_VERIFY, '-' },
-	{ "in", OPT_IN, '<' },
-	{ "out", OPT_OUT, '>' },
-	{ "engine", OPT_ENGINE, 's' },
-	{ "key", OPT_KEY, '<' },
-	{ "challenge", OPT_CHALLENGE, 's' },
-	{ "passin", OPT_PASSIN, 's' },
-	{ "spkac", OPT_SPKAC, 's' },
+
+OPTIONS spkac_options[] = {
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "key", OPT_KEY, '<', "Create SPKAC using private key" },
+	{ "passin", OPT_PASSIN, 's', "Input file pass phrase source" },
+	{ "challenge", OPT_CHALLENGE, 's', "Challenge string" },
+	{ "spkac", OPT_SPKAC, 's', "Alternative SPKAC name" },
+	{ "noout", OPT_NOOUT, '-', "Don't print SPKAC" },
+	{ "pubkey", OPT_PUBKEY, '-', "Output public key" },
+	{ "verify", OPT_VERIFY, '-', "Verify SPKAC signature" },
 	{ "spksect", OPT_SPKSECT, 's' },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
 	{ NULL }
 };
 
@@ -125,13 +112,12 @@ int spkac_main(int argc, char **argv)
 	char *engine=NULL;
 	enum options o;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, spkac_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(spkac_help);
+			opt_help(spkac_options);
 			goto end;
 		case OPT_IN:
 			infile = opt_arg();

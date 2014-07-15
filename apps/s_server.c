@@ -833,123 +833,6 @@ static srpsrvparm srp_callback_parm;
 #endif
 static char *srtp_profiles = NULL;
 
-const char* s_server_help[]={
-	"-accept port   TCP/IP port to accept on (default is " PORT_STR ")",
-	"-unix path     unix domain socket to accept on",
-	"-unlink        for -unix, unlink existing socket first",
-	"-context arg   set session ID context",
-	"-verify arg    turn on peer certificate verification",
-	"-Verify arg    turn on peer certificate verification, must have a cert.",
-	"-cert arg      certificate file to use (default is ", TEST_CERT ")",
-	"-naccept arg   terminate after 'arg' connections",
-#ifndef OPENSSL_NO_TLSEXT
-	"-serverinfo arg  PEM serverinfo file for certificate",
-	"-auth           send and receive RFC 5878 TLS auth extensions and supplemental data",
-	"-auth_require_reneg  do not send TLS auth extensions until renegotiation",
-#endif
-	"-no_resumption_on_reneg  set SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION flag",
-	"-crl_check     check the peer certificate has not been revoked by its CA.",
-	"               the CRL(s) are appended to the certificate file",
-	"-crl_check_all check the peer certificate has not been revoked by its CA",
-	"               or any other CRL in the CA chain. CRL(s) are appened to the",
-	"               the certificate file.",
-	"-certform arg  certificate format (PEM or DER) PEM default",
-	"-key arg       private Key file to use, in cert file if",
-	"               not specified (default is " TEST_CERT ")",
-	"-keyform arg   key format (PEM, DER or ENGINE) PEM default",
-	"-pass arg      private key file pass phrase source",
-	"-dcert arg     second certificate file to use (usually for DSA)",
-	"-dcertform x   second certificate format (PEM or DER) PEM default",
-	"-dkey arg      second private key file to use (usually for DSA)",
-	"-dkeyform arg  second key format (PEM, DER or ENGINE) PEM default",
-	"-dpass arg     second private key file pass phrase source",
-	"-dhparam arg   DH parameter file to use, in cert file if not specified",
-	"               or a default set of parameters is used",
-#ifndef OPENSSL_NO_ECDH
-	"-named_curve arg  elliptic curve name to use for ephemeral ECDH keys",
-	"               use \"openssl ecparam -list_curves\" for all names" \
-	"               (default is nistp256).",
-#endif
-#ifdef FIONBIO
-	"-nbio          use non-blocking IO",
-#endif
-	"-nbio_test     test with the non-blocking test bio",
-	"-crlf          convert LF from terminal into CRLF",
-	"-debug         print more output",
-	"-msg           show protocol messages",
-	"-state         print the SSL states",
-	"-CApath arg    PEM format directory of CA's",
-	"-CAfile arg    PEM format file of CA's",
-	"-trusted_first use locally trusted CA's first when building trust chain",
-	"-nocert        don't use any certificates (Anon-DH)",
-	"-cipher arg    play with 'openssl ciphers' to see what goes here",
-	"-serverpref    use server's cipher preferences",
-	"-quiet         no server output",
-	"-no_tmp_rsa    do not generate a tmp RSA key",
-#ifndef OPENSSL_NO_PSK
-	"-psk_hint arg  PSK identity hint to use",
-	"-psk arg       PSK in hex (without 0x)",
-# ifndef OPENSSL_NO_JPAKE
-	"-jpake arg     JPAKE secret to use",
-# endif
-#endif
-#ifndef OPENSSL_NO_SRP
-	"-srpvfile file the verifier file for SRP",
-	"-srpuserseed string  a seed string for a default user salt",
-#endif
-	"-ssl2         just talk SSLv2",
-	"-ssl3         just talk SSLv3",
-	"-tls1_2       just talk TLSv1.2",
-	"-tls1_1       just talk TLSv1.1",
-	"-tls1         just talk TLSv1",
-	"-dtls1        just talk DTLSv1",
-	"-dtls1_2      just talk DTLSv1.2",
-	"-timeout      enable timeouts",
-	"-mtu          set link layer MTU",
-	"-chain        read a certificate chain",
-	"-no_ssl2      just disable SSLv2",
-	"-no_ssl3      just disable SSLv3",
-	"-no_tls1      just disable TLSv1",
-	"-no_tls1_1    just disable TLSv1.1",
-	"-no_tls1_2    just disable TLSv1.2",
-#ifndef OPENSSL_NO_DH
-	"-no_dhe       disable ephemeral DH",
-#endif
-#ifndef OPENSSL_NO_ECDH
-	"-no_ecdhe     disable ephemeral ECDH",
-#endif
-	"-no_resume_ephemeral  disable caching and tickets if ephemeral (EC)DH is used",
-	"-bugs         turn on SSL bug compatibility",
-	"-www          respond to a 'GET /' with a status page",
-	"-WWW          respond to a 'GET /<path> HTTP/1.0' with file ./<path>",
-	"-HTTP         respond to a 'GET /<path> HTTP/1.0' with file ./<path>",
-        "              with the assumption it contains a complete HTTP response",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine id    initialise and use the specified engine",
-#endif
-	"-id_prefix arg  generate SSL/TLS session IDs prefixed by arg",
-	"-rand file... load the file(s) into the random number generator",
-#ifndef OPENSSL_NO_TLSEXT
-	"-servername host  servername for HostName TLS extension",
-	"-servername_fatal on mismatch send fatal alert (default warning alert)",
-	"-cert2 arg    certificate file to use for servername",
-	"              (default is ", TEST_CERT2 ")",
-	"-key2 arg     private Key file to use for servername, in cert file if",
-	"              not specified (default is " TEST_CERT2 ")",
-	"-tlsextdebug  hex dump of all TLS extensions received",
-	"-no_ticket    disable use of RFC4507bis session tickets",
-	"-legacy_renegotiation  enable use of legacy renegotiation (dangerous)",
-#ifndef OPENSSL_NO_NEXTPROTONEG
-	"-nextprotoneg arg  set the advertised protocols for the NPN extension (comma-separated list)",
-#endif
-	"-use_srtp profiles offer SRTP key management with a colon-separated profile list",
-	"-alpn arg     set the advertised protocols for the ALPN extension (comma-separated list)",
-#endif
-	"-keymatexport label   export keying material using label",
-	"-keymatexportlen len  export len bytes of keying material (default 20)",
-	NULL
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_ENGINE, OPT_PORT, OPT_UNIX, OPT_UNLINK, OPT_NACCEPT,
@@ -985,36 +868,109 @@ enum options {
 	OPT_X_ENUM,
 };
 
-static OPTIONS options[] = {
-#ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
-#endif
+OPTIONS s_server_options[] = {
+
 	{ "port", OPT_PORT, 'p' },
-	{ "accept", OPT_PORT, 'p' },
-	{ "unix", OPT_UNIX, 's' },
-	{ "unlink", OPT_UNLINK, '-' },
-	{ "naccept", OPT_NACCEPT, 'n' },
-	{ "verify", OPT_VERIFY, 'n' },
-	{ "Verify", OPT_UPPER_V_VERIFY, 'n' },
-	{ "context", OPT_CONTEXT, 's' },
-	{ "cert", OPT_CERT, '<' },
+	{ "accept", OPT_PORT, 'p', "TCP/IP port to accept on (default is " PORT_STR ")" },
+	{ "unix", OPT_UNIX, 's', "Unix domain socket to accept on" },
+	{ "unlink", OPT_UNLINK, '-', "For -unix, unlink existing socket first" },
+	{ "context", OPT_CONTEXT, 's', "Set session ID context" },
+	{ "verify", OPT_VERIFY, 'n', "Turn on peer certificate verification" },
+	{ "Verify", OPT_UPPER_V_VERIFY, 'n', "Turn on peer certificate verification, must have a cert" },
+	{ "cert", OPT_CERT, '<', "Certificate file to use; default is " TEST_CERT },
+	{ "naccept", OPT_NACCEPT, 'n', "-Terminate after pnum connections" },
+#ifndef OPENSSL_NO_TLSEXT
+	{ "serverinfo", OPT_SERVERINFO, 's', "PEM serverinfo file for certificate" },
+#endif
+	{ "certform", OPT_CERTFORM, 'F', "Certificate format (PEM or DER) PEM default" },
+	{ "key", OPT_KEY, '<', "Private Key if not in -cert; default is " TEST_CERT },
+	{ "keyform", OPT_KEYFORM, 'f', "Key format (PEM, DER or ENGINE) PEM default" },
+	{ "pass", OPT_PASS, 's', "Private key file pass phrase source" },
+	{ "dcert", OPT_DCERT, '<', "Second certificate file to use (usually for DSA)" },
+	{ "dcertform", OPT_DCERTFORM, 'F', "Second certificate format (PEM or DER) PEM default" },
+	{ "dkey", OPT_DKEY, '<', "Second private key file to use (usually for DSA)" },
+	{ "dkeyform", OPT_DKEYFORM, 'F', "Second key format (PEM, DER or ENGINE) PEM default" },
+	{ "dpass", OPT_DPASS, 's', "Second private key file pass phrase source" },
+	{ "dhparam", OPT_DHPARAM, '<', "DH parameters, or in cert file or defaults used" },
+#ifdef FIONBIO
+	{ "nbio", OPT_NBIO, '-', "Use non-blocking IO" },
+#endif
+	{ "nbio_test", OPT_NBIO_TEST, '-', "Test with the non-blocking test bio" },
+	{ "crlf", OPT_CRLF, '-', "Convert LF from terminal into CRLF" },
+	{ "debug", OPT_DEBUG, '-', "Print more output" },
+	{ "msg", OPT_MSG, '-', "Show protocol messages" },
+	{ "msgfile", OPT_MSGFILE, '>' },
+	{ "state", OPT_STATE, '-', "Print the SSL states" },
+	{ "CApath", OPT_CAPATH, '/', "PEM format directory of CA's" },
+	{ "CAfile", OPT_CAFILE, '<', "PEM format file of CA's" },
+	{ "nocert", OPT_NOCERT, '-', "Don't use any certificates (Anon-DH)" },
+	{ "quiet", OPT_QUIET, '-', "No server output" },
+	{ "no_tmp_rsa", OPT_NO_TMP_RSA, '-', "Do not generate a tmp RSA key" },
+#ifndef OPENSSL_NO_PSK
+	{ "psk_hint", OPT_PSK_HINT, 's', "PSK identity hint to use" },
+	{ "psk", OPT_PSK, 's', "PSK in hex (without 0x)" },
+# ifndef OPENSSL_NO_JPAKE
+	{ "jpake", OPT_JPAKE, 's', "JPAKE secret to use" },
+# endif
+#endif
+#ifndef OPENSSL_NO_SRP
+	{ "srpvfile", OPT_SRPVFILE, '<', "The verifier file for SRP" },
+	{ "srpuserseed", OPT_SRPUSERSEED, 's', "A seed string for a default user salt" },
+#endif
+#ifndef OPENSSL_NO_SSL2
+	{ "ssl2", OPT_SSL2, '-', "Just talk SSLv2" },
+#endif
+#ifndef OPENSSL_NO_SSL3
+	{ "ssl3", OPT_SSL3, '-', "Just talk SSLv3" },
+#endif
+#ifndef OPENSSL_NO_TLS1
+	{ "tls1_2", OPT_TLS1_2, '-', "just talk TLSv1.2" },
+	{ "tls1_1", OPT_TLS1_1, '-', "Just talk TLSv1.1" },
+	{ "tls1", OPT_TLS1, '-', "Just talk TLSv1" },
+	{ "dtls", OPT_DTLS, '-' },
+	{ "dtls1", OPT_DTLS1, '-', "Just talk DTLSv1" },
+	{ "dtls1_2", OPT_DTLS1_2, '-', "Just talk DTLSv1.2" },
+	{ "timeout", OPT_TIMEOUT, '-', "Enable timeouts" },
+	{ "mtu", OPT_MTU, 'p', "Set link layer MTU" },
+	{ "chain", OPT_CHAIN, '-', "Read a certificate chain" },
+#endif
+#if 0 /* XXX RSALZ */
+	"-no_ssl2      Just disable SSLv2",
+	"-no_ssl3      Just disable SSLv3",
+	"-no_tls1      Just disable TLSv1",
+	"-no_tls1_1    Just disable TLSv1.1",
+	"-no_tls1_2    Just disable TLSv1.2",
+#endif
+#ifndef OPENSSL_NO_DH
+	{ "no_dhe", OPT_NO_DHE, '-', "Disable ephemeral DH" },
+#endif
+#ifndef OPENSSL_NO_ECDH
+	{ "no_ecdhe", OPT_NO_ECDHE, '-', "Disable ephemeral ECDH" },
+#endif
+	{ "no_resume_ephemeral", OPT_NO_RESUME_EPHEMERAL, '-', "Disable caching and tickets if ephemeral (EC)DH is used" },
+	{ "www", OPT_WWW, '-', "Respond to a 'GET /' with a status page" },
+	{ "WWW", OPT_UPPER_WWW, '-', "Respond to a 'GET with the file ./path" },
+	{ "HTTP", OPT_HTTP, '-', "Like -WWW but ./path incluedes HTTP headers" },
+	{ "id_prefix", OPT_ID_PREFIX, 's', "Generate SSL/TLS session IDs prefixed by arg" },
+	{ "rand", OPT_RAND, 's', "Load the file(s) into the random number generator" },
+#ifndef OPENSSL_NO_TLSEXT
+	{ "servername", OPT_SERVERNAME, 's', "Servername for HostName TLS extension" },
+	{ "servername_fatal", OPT_SERVERNAME_FATAL, '-', "mismatch send fatal alert (default warning alert)" },
+	{ "cert2", OPT_CERT2, '<', "Certificate file to use for servername; default is" TEST_CERT2 },
+	{ "key2", OPT_KEY2, '<', "-Private Key file to use for servername if not in -cert2" },
+	{ "tlsextdebug", OPT_TLSEXTDEBUG, '-', "Hex dump of all TLS extensions received" },
+#ifndef OPENSSL_NO_NEXTPROTONEG
+	{ "nextprotoneg", OPT_NEXTPROTONEG, 's', "Set the advertised protocols for the NPN extension (comma-separated list)" },
+#endif
+	{ "use_srtp", OPT_SRTP_PROFILES, '<', "Offer SRTP key management with a colon-separated profile list" },
+	{ "alpn", OPT_ALPN, 's', "Set the advertised protocols for the ALPN extension (comma-separated list)" },
+#endif
+	{ "keymatexport", OPT_KEYMATEXPORT, 's', "Export keying material using label" },
+	{ "keymatexportlen", OPT_KEYMATEXPORTLEN, 'p', "Export len bytes of keying material (default 20)" },
 	{ "CRL", OPT_CRL, '<' },
 	{ "crl_download", OPT_CRL_DOWNLOAD, '-' },
-	{ "serverinfo", OPT_SERVERINFO, 's' },
-	{ "certform", OPT_CERTFORM, 'F' },
-	{ "key", OPT_KEY, '<' },
-	{ "keyform", OPT_KEYFORM, 'F' },
-	{ "pass", OPT_PASS, 's' },
 	{ "cert_chain", OPT_CERT_CHAIN, '<' },
-	{ "dhparam", OPT_DHPARAM, '<' },
-	{ "dcertform", OPT_DCERTFORM, 'F' },
-	{ "dcert", OPT_DCERT, '<' },
-	{ "dkeyform", OPT_DKEYFORM, 'F' },
-	{ "dpass", OPT_DPASS, 's' },
-	{ "dkey", OPT_DKEY, '<' },
 	{ "dcert_chain", OPT_DCERT_CHAIN, '<' },
-	{ "nocert", OPT_NOCERT, '-' },
-	{ "CApath", OPT_CAPATH, '/' },
 	{ "chainCApath", OPT_CHAINCAPATH, '/' },
 	{ "verifyCApath", OPT_VERIFYCAPATH, '/' },
 	{ "no_cache", OPT_NO_CACHE, '-' },
@@ -1023,70 +979,23 @@ static OPTIONS options[] = {
 	{ "verify_return_error", OPT_VERIFY_RET_ERROR, '-' },
 	{ "verify_quiet", OPT_VERIFY_QUIET, '-' },
 	{ "build_chain", OPT_BUILD_CHAIN, '-' },
-	{ "CAfile", OPT_CAFILE, '<' },
 	{ "chainCAfile", OPT_CHAINCAFILE, '<' },
 	{ "verifyCAfile", OPT_VERIFYCAFILE, '<' },
-	{ "nbio", OPT_NBIO, '-' },
-	{ "nbio_test", OPT_NBIO_TEST, '-' },
 	{ "ign_eof", OPT_IGN_EOF, '-' },
 	{ "no_ign_eof", OPT_NO_IGN_EOF, '-' },
-	{ "debug", OPT_DEBUG, '-' },
-	{ "tlsextdebug", OPT_TLSEXTDEBUG, '-' },
 	{ "status", OPT_STATUS, '-' },
 	{ "status_verbose", OPT_STATUS_VERBOSE, '-' },
 	{ "status_timeout", OPT_STATUS_TIMEOUT, 'n' },
 	{ "status_url", OPT_STATUS_URL, 's' },
-	{ "msg", OPT_MSG, '-' },
-	{ "msgfile", OPT_MSGFILE, '>' },
 	{ "trace", OPT_TRACE, '-' },
 	{ "security_debug", OPT_SECURITY_DEBUG, '-' },
 	{ "security_debug_verbose", OPT_SECURITY_DEBUG_VERBOSE, '-' },
 	{ "hack", OPT_HACK, '-' },
-	{ "state", OPT_STATE, '-' },
-	{ "crlf", OPT_CRLF, '-' },
-	{ "quiet", OPT_QUIET, '-' },
 	{ "brief", OPT_BRIEF, '-' },
-	{ "no_tmp_rsa", OPT_NO_TMP_RSA, '-' },
-	{ "no_dhe", OPT_NO_DHE, '-' },
-	{ "no_ecdhe", OPT_NO_ECDHE, '-' },
-	{ "no_resume_ephemeral", OPT_NO_RESUME_EPHEMERAL, '-' },
-	{ "psk_hint", OPT_PSK_HINT, 's' },
-	{ "psk", OPT_PSK, 's' },
-	{ "srpvfile", OPT_SRPVFILE, '<' },
-	{ "srpuserseed", OPT_SRPUSERSEED, 's' },
 	{ "rev", OPT_REV, '-' },
-	{ "www", OPT_WWW, '-' },
-	{ "WWW", OPT_UPPER_WWW, '-' },
-	{ "HTTP", OPT_HTTP, '-' },
-#ifndef OPENSSL_NO_SSL2
-	{ "ssl2", OPT_SSL2, '-' },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's' },
 #endif
-#ifndef OPENSSL_NO_SSL3
-	{ "ssl3", OPT_SSL3, '-' },
-#endif
-#ifndef OPENSSL_NO_TLS1
-	{ "tls1_2", OPT_TLS1_2, '-' },
-	{ "tls1_1", OPT_TLS1_1, '-' },
-	{ "tls1", OPT_TLS1, '-' },
-	{ "dtls", OPT_DTLS, '-' },
-	{ "dtls1", OPT_DTLS1, '-' },
-	{ "dtls1_2", OPT_DTLS1_2, '-' },
-	{ "timeout", OPT_TIMEOUT, '-' },
-	{ "mtu", OPT_MTU, 'p' },
-	{ "chain", OPT_CHAIN, '-' },
-#endif
-	{ "id_prefix", OPT_ID_PREFIX, 's' },
-	{ "rand", OPT_RAND, 's' },
-	{ "servername", OPT_SERVERNAME, 's' },
-	{ "servername_fatal", OPT_SERVERNAME_FATAL, '-' },
-	{ "cert2", OPT_CERT2, '<' },
-	{ "key2", OPT_KEY2, '<' },
-	{ "nextprotoneg", OPT_NEXTPROTONEG, 's' },
-	{ "alpn", OPT_ALPN, 's' },
-	{ "jpake", OPT_JPAKE, 's' },
-	{ "use_srtp", OPT_SRTP_PROFILES, '<' },
-	{ "keymatexport", OPT_KEYMATEXPORT, 's' },
-	{ "keymatexportlen", OPT_KEYMATEXPORTLEN, 'p' },
 	OPT_S_OPTIONS,
 	OPT_V_OPTIONS,
 	OPT_X_OPTIONS,
@@ -1152,14 +1061,13 @@ int s_server_main(int argc, char *argv[])
 	SSL_CONF_CTX_set_flags(cctx, SSL_CONF_FLAG_SERVER);
 	SSL_CONF_CTX_set_flags(cctx, SSL_CONF_FLAG_CMDLINE);
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, s_server_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 err:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(s_server_help);
+			opt_help(s_server_options);
 			goto end;
 
 		case OPT_PORT:

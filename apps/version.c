@@ -132,29 +132,19 @@
 # include <openssl/blowfish.h>
 #endif
 
-
-const char* version_help[] = {
-	"-a          show all data",
-	"-b          show build date",
-	"-v          show library version",
-	"-o          show some internal datatype options",
-	"-f          show compiler flags used",
-	"-p          show target build platform",
-	"-d          show configuration directory",
-	NULL
-};
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_B, OPT_D, OPT_F, OPT_O, OPT_P, OPT_V, OPT_A
 };
-static OPTIONS optlist[] = {
-	{ "b", OPT_B, '-' },
-	{ "d", OPT_D, '-' },
-	{ "f", OPT_F, '-' },
-	{ "o", OPT_O, '-' },
-	{ "p", OPT_P, '-' },
-	{ "v", OPT_V, '-' },
-	{ "a", OPT_A, '-' },
+
+OPTIONS version_options[] = {
+	{ "a", OPT_A, '-', "Show all data" },
+	{ "b", OPT_B, '-', "Show build date" },
+	{ "d", OPT_D, '-', "Show configuration directory" },
+	{ "f", OPT_F, '-', "Show compiler flags used" },
+	{ "o", OPT_O, '-', "Show some internal datatype options" },
+	{ "p", OPT_P, '-', "Show target build platform" },
+	{ "v", OPT_V, '-', "Show library version" },
 	{ NULL }
 };
 
@@ -165,13 +155,12 @@ int version_main(int argc, char **argv)
 	char* prog;
 	enum options o;
 
-	prog = opt_init(argc, argv, optlist);
+	prog = opt_init(argc, argv, version_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(version_help);
+			opt_help(version_options);
 			goto end;
 		case OPT_B: date=1; break;
 		case OPT_D: dir=1; break;

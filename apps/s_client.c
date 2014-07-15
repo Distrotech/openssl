@@ -467,100 +467,13 @@ static int serverinfo_cli_cb(SSL* s, unsigned short ext_type,
 
 #endif
 
-enum
-{
+enum protocols {
 	PROTO_OFF,
 	PROTO_SMTP,
 	PROTO_POP3,
 	PROTO_IMAP,
 	PROTO_FTP,
 	PROTO_XMPP
-};
-
-const char* s_client_help[] = {
-	"-host host     use -connect instead",
-	"-port port     use -connect instead",
-	"-connect host:port  connect over TCP/IP (default is " SSL_HOST_NAME ":" PORT_STR ")",
-	"-unix path     connect over unix domain sockets",
-	"-verify arg    turn on peer certificate verification",
-	"-cert arg      certificate file to use, PEM format assumed",
-	"-certform arg  certificate format (PEM or DER) PEM default",
-	"-key arg       private key file to use, in cert file if",
-	"               not specified but cert file is",
-	"-keyform arg   key format (PEM or DER) PEM default",
-	"-pass arg      private key file pass phrase source",
-	"-CApath arg    PEM format directory of CA's",
-	"-CAfile arg    PEM format file of CA's",
-	"-trusted_first  use local CA's first when building trust chain",
-	"-reconnect     drop and re-make the connection with the same Session-ID",
-	"-pause         sleep(1) after each read(2) and write(2) system call",
-	"-showcerts     show all certificates in the chain",
-	"-debug         extra output",
-	"-msg           show protocol messages",
-	"-nbio_test     more ssl protocol testing",
-	"-state         print the 'ssl' states",
-	"-crlf          convert LF from terminal into CRLF",
-	"-quiet         no s_client output",
-	"-ign_eof       ignore input eof (default when -quiet)",
-	"-no_ign_eof    don't ignore input eof",
-	"-ssl2          just use SSLv2",
-	"-ssl3          just use SSLv3",
-	"-tls1_2        just use TLSv1.2",
-	"-tls1_1        just use TLSv1.1",
-	"-tls1          just use TLSv1",
-	"-dtls1         just use DTLSv1",
-	"-mtu           set the link layer MTU",
-	"-no_tls1_2/-no_tls1_1/-no_tls1/-no_ssl3/-no_ssl2  turn off that protocol",
-	"-bugs          switch on all SSL implementation bug workarounds",
-	"-serverpref    use server's cipher preferences (only SSLv2)",
-	"-cipher        preferred cipher to use; see 'openssl ciphers'",
-	"-starttls prot  use the STARTTLS command before starting TLS",
-	"               prot must be: smtp pop3 imap ftp or xmpp",
-	"-xmpphost host  when used with \"-starttls xmpp\" specifies the virtual host",
-	"-rand file...  load the file(s) into the random number generator",
-	"-sess_out arg  file to write SSL session to",
-	"-sess_in arg   file to read SSL session from",
-	"-legacy_renegotiation  enable use of legacy renegotiation (dangerous)",
-	"-use_srtp profiles  offer SRTP key management with a colon-separated profile list",
-	"-keymatexport label   export keying material using label",
-	"-keymatexportlen len  export len bytes of keying material (default 20)",
-#ifdef WATT32
-	"-wdebug        WATT-32 tcp debugging",
-#endif
-#ifdef FIONBIO
-	"-nbio         use non-blocking IO",
-#endif
-#ifndef OPENSSL_NO_PSK
-	"-psk_identity arg  PSK identity",
-	"-psk arg       PSK in hex (without 0x)",
-# ifndef OPENSSL_NO_JPAKE
-	"-jpake arg     JPAKE secret to use",
-# endif
-#endif
-#ifndef OPENSSL_NO_SRP
-	"-srpuser user  SRP authentification for 'user'",
-	"-srppass arg   password for 'user'",
-	"-srp_lateuser  SRP username into second ClientHello message",
-	"-srp_moregroups   tolerate other than the known g N values.",
-	"-srp_strength int minimal mength in bits for N (default %d).",
-#endif
-#ifndef OPENSSL_NO_ENGINE
-	"-engine id     initialise and use the specified engine",
-#endif
-#ifndef OPENSSL_NO_TLSEXT
-	"-servername host  set TLS extension servername in ClientHello",
-	"-tlsextdebug   hex dump of all TLS extensions received",
-	"-status        request certificate status from server",
-	"-no_ticket     disable use of RFC4507bis session tickets",
-	"-serverinfo types  send empty ClientHello extensions (comma-separated numbers)",
-	"-auth           send and receive RFC 5878 TLS auth extensions and supplemental data",
-	"-auth_require_reneg  do not send TLS auth extensions until renegotiation",
-	"-alpn arg      enable ALPN extension, considering named protocols supported (comma-separated list)",
-# ifndef OPENSSL_NO_NEXTPROTONEG
-	"-nextprotoneg arg  enable NPN extension, considering named protocols supported (comma-separated list)",
-# endif
-#endif
-	NULL
 };
 
 enum options {
@@ -587,91 +500,106 @@ enum options {
 	OPT_S_ENUM,
 };
 
-static OPTIONS options[] = {
-	{ "host", OPT_HOST, 's' },
-	{ "port", OPT_PORT, 'p' },
-	{ "connect", OPT_CONNECT, 's' },
-	{ "unix", OPT_UNIX, 's' },
-	{ "xmpphost", OPT_XMPPHOST, 's' },
-	{ "verify", OPT_VERIFY, 'p' },
-	{ "cert", OPT_CERT, '<' },
+OPTIONS s_client_options[] = {
+	{ "host", OPT_HOST, 's', "Use -connect instead" },
+	{ "port", OPT_PORT, 'p', "Use -connect instead" },
+	{ "connect", OPT_CONNECT, 's', "TCP/IP where to connect (default is " SSL_HOST_NAME ":" PORT_STR ")" },
+	{ "unix", OPT_UNIX, 's', "Connect over unix domain sockets" },
+	{ "verify", OPT_VERIFY, 'p', "Turn on peer certificate verification" },
+	{ "cert", OPT_CERT, '<', "Certificate file to use, PEM format assumed" },
+	{ "certform", OPT_CERTFORM, 'F', "Certificate format (PEM or DER) PEM default" },
+	{ "key", OPT_KEY, '<', "Private key file to use, if not in -cert file" },
+	{ "keyform", OPT_KEYFORM, 'F', "Key format (PEM or DER) PEM default" },
+	{ "pass", OPT_PASS, 's', "Private key file pass phrase source" },
+	{ "CApath", OPT_CAPATH, '/', "PEM format directory of CA's" },
+	{ "CAfile", OPT_CAFILE, '<', "PEM format file of CA's" },
+	{ "reconnect", OPT_RECONNECT, '-', "Drop and re-make the connection with the same Session-ID" },
+	{ "pause", OPT_PAUSE, '-', "Sleep  after each read and write system call" },
+	{ "showcerts", OPT_SHOWCERTS, '-', "Show all certificates in the chain" },
+	{ "debug", OPT_DEBUG, '-', "Extra output" },
+	{ "msg", OPT_MSG, '-', "Show protocol messages" },
+	{ "msgfile", OPT_MSGFILE, '>' },
+	{ "nbio_test", OPT_NBIO_TEST, '-', "More ssl protocol testing" },
+	{ "state", OPT_STATE, '-', "Print the ssl states" },
+	{ "crlf", OPT_CRLF, '-', "Convert LF from terminal into CRLF" },
+	{ "quiet", OPT_QUIET, '-', "No s_client output" },
+	{ "ign_eof", OPT_IGN_EOF, '-', "Ignore input eof (default when -quiet)" },
+	{ "no_ign_eof", OPT_NO_IGN_EOF, '-', "Don't ignore input eof" },
+#ifndef OPENSSL_NO_SSL2
+	{ "ssl2", OPT_SSL2, '-', "Just use SSLv2" },
+#endif
+#ifndef OPENSSL_NO_SSL3
+	{ "ssl3", OPT_SSL3, '-', "Just use SSLv3" },
+#endif
+#ifndef OPENSSL_NO_TLS1
+	{ "tls1_2", OPT_TLS1_2, '-', "Just use TLSv1.2" },
+	{ "tls1_1", OPT_TLS1_1, '-', "Just use TLSv1.1" },
+	{ "tls1", OPT_TLS1, '-', "Just use TLSv1" },
+	{ "dtls", OPT_DTLS, '-' },
+	{ "dtls1", OPT_DTLS1, '-', "Just use DTLSv1" },
+	{ "dtls1_2", OPT_DTLS1_2, '-' },
+	{ "timeout", OPT_TIMEOUT, '-' },
+	{ "mtu", OPT_MTU, 'p', "Set the link layer MTU" },
+#endif
+	/* "-no_tls1_2/-no_tls1_1/-no_tls1/-no_ssl3/-no_ssl2  turn off that protocol", */
+	{ "starttls", OPT_STARTTLS, 's', "Use the STARTTLS command before starting TLS" },
+	{ "xmpphost", OPT_XMPPHOST, 's', "When used with \"-starttls xmpp\" specifies the virtual host" },
+	{ "rand", OPT_RAND, 's', "Load the file(s) into the random number generator" },
+	{ "sess_out", OPT_SESS_OUT, '>', "File to write SSL session to" },
+	{ "sess_in", OPT_SESS_IN, '<', "File to read SSL session from" },
+	{ "use_srtp", OPT_USE_SRTP, '<', "Offer SRTP key management with a colon-separated profile list" },
+	{ "keymatexport", OPT_KEYMATEXPORT, 's', "Export keying material using label" },
+	{ "keymatexportlen", OPT_KEYMATEXPORTLEN, 'p', "Export len bytes of keying material (default 20)" },
+#ifdef WATT32
+	{ "wdebug", OPT_WDEBUG, '-', "WATT-32 tcp debugging" },
+#endif
+#ifdef FIONBIO
+	{ "nbio", OPT_NBIO, '-', "Use non-blocking IO" },
+#endif
+#ifndef OPENSSL_NO_PSK
+	{ "psk_identity", OPT_PSK_IDENTITY, 's', "PSK identity" },
+	{ "psk", OPT_PSK, 's', "PSK in hex (without 0x)" },
+# ifndef OPENSSL_NO_JPAKE
+	{ "jpake", OPT_JPAKE, 's', "JPAKE secret to use" },
+# endif
+#endif
+#ifndef OPENSSL_NO_SRP
+	{ "srpuser", OPT_SRPUSER, 's', "SRP authentification for 'user'" },
+	{ "srppass", OPT_SRPPASS, 's', "Password for 'user'" },
+	{ "srp_lateuser", OPT_SRP_LATEUSER, '-', "SRP username into second ClientHello message" },
+	{ "srp_moregroups", OPT_SRP_MOREGROUPS, '-', "Tolerate other than the known g N values." },
+	{ "srp_strength", OPT_SRP_STRENGTH, 'p', "Minimal mength in bits for N" },
+#endif
+#ifndef OPENSSL_NO_TLSEXT
+	{ "servername", OPT_SERVERNAME, 's', "Set TLS extension servername in ClientHello" },
+	{ "tlsextdebug", OPT_TLSEXTDEBUG, '-', "Hex dump of all TLS extensions received" },
+	{ "status", OPT_STATUS, '-', "Request certificate status from server" },
+	{ "serverinfo", OPT_SERVERINFO, 's', "types  Send empty ClientHello extensions (comma-separated numbers)" },
+	{ "alpn", OPT_ALPN, 's', "Enable ALPN extension, considering named protocols supported (comma-separated list)" },
+# ifndef OPENSSL_NO_NEXTPROTONEG
+	{ "nextprotoneg", OPT_NEXTPROTONEG, 's', "Enable NPN extension, considering named protocols supported (comma-separated list)" },
+# endif
+#endif
 	{ "CRL", OPT_CRL, '<' },
 	{ "crl_download", OPT_CRL_DOWNLOAD, '-' },
-	{ "sess_out", OPT_SESS_OUT, '>' },
-	{ "sess_in", OPT_SESS_IN, '<' },
-	{ "certform", OPT_CERTFORM, 'F' },
 	{ "CRLform", OPT_CRLFORM, 'F' },
 	{ "verify_return_error", OPT_VERIFY_RET_ERROR, '-' },
 	{ "verify_quiet", OPT_VERIFY_QUIET, '-' },
 	{ "brief", OPT_BRIEF, '-' },
 	{ "prexit", OPT_PREXIT, '-' },
-	{ "crlf", OPT_CRLF, '-' },
-	{ "quiet", OPT_QUIET, '-' },
-	{ "nbio", OPT_NBIO, '-' },
 	{ "ssl_client_engine", OPT_SSL_CLIENT_ENGINE, 's' },
-	{ "rand", OPT_RAND, 's' },
-	{ "ign_eof", OPT_IGN_EOF, '-' },
-	{ "no_ign_eof", OPT_NO_IGN_EOF, '-' },
-	{ "pause", OPT_PAUSE, '-' },
-	{ "debug", OPT_DEBUG, '-' },
-	{ "tlsextdebug", OPT_TLSEXTDEBUG, '-' },
-	{ "status", OPT_STATUS, '-' },
-	{ "wdebug", OPT_WDEBUG, '-' },
-	{ "msg", OPT_MSG, '-' },
-	{ "msgfile", OPT_MSGFILE, '>' },
-#ifndef OPENSSL_NO_ENGINE
-	{ "engine", OPT_ENGINE, 's' },
-#endif
 	{ "trace", OPT_TRACE, '-' },
 	{ "security_debug", OPT_SECURITY_DEBUG, '-' },
 	{ "security_debug_verbose", OPT_SECURITY_DEBUG_VERBOSE, '-' },
-	{ "showcerts", OPT_SHOWCERTS, '-' },
-	{ "nbio_test", OPT_NBIO_TEST, '-' },
-	{ "state", OPT_STATE, '-' },
-	{ "psk_identity", OPT_PSK_IDENTITY, 's' },
-	{ "psk", OPT_PSK, 's' },
-	{ "srpuser", OPT_SRPUSER, 's' },
-	{ "srppass", OPT_SRPPASS, 's' },
-	{ "srp_strength", OPT_SRP_STRENGTH, 'p' },
-	{ "srp_lateuser", OPT_SRP_LATEUSER, '-' },
-	{ "srp_moregroups", OPT_SRP_MOREGROUPS, '-' },
-#ifndef OPENSSL_NO_SSL2
-	{ "ssl2", OPT_SSL2, '-' },
-#endif
-#ifndef OPENSSL_NO_SSL3
-	{ "ssl3", OPT_SSL3, '-' },
-#endif
-#ifndef OPENSSL_NO_TLS1
-	{ "tls1_2", OPT_TLS1_2, '-' },
-	{ "tls1_1", OPT_TLS1_1, '-' },
-	{ "tls1", OPT_TLS1, '-' },
-	{ "dtls", OPT_DTLS, '-' },
-	{ "dtls1", OPT_DTLS1, '-' },
-	{ "dtls1_2", OPT_DTLS1_2, '-' },
-	{ "timeout", OPT_TIMEOUT, '-' },
-	{ "mtu", OPT_MTU, 'p' },
-#endif
-	{ "keyform", OPT_KEYFORM, 'F' },
-	{ "pass", OPT_PASS, 's' },
 	{ "cert_chain", OPT_CERT_CHAIN, '<' },
-	{ "CApath", OPT_CAPATH, '/' },
 	{ "chainCApath", OPT_CHAINCAPATH, '/' },
 	{ "verifyCApath", OPT_VERIFYCAPATH, '/' },
-	{ "key", OPT_KEY, '<' },
-	{ "reconnect", OPT_RECONNECT, '-' },
 	{ "build_chain", OPT_BUILD_CHAIN, '-' },
-	{ "CAfile", OPT_CAFILE, '<' },
 	{ "chainCAfile", OPT_CHAINCAFILE, '<' },
 	{ "verifyCAfile", OPT_VERIFYCAFILE, '<' },
-	{ "nextprotoneg", OPT_NEXTPROTONEG, 's' },
-	{ "alpn", OPT_ALPN, 's' },
-	{ "serverinfo", OPT_SERVERINFO, 's' },
-	{ "starttls", OPT_STARTTLS, 's' },
-	{ "servername", OPT_SERVERNAME, 's' },
-	{ "jpake", OPT_JPAKE, 's' },
-	{ "use_srtp", OPT_USE_SRTP, '<' },
-	{ "keymatexport", OPT_KEYMATEXPORT, 's' },
-	{ "keymatexportlen", OPT_KEYMATEXPORTLEN, 'p' },
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
 	OPT_S_OPTIONS,
 	OPT_V_OPTIONS,
 	OPT_X_OPTIONS,
@@ -780,7 +708,7 @@ int s_client_main(int argc, char **argv)
 	SSL_CONF_CTX_set_flags(cctx, SSL_CONF_FLAG_CLIENT);
 	SSL_CONF_CTX_set_flags(cctx, SSL_CONF_FLAG_CMDLINE);
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, s_client_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 #ifndef WATT32
@@ -794,8 +722,7 @@ int s_client_main(int argc, char **argv)
 #endif
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(s_client_help);
+			opt_help(s_client_options);
 			goto end;
 		case OPT_HOST:
 			host = opt_arg();

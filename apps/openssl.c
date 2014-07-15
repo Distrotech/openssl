@@ -152,12 +152,6 @@ BIO *bio_in=NULL;
 BIO *bio_out=NULL;
 BIO *bio_err=NULL;
 
-void printhelp(const char** cpp)
-	{
-	for ( ; *cpp; cpp++)
-		BIO_printf(bio_err, "%s\n", *cpp);
-	}
-
 static void apps_startup()
 	{
 #ifdef SIGPIPE

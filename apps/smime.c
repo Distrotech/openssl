@@ -80,67 +80,6 @@ static int smime_cb(int ok, X509_STORE_CTX *ctx);
 #define SMIME_PK7OUT	(5 | SMIME_IP | SMIME_OP)
 #define SMIME_RESIGN	(6 | SMIME_IP | SMIME_OP | SMIME_SIGNERS)
 
-const char* smime_help[] = {
-	"-encrypt       encrypt message",
-	"-decrypt       decrypt encrypted message",
-	"-sign          sign message",
-	"-verify        verify signed message",
-	"-pk7out        output PKCS#7 structure",
-#ifndef OPENSSL_NO_DES
-	"-des3          encrypt with triple DES",
-	"-des           encrypt with DES",
-#endif
-#ifndef OPENSSL_NO_SEED
-	"-seed          encrypt with SEED",
-#endif
-#ifndef OPENSSL_NO_RC2
-	"-rc2-40        encrypt with RC2-40 (default)",
-	"-rc2-64        encrypt with RC2-64",
-	"-rc2-128       encrypt with RC2-128",
-#endif
-#ifndef OPENSSL_NO_AES
-	"-aes128, -aes192, -aes256",
-	"               encrypt PEM output with cbc aes",
-#endif
-#ifndef OPENSSL_NO_CAMELLIA
-	"-camellia128, -camellia192, -camellia256",
-	"               encrypt PEM output with cbc camellia",
-#endif
-	"-nointern      don't search certificates in message for signer",
-	"-nosigs        don't verify message signature",
-	"-noverify      don't verify signers certificate",
-	"-nocerts       don't include signers certificate when signing",
-	"-nodetach      use opaque signing",
-	"-noattr        don't include any signed attributes",
-	"-binary        don't translate message to text",
-	"-certfile file other certificates file",
-	"-signer file   signer certificate file",
-	"-recip  file   recipient certificate file for decryption",
-	"-in file       input file",
-	"-inform arg    input format SMIME (default), PEM or DER",
-	"-inkey file    input private key (if not signer or recipient)",
-	"-keyform arg   input private key format (PEM or ENGINE)",
-	"-out file      output file",
-	"-outform arg   output format SMIME (default), PEM or DER",
-	"-content file  supply or override content for detached signature",
-	"-to addr       to address",
-	"-from addr     from address",
-	"-subject s     subject",
-	"-text          include or delete text MIME headers",
-	"-CApath dir    trusted certificates directory",
-	"-CAfile file   trusted certificates file",
-	"-trusted_first use locally trusted CA's first when building trust chain",
-	"-crl_check     check revocation status of signer's certificate using CRLs",
-	"-crl_check_all check revocation status of signer's certificate chain using CRLs",
-#ifndef OPENSSL_NO_ENGINE
-	"-engine e      use engine e, possibly a hardware device.",
-#endif
-	"-passin arg    input file pass phrase source",
-	"-rand file...  load the file(s) into the random number generator",
-	"cert.pem       recipient certificate(s) for encryption",
-	NULL,
-};
-
 enum options {
 	OPT_ERR = -1, OPT_EOF = 0,
 	OPT_ENCRYPT, OPT_DECRYPT, OPT_SIGN, OPT_RESIGN, OPT_VERIFY,
@@ -154,49 +93,53 @@ enum options {
 	OPT_V_ENUM,
 };
 
-static OPTIONS options[] = {
-	OPT_V_OPTIONS,
-	{ "encrypt", OPT_ENCRYPT, '-' },
-	{ "decrypt", OPT_DECRYPT, '-' },
-	{ "sign", OPT_SIGN, '-' },
+OPTIONS smime_options[] = {
+	{ OPT_HELP_STR, 1, '-', "Usage: %s [options] cert.pem...\n" },
+	{ "cert.pem", 1, '-', "Recipient certs for encryption" },
+	{ "encrypt", OPT_ENCRYPT, '-', "Encrypt message" },
+	{ "decrypt", OPT_DECRYPT, '-', "Decrypt encrypted message" },
+	{ "sign", OPT_SIGN, '-', "Sign message" },
+	{ "verify", OPT_VERIFY, '-', "Verify signed message" },
+	{ "pk7out", OPT_PK7OUT, '-', "Output PKCS#7 structure" },
+	{ "nointern", OPT_NOINTERN, '-', "Don't search certificates in message for signer" },
+	{ "nosigs", OPT_NOSIGS, '-', "Don't verify message signature" },
+	{ "noverify", OPT_NOVERIFY, '-', "Don't verify signers certificate" },
+	{ "nocerts", OPT_NOCERTS, '-', "Don't include signers certificate when signing" },
+	{ "nodetach", OPT_NODETACH, '-', "Use opaque signing" },
+	{ "noattr", OPT_NOATTR, '-', "Don't include any signed attributes" },
+	{ "binary", OPT_BINARY, '-', "Don't translate message to text" },
+	{ "certfile", OPT_CERTFILE, '<', "Other certificates file" },
+	{ "signer", OPT_SIGNER, '<', "Signer certificate file" },
+	{ "recip", OPT_RECIP, '<', "Recipient certificate file for decryption" },
+	{ "in", OPT_IN, '<', "Input file" },
+	{ "inform", OPT_INFORM, 'F', "Input format SMIME (default), PEM or DER" },
+	{ "inkey", OPT_INKEY, '<', "Input private key (if not signer or recipient)" },
+	{ "keyform", OPT_KEYFORM, 'f', "Input private key format (PEM or ENGINE)" },
+	{ "out", OPT_OUT, '>', "Output file" },
+	{ "outformn", OPT_OUTFORM, 'F', "Output format SMIME (default), PEM or DER" },
+	{ "content", OPT_CONTENT, '<', "Supply or override content for detached signature" },
+	{ "to", OPT_TO, 's', "To address" },
+	{ "from", OPT_FROM, 's', "From address" },
+	{ "subject", OPT_SUBJECT, 's', "Subject" },
+	{ "text", OPT_TEXT, '-', "Include or delete text MIME headers" },
+	{ "CApath", OPT_CAPATH, '/', "Trusted certificates directory" },
+	{ "CAfile", OPT_CAFILE, '<', "Trusted certificates file" },
 	{ "resign", OPT_RESIGN, '-' },
-	{ "verify", OPT_VERIFY, '-' },
-	{ "pk7out", OPT_PK7OUT, '-' },
-	{ "text", OPT_TEXT, '-' },
-	{ "nointern", OPT_NOINTERN, '-' },
-	{ "noverify", OPT_NOVERIFY, '-' },
 	{ "nochain", OPT_NOCHAIN, '-' },
-	{ "nocerts", OPT_NOCERTS, '-' },
-	{ "noattr", OPT_NOATTR, '-' },
-	{ "nodetach", OPT_NODETACH, '-' },
 	{ "nosmimecap", OPT_NOSMIMECAP, '-' },
-	{ "binary", OPT_BINARY, '-' },
-	{ "nosigs", OPT_NOSIGS, '-' },
 	{ "stream", OPT_STREAM, '-' },
 	{ "indef", OPT_INDEF, '-' },
 	{ "noindef", OPT_NOINDEF, '-' },
 	{ "nooldmime", OPT_NOOLDMIME, '-' },
 	{ "crlfeol", OPT_CRLFEOL, '-' },
-	{ "rand", OPT_RAND, 's' },
-	{ "engine", OPT_ENGINE, 's' },
-	{ "passin", OPT_PASSIN, 's' },
-	{ "to", OPT_TO, 's' },
-	{ "from", OPT_FROM, 's' },
-	{ "subject", OPT_SUBJECT, 's' },
-	{ "signer", OPT_SIGNER, '<' },
-	{ "recip", OPT_RECIP, '<' },
+	{ "rand", OPT_RAND, 's', "Load the file(s) into the random number generator" },
+	{ "passin", OPT_PASSIN, 's', "Input file pass phrase source" },
 	{ "md", OPT_MD, 's' },
-	{ "", OPT_CIPHER, '-' },
-	{ "inkey", OPT_INKEY, '<' },
-	{ "keyform", OPT_KEYFORM, 'f' },
-	{ "certfile", OPT_CERTFILE, '<' },
-	{ "CAfile", OPT_CAFILE, '<' },
-	{ "CApath", OPT_CAPATH, '/' },
-	{ "in", OPT_IN, '<' },
-	{ "inform", OPT_INFORM, 'F' },
-	{ "out", OPT_OUT, '>' },
-	{ "outformn", OPT_OUTFORM, 'F' },
-	{ "content", OPT_CONTENT, '<' },
+	{ "", OPT_CIPHER, '-', "Any supported cipher" },
+	OPT_V_OPTIONS,
+#ifndef OPENSSL_NO_ENGINE
+	{ "engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device" },
+#endif
 	{ NULL }
 };
 
@@ -230,14 +173,14 @@ int smime_main(int argc, char **argv)
 	if ((vpm = X509_VERIFY_PARAM_new()) == NULL)
 		return 1;
 
-	prog = opt_init(argc, argv, options);
+	prog = opt_init(argc, argv, smime_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
 err:
 			BIO_printf(bio_err,"Valid options are:\n");
-			printhelp(smime_help);
+			opt_help(smime_options);
 			goto end;
 		case OPT_INFORM:
 			opt_format(opt_arg(), 1, &informat);
