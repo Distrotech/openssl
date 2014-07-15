@@ -177,7 +177,6 @@ int ts_main(int argc, char **argv)
 		case OPT_EOF:
 		case OPT_ERR:
 err:
-			BIO_printf(bio_err,"Valid options are:\n");
 			opt_help(ts_options);
 			goto end;
 		case OPT_CONFIG:

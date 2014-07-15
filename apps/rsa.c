@@ -108,7 +108,7 @@ OPTIONS rsa_options[] = {
 int rsa_main(int argc, char **argv)
 	{
 	ENGINE *e = NULL;
-	BIO *out;
+	BIO *out=NULL;
 	RSA *rsa=NULL;
 	const EVP_CIPHER *enc=NULL;
 	char *engine=NULL, *infile=NULL, *outfile=NULL, *prog;

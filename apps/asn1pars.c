@@ -129,7 +129,6 @@ int asn1parse_main(int argc, char **argv)
 		switch (i) {
 		case OPT_EOF:
 		case OPT_ERR:
-			BIO_printf(bio_err,"Valid options are:\n");
 			opt_help(asn1parse_options);
 			goto end;
 		case OPT_INFORM:
