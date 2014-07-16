@@ -1438,6 +1438,7 @@ opthelp:
 			keymatexportlen = atoi(opt_arg());
 			break;
 		}
+	}
 #ifndef OPENSSL_NO_DTLS1
 	if (www && socket_type == SOCK_DGRAM)
 		{
@@ -1446,7 +1447,6 @@ opthelp:
 		goto end;
 		}
 #endif
-	}
 
 	if (unix_path && (socket_type != SOCK_STREAM))
 		{
