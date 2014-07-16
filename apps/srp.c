@@ -263,7 +263,7 @@ int srp_main(int argc, char **argv)
 	DB_ATTR db_attr;
 	CONF *conf=NULL;
 	int gNindex=-1, maxgN=-1, ret=1, errors=0, verbose=0, i, doupdatedb=0;
-	int mode = OPT_ERR;
+	int mode=OPT_ERR;
 	char *user=NULL, *passinarg=NULL, *passoutarg=NULL;
 	char *passin=NULL, *passout=NULL, *gN=NULL, *userinfo=NULL;
 	char *randfile=NULL, *engine=NULL, *tofree=NULL, *section=NULL;
@@ -276,6 +276,8 @@ int srp_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 err:
 			opt_help(srp_options);

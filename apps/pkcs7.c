@@ -93,21 +93,19 @@ OPTIONS pkcs7_options[] = {
 int pkcs7_main(int argc, char **argv)
 	{
 	PKCS7 *p7=NULL;
-	int i;
-	BIO *in=NULL,*out=NULL;
-	int informat=FORMAT_PEM,outformat=FORMAT_PEM;
-	char *infile=NULL,*outfile=NULL,*prog;
-	int print_certs=0,text=0,noout=0,p7_print=0;
-	int ret=1;
+	BIO *in=NULL, *out=NULL;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM;
+	char *engine=NULL, *infile=NULL, *outfile=NULL, *prog;
+	int i, print_certs=0, text=0, noout=0, p7_print=0, ret=1;
 	enum options o;
-	char *engine=NULL;
-
 
 	prog = opt_init(argc, argv, pkcs7_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(pkcs7_options);
 			goto end;

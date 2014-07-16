@@ -153,7 +153,7 @@ int genrsa_main(int argc, char **argv)
 	char *engine=NULL, *inrand=NULL, *prog;
 	enum options o;
 
-	if(!bn) goto err;
+	if(!bn) goto end;
 
 	BN_GENCB_set(&cb, genrsa_cb, bio_err);
 
@@ -162,9 +162,11 @@ int genrsa_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(genrsa_options);
-			goto err;
+			goto end;
 		case OPT_3:
 			f4=3;
 			break;
@@ -229,11 +231,11 @@ int genrsa_main(int argc, char **argv)
 	}
 	argv = opt_rest();
 	if (argv[0] && (!opt_int(argv[0], &num) || num <= 0))
-		goto err;
+		goto end;
 
 	if(!app_passwd(bio_err, NULL, passoutarg, NULL, &passout)) {
 		BIO_printf(bio_err, "Error getting password\n");
-		goto err;
+		goto end;
 	}
 
 #ifndef OPENSSL_NO_ENGINE
@@ -242,7 +244,7 @@ int genrsa_main(int argc, char **argv)
 
 	out = bio_open_default(outfile, "w");
 	if (out == NULL)
-		goto err;
+		goto end;
 
 	if (!app_RAND_load_file(NULL, bio_err, 1) && inrand == NULL
 		&& !RAND_status())
@@ -261,13 +263,13 @@ int genrsa_main(int argc, char **argv)
 	rsa = RSA_new_method(e);
 #endif
 	if (!rsa)
-		goto err;
+		goto end;
 
 	if (non_fips_allow)
 		rsa->flags |= RSA_FLAG_NON_FIPS_ALLOW;
 
 	if(!BN_set_word(bn, f4) || !RSA_generate_key_ex(rsa, num, bn, &cb))
-		goto err;
+		goto end;
 		
 	app_RAND_write_file(NULL, bio_err);
 
@@ -289,11 +291,11 @@ int genrsa_main(int argc, char **argv)
 	cb_data.prompt_info = outfile;
 	if (!PEM_write_bio_RSAPrivateKey(out,rsa,enc,NULL,0,
 		(pem_password_cb *)password_callback,&cb_data))
-		goto err;
+		goto end;
 	}
 
 	ret=0;
-err:
+end:
 	if (bn) BN_free(bn);
 	if (rsa) RSA_free(rsa);
 	if (out) BIO_free_all(out);

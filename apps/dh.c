@@ -96,11 +96,10 @@ OPTIONS dh_options[] = {
 int dh_main(int argc, char **argv)
 	{
 	DH *dh=NULL;
-	int i,text=0;
-	BIO *in=NULL,*out=NULL;
-	int informat=FORMAT_PEM,outformat=FORMAT_PEM,check=0,noout=0,C=0,ret=1;
-	char *infile=NULL,*outfile=NULL,*prog;
-	char *engine=NULL;
+	BIO *in=NULL, *out=NULL;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM, check=0, noout=0, C=0;
+	int i, text=0, ret=1;
+	char *infile=NULL, *outfile=NULL, *prog, *engine=NULL;
 	enum options o;
 
 	prog = opt_init(argc, argv, dh_options);
@@ -108,6 +107,8 @@ int dh_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(dh_options);
 			goto end;

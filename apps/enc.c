@@ -128,27 +128,23 @@ int enc_main(int argc, char **argv)
 	{
 	static char buf[128];
 	static const char magic[]="Salted__";
+	BIO *in=NULL, *out=NULL, *b64=NULL, *benc=NULL, *rbio=NULL, *wbio=NULL;
+	EVP_CIPHER_CTX *ctx=NULL;
+	const EVP_CIPHER *cipher=NULL, *c;
+	const EVP_MD *dgst=NULL;
+	char *engine=NULL, *hkey=NULL, *hiv=NULL, *hsalt=NULL, *p;
+	char *infile=NULL, *outfile=NULL, *prog;
+	char *str=NULL, *passarg=NULL, *pass=NULL, *strbuf=NULL;
 	char mbuf[sizeof magic-1];
-	char *strbuf=NULL;
-	unsigned char *buff=NULL;
-	int bsize=BSIZE, verbose=0;
+	enum options o;
+	int bsize=BSIZE, verbose=0, do_zlib=0, debug=0, olb64=0, nosalt=0;
+	int enc=1, printkey=0, i, k, base64=0;
 	int ret=1, inl, nopad=0, non_fips_allow=0;
 	unsigned char key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH];
-	unsigned char salt[PKCS5_SALT_LEN];
+	unsigned char *buff=NULL, salt[PKCS5_SALT_LEN];
 	unsigned long n;
-	char *str=NULL, *passarg=NULL, *pass=NULL;
-	char *hkey=NULL, *hiv=NULL, *hsalt=NULL, *p;
-	int enc=1, printkey=0, i, k, base64=0;
-	int do_zlib=0, debug=0, olb64=0, nosalt=0;
-	const EVP_CIPHER *cipher=NULL, *c;
-	EVP_CIPHER_CTX *ctx = NULL;
-	char *infile=NULL, *outfile=NULL, *prog;
-	BIO *in=NULL, *out=NULL, *b64=NULL, *benc=NULL, *rbio=NULL, *wbio=NULL;
-	enum options o;
-	char *engine = NULL;
-	const EVP_MD *dgst=NULL;
 #ifdef ZLIB
-	BIO *bzl = NULL;
+	BIO *bzl=NULL;
 #endif
 
 	/* first check the program name */
@@ -172,8 +168,10 @@ int enc_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-		case OPT_HELP:
 err:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
+		case OPT_HELP:
 			opt_help(enc_options);
 			BIO_printf(bio_err,"Cipher Types\n");
 			OBJ_NAME_do_all_sorted(OBJ_NAME_TYPE_CIPHER_METH,

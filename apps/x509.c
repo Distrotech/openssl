@@ -197,41 +197,40 @@ OPTIONS x509_options[] = {
 
 int x509_main(int argc, char **argv)
 	{
+	ASN1_INTEGER *sno=NULL;
+	ASN1_OBJECT *objtmp;
 	BIO *out=NULL;
+	CONF *extconf=NULL;
+	EVP_PKEY *Upkey=NULL, *CApkey=NULL, *fkey=NULL;
 	STACK_OF(ASN1_OBJECT) *trust=NULL, *reject=NULL;
+	STACK_OF(OPENSSL_STRING) *sigopts=NULL;
+	X509 *x=NULL, *xca=NULL;
+	X509_REQ *req=NULL, *rq=NULL;
+	X509_STORE *ctx=NULL;
+	const EVP_MD *digest=NULL;
+	char *CAkeyfile=NULL, *CAserial=NULL, *fkeyfile=NULL, *alias=NULL;
+	char *checkhost=NULL, *checkemail=NULL, *checkip=NULL;
+	char *extsect=NULL, *extfile=NULL, *passin=NULL, *passinarg=NULL;
+	char *infile=NULL, *outfile=NULL, *keyfile=NULL, *CAfile=NULL;
+	char buf[256];
+	char *engine=NULL, *prog;
+	int C=0, x509req=0, days=DEF_DAYS, modulus=0, pubkey=0, pprint=0;
+	int CAformat=FORMAT_PEM, CAkeyformat=FORMAT_PEM;
+	int fingerprint=0, reqfile=0, need_rand=0, checkend=0, checkoffset=0;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM, keyformat=FORMAT_PEM;
+	int next_serial=0, subject_hash=0, issuer_hash=0, ocspid=0;
+	int noout=0, sign_flag=0, CA_flag=0, CA_createserial=0, email=0;
+	int ocsp_uri=0, trustout=0, clrtrust=0, clrreject=0, aliasout=0;
+	int ret=1, i, num, badsig=0, clrext=0;
+	int text=0, serial=0, subject=0, issuer=0, startdate=0, enddate=0;
+	unsigned long nmflag=0, certflag=0;
+	enum options o;
 #ifndef OPENSSL_NO_ENGINE
 	ENGINE *e=NULL;
 #endif
-	X509_REQ *req=NULL, *rq=NULL;
-	X509 *x=NULL,*xca=NULL;
-	X509_STORE *ctx=NULL;
-	ASN1_OBJECT *objtmp;
-	STACK_OF(OPENSSL_STRING) *sigopts=NULL;
-	EVP_PKEY *Upkey=NULL,*CApkey=NULL, *fkey=NULL;
-	ASN1_INTEGER *sno=NULL;
-	char *infile=NULL,*outfile=NULL,*keyfile=NULL,*CAfile=NULL;
-	char *CAkeyfile=NULL,*CAserial=NULL, *fkeyfile=NULL, *alias=NULL;
-	char *extsect=NULL, *extfile=NULL, *passin=NULL, *passinarg=NULL;
-	char *checkhost=NULL, *checkemail=NULL, *checkip=NULL;
-	int ret=1, i,num, badsig=0;
-	int informat=FORMAT_PEM, outformat=FORMAT_PEM, keyformat=FORMAT_PEM;
-	int CAformat=FORMAT_PEM, CAkeyformat=FORMAT_PEM;
-	int text=0,serial=0,subject=0,issuer=0,startdate=0,enddate=0;
-	int next_serial=0, subject_hash=0,issuer_hash=0,ocspid=0;
-	int noout=0,sign_flag=0,CA_flag=0,CA_createserial=0,email=0;
-	int ocsp_uri=0, trustout=0,clrtrust=0,clrreject=0,aliasout=0,clrext=0;
-	int C=0, x509req=0,days=DEF_DAYS,modulus=0,pubkey=0, pprint=0;
-	int fingerprint=0, reqfile=0, need_rand=0, checkend=0,checkoffset=0;
 #ifndef OPENSSL_NO_MD5
-	int subject_hash_old=0,issuer_hash_old=0;
+	int subject_hash_old=0, issuer_hash_old=0;
 #endif
-	const EVP_MD *digest=NULL;
-	CONF *extconf=NULL;
-	char buf[256];
-	unsigned long nmflag=0, certflag=0;
-	char *engine=NULL;
-	enum options o;
-	char* prog;
 
 	ctx=X509_STORE_new();
 	if (ctx == NULL)
@@ -243,6 +242,8 @@ int x509_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 err:
 			opt_help(x509_options);

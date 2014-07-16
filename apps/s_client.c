@@ -630,9 +630,9 @@ int s_client_main(int argc, char **argv)
 	STACK_OF(OPENSSL_STRING) *ssl_args=NULL;
 	STACK_OF(X509_CRL) *crls=NULL;
 	const SSL_METHOD *meth=SSLv23_client_method();
-	char *CApath=NULL,*CAfile=NULL, *cbuf=NULL,*sbuf=NULL,*mbuf=NULL;
-	char *cert_file=NULL,*key_file=NULL,*chain_file=NULL, *prog;
-	char *chCApath=NULL,*chCAfile=NULL, *host=SSL_HOST_NAME, *inrand=NULL;
+	char *CApath=NULL, *CAfile=NULL, *cbuf=NULL, *sbuf=NULL, *mbuf=NULL;
+	char *cert_file=NULL, *key_file=NULL, *chain_file=NULL, *prog;
+	char *chCApath=NULL, *chCAfile=NULL, *host=SSL_HOST_NAME, *inrand=NULL;
 	char *passarg=NULL, *pass=NULL, *vfyCApath=NULL, *vfyCAfile=NULL;
 	char *sess_in=NULL, *sess_out=NULL, *crl_file=NULL, *p;
 	char *xmpphost=NULL, *engine_id=NULL, *ssl_client_engine_id=NULL;
@@ -640,17 +640,15 @@ int s_client_main(int argc, char **argv)
 	const char *unix_path=NULL;
 	struct sockaddr peer;
 	struct timeval timeout, *timeoutp;
-	fd_set readfds,writefds;
-	int build_chain=0, cbuf_len,cbuf_off;
-	int cert_format=FORMAT_PEM, key_format=FORMAT_PEM;
-	int crlf=0, full_log=1, mbuf_len=0, prexit=0;
-	int enable_timeouts=0, sdebug=0;
-	int peerlen=sizeof peer;
-	int reconnect=0,verify=SSL_VERIFY_NONE, vpmtouched=0;
+	fd_set readfds, writefds;
+	int build_chain=0, cbuf_len, cbuf_off, cert_format=FORMAT_PEM;
+	int key_format=FORMAT_PEM, crlf=0, full_log=1, mbuf_len=0, prexit=0;
+	int enable_timeouts=0, sdebug=0, peerlen=sizeof peer;
+	int reconnect=0, verify=SSL_VERIFY_NONE, vpmtouched=0;
 	int ret=1, in_init=1, i, nbio_test=0, s, k, width, state=0;
-	int sbuf_len,sbuf_off, socket_type=SOCK_STREAM;
+	int sbuf_len, sbuf_off, socket_type=SOCK_STREAM;
 	int starttls_proto=PROTO_OFF, crl_format=FORMAT_PEM, crl_download=0;
-	int write_tty,read_tty,write_ssl,read_ssl,tty_on,ssl_pending;
+	int write_tty, read_tty, write_ssl, read_ssl, tty_on, ssl_pending;
 	long socket_mtu=0, randamt=0;
 	short port=PORT;
 	enum options o;
@@ -723,6 +721,8 @@ int s_client_main(int argc, char **argv)
 #endif
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(s_client_options);
 			goto end;

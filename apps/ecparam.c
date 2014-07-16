@@ -132,27 +132,27 @@ OPT_PAIR encodings[] = {
 
 int ecparam_main(int argc, char **argv)
 	{
+	BIGNUM *ec_gen=NULL,*ec_order=NULL, *ec_cofactor=NULL;
+	BIGNUM *ec_p=NULL, *ec_a=NULL, *ec_b=NULL;
+	BIO *in=NULL, *out=NULL;
 	EC_GROUP *group=NULL;
 	point_conversion_form_t form=POINT_CONVERSION_UNCOMPRESSED; 
-	int new_form=0;
-	int  asn1_flag=OPENSSL_EC_NAMED_CURVE, new_asn1_flag=0;
-	char  *curve_name=NULL, *inrand=NULL;
-	int list_curves=0, no_seed=0, check=0;
-	int text=0, i, need_rand=0, genkey=0;
-	char *infile=NULL, *outfile=NULL, *prog;
-	BIO  *in=NULL, *out=NULL;
-	int  informat=FORMAT_PEM, outformat=FORMAT_PEM, noout=0, C=0, ret=1;
-	char *engine=NULL;
-	BIGNUM *ec_p=NULL, *ec_a=NULL, *ec_b=NULL;
-	BIGNUM *ec_gen=NULL, *ec_order=NULL, *ec_cofactor=NULL;
+	char *curve_name=NULL, *inrand=NULL;
+	char *engine=NULL, *infile=NULL, *outfile=NULL, *prog;
 	unsigned char *buffer=NULL;
 	enum options o;
+	int asn1_flag=OPENSSL_EC_NAMED_CURVE, new_asn1_flag=0;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM, noout=0, C=0, ret=1;
+	int list_curves=0, no_seed=0, check=0, new_form=0;
+	int text=0, i, need_rand=0, genkey=0;
 
 	prog = opt_init(argc, argv, ecparam_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 err:
 			opt_help(ecparam_options);

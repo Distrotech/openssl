@@ -111,28 +111,25 @@ OPTIONS ec_options[] = {
 
 int ec_main(int argc, char **argv)
 {
-	int 	ret = 1;
-	EC_KEY 	*eckey = NULL;
+	BIO *in=NULL, *out=NULL;
+	EC_KEY *eckey=NULL;
 	const EC_GROUP *group;
-	int  i;
-	const EVP_CIPHER *enc = NULL;
-	BIO 	*in = NULL, *out = NULL;
-	int 	informat=FORMAT_PEM, outformat=FORMAT_PEM, text=0, noout=0;
-	int  	pubin = 0, pubout = 0, param_out = 0;
-	char 	*infile=NULL, *outfile=NULL, *prog, *engine=NULL;
-	char 	*passinarg = NULL, *passoutarg = NULL;
-	char 	*passin = NULL, *passout = NULL;
-	point_conversion_form_t form = POINT_CONVERSION_UNCOMPRESSED;
-	int	new_form = 0;
-	int	asn1_flag = OPENSSL_EC_NAMED_CURVE;
-	int 	new_asn1_flag = 0;
+	const EVP_CIPHER *enc=NULL;
+	point_conversion_form_t form=POINT_CONVERSION_UNCOMPRESSED;
+	char *infile=NULL, *outfile=NULL, *prog, *engine=NULL;
+	char *passin=NULL, *passout=NULL, *passinarg=NULL, *passoutarg=NULL;
 	enum options o;
+	int asn1_flag=OPENSSL_EC_NAMED_CURVE, new_form=0, new_asn1_flag=0;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM, text=0, noout=0;
+	int pubin=0, pubout=0, param_out=0, i, ret=1;
 
 	prog = opt_init(argc, argv, ec_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 bad:
 			opt_help(ec_options);

@@ -122,13 +122,11 @@ OPTIONS dsaparam_options[] = {
 int dsaparam_main(int argc, char **argv)
 	{
 	DSA *dsa=NULL;
-	BIO *in=NULL,*out=NULL;
-	int i,text=0;
-	int numbits=-1,num,genkey=0, need_rand=0, non_fips_allow=0;
-	int informat=FORMAT_PEM,outformat=FORMAT_PEM,noout=0,C=0,ret=1;
-	char *infile=NULL,*outfile=NULL,*prog,*inrand=NULL;
-	char *engine=NULL;
-	int timebomb=0;
+	BIO *in=NULL, *out=NULL;
+	int numbits=-1, num, genkey=0,  need_rand=0,  non_fips_allow=0;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM, noout=0, C=0, ret=1;
+	int i, text=0, timebomb=0;
+	char *infile=NULL, *outfile=NULL, *prog, *inrand=NULL, *engine=NULL;
 	enum options o;
 
 	prog = opt_init(argc, argv, dsaparam_options);
@@ -136,6 +134,8 @@ int dsaparam_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(dsaparam_options);
 			goto end;

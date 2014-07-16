@@ -80,10 +80,9 @@ static OPTIONS errstr_options[] = {
 
 int errstr_main(int argc, char **argv)
 	{
-	int ret=0;
 	enum options o;
-	char buf[256];
-	char* prog;
+	char buf[256], *prog;
+	int ret=0;
 	unsigned long l;
 
 	prog = opt_init(argc, argv, errstr_options);
@@ -91,6 +90,8 @@ int errstr_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(errstr_options);
 			return 1;
@@ -115,5 +116,6 @@ int errstr_main(int argc, char **argv)
 			BIO_printf(bio_out, "%s\n", buf);
 			}
 		}
+end:
 	return(ret);
 	}

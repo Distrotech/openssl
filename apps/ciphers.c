@@ -106,27 +106,26 @@ OPTIONS ciphers_options[] = {
 
 int ciphers_main(int argc, char **argv)
 	{
-	int ret=1,i;
-	int verbose=0,Verbose=0;
-	int use_supported = 0;
-#ifndef OPENSSL_NO_SSL_TRACE
-	int stdname = 0;
-#endif
-	const char *p;
 	SSL_CTX *ctx=NULL;
 	SSL *ssl=NULL;
-	char *ciphers=NULL;
-	const SSL_METHOD *meth=SSLv23_server_method();
 	STACK_OF(SSL_CIPHER) *sk=NULL;
+	const SSL_METHOD *meth=SSLv23_server_method();
+	int ret=1, i, verbose=0, Verbose=0, use_supported=0;
+#ifndef OPENSSL_NO_SSL_TRACE
+	int stdname=0;
+#endif
+	const char *p;
+	char *ciphers=NULL, *prog;
 	char buf[512];
 	enum options o;
-	char* prog;
 
 	prog = opt_init(argc, argv, ciphers_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 bad:
 			opt_help(ciphers_options);

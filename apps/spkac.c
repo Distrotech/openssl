@@ -98,19 +98,16 @@ OPTIONS spkac_options[] = {
 
 int spkac_main(int argc, char **argv)
 	{
-	ENGINE *e = NULL;
-	int i, ret = 1;
-	BIO *in = NULL,*out = NULL;
-	int verify=0,noout=0,pubkey=0;
-	char *infile = NULL,*outfile = NULL,*prog;
-	char *passinarg = NULL, *passin = NULL;
-	const char *spkac = "SPKAC", *spksect = "default";
-	char *spkstr = NULL;
-	char *challenge = NULL, *keyfile = NULL;
-	CONF *conf = NULL;
-	NETSCAPE_SPKI *spki = NULL;
-	EVP_PKEY *pkey = NULL;
-	char *engine=NULL;
+	BIO *in=NULL, *out=NULL;
+	CONF *conf=NULL;
+	ENGINE *e=NULL;
+	EVP_PKEY *pkey=NULL;
+	NETSCAPE_SPKI *spki=NULL;
+	char *challenge=NULL, *keyfile=NULL, *engine=NULL;
+	char *infile=NULL, *outfile=NULL, *passinarg=NULL, *passin=NULL;
+	char *spkstr=NULL, *prog;
+	const char *spkac="SPKAC", *spksect="default";
+	int i, ret=1, verify=0, noout=0, pubkey=0;
 	enum options o;
 
 	prog = opt_init(argc, argv, spkac_options);
@@ -118,6 +115,8 @@ int spkac_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(spkac_options);
 			goto end;

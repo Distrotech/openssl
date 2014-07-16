@@ -118,27 +118,24 @@ OPTIONS pkeyutl_options[] = {
 int pkeyutl_main(int argc, char **argv)
 {
 	BIO *in=NULL, *out=NULL;
-	char *infile=NULL, *outfile=NULL, *sigfile=NULL;
 	ENGINE *e=NULL;
-	int pkey_op=EVP_PKEY_OP_SIGN, key_type=KEY_PRIVKEY;
-	int keyform=FORMAT_PEM, peerform=FORMAT_PEM;
-	char rev=0;
-	char hexdump=0, asn1parse=0;
 	EVP_PKEY_CTX *ctx=NULL;
-	char *passinarg=NULL;
-	int keysize=-1;
+	char *infile=NULL, *outfile=NULL, *sigfile=NULL, *passinarg=NULL;
+	char hexdump=0, asn1parse=0, rev=0, *prog;
 	unsigned char *buf_in=NULL, *buf_out=NULL, *sig=NULL;
-	size_t buf_outlen;
-	int buf_inlen=0, siglen=-1;
-	int ret=1, rv=-1;
 	enum options o;
-	char* prog;
+	int buf_inlen=0, siglen=-1, keyform=FORMAT_PEM, peerform=FORMAT_PEM;
+	int keysize=-1, pkey_op=EVP_PKEY_OP_SIGN, key_type=KEY_PRIVKEY;
+	int ret=1, rv=-1;
+	size_t buf_outlen;
 
 	prog = opt_init(argc, argv, pkeyutl_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 err:
 			opt_help(pkeyutl_options);

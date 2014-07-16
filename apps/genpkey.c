@@ -96,21 +96,22 @@ OPTIONS genpkey_options[] = {
 
 int genpkey_main(int argc, char **argv)
 	{
-	ENGINE *e=NULL;
 	BIO *in=NULL, *out=NULL;
-	const EVP_CIPHER *cipher=NULL;
+	ENGINE *e=NULL;
 	EVP_PKEY *pkey=NULL;
 	EVP_PKEY_CTX *ctx=NULL;
-	char *outfile=NULL, *passarg=NULL, *pass=NULL;
-	int outformat=FORMAT_PEM, text=0, ret=1, rv, do_param=0;
+	char *outfile=NULL, *passarg=NULL, *pass=NULL, *prog;
+	const EVP_CIPHER *cipher=NULL;
 	enum options o;
-	char* prog;
+	int outformat=FORMAT_PEM, text=0, ret=1, rv, do_param=0;
 
 	prog = opt_init(argc, argv, genpkey_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 err:
 			opt_help(genpkey_options);

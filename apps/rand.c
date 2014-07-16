@@ -86,22 +86,18 @@ OPTIONS rand_options[] = {
 
 int rand_main(int argc, char **argv)
 	{
-	int r, ret = 1;
+	BIO *out=NULL;
+	char *engine=NULL, *inrand=NULL, *outfile=NULL, *prog;
 	enum options o;
-	char *outfile = NULL;
-	char *inrand = NULL;
-	int base64 = 0;
-	int hex = 0;
-	BIO *out = NULL;
-	int i,num = -1;
-	char* prog;
-	char *engine=NULL;
+	int base64=0, hex=0, i, num=-1, r, ret=1;
 
 	prog = opt_init(argc, argv, rand_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 bad:
 			opt_help(rand_options);

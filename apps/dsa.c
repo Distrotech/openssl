@@ -105,27 +105,23 @@ OPTIONS dsa_options[] = {
 
 int dsa_main(int argc, char **argv)
 	{
-	ENGINE *e = NULL;
-	int ret=1;
+	BIO *in=NULL, *out=NULL;
 	DSA *dsa=NULL;
-	int i;
+	ENGINE *e=NULL;
 	const EVP_CIPHER *enc=NULL;
-	BIO *in=NULL,*out=NULL;
-	int informat=FORMAT_PEM,outformat=FORMAT_PEM,text=0,noout=0;
-	int pubin = 0, pubout = 0;
-	char *infile=NULL,*outfile=NULL,*prog;
-	char *engine=NULL;
-	char *passinarg = NULL, *passoutarg = NULL;
-	char *passin = NULL, *passout = NULL;
-	int modulus=0;
-	int pvk_encr = 2;
+	char *engine=NULL, *infile=NULL, *outfile=NULL, *prog;
+	char *passin=NULL, *passout=NULL, *passinarg=NULL, *passoutarg=NULL;
 	enum options o;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM, text=0, noout=0;
+	int i, modulus=0, pubin=0, pubout=0, pvk_encr=2, ret=1;
 
 	prog = opt_init(argc, argv, dsa_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(dsa_options);
 			goto end;

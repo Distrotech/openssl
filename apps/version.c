@@ -151,8 +151,7 @@ OPTIONS version_options[] = {
 
 int version_main(int argc, char **argv)
 	{
-	int ret=0;
-	int cflags=0,version=0,date=0,options=0,platform=0,dir=0;
+	int ret=0, cflags=0, version=0, date=0, options=0, platform=0, dir=0;
 	char* prog;
 	enum options o;
 
@@ -161,6 +160,8 @@ int version_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(version_options);
 			goto end;

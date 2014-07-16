@@ -1015,21 +1015,21 @@ int s_server_main(int argc, char *argv[])
 	STACK_OF(X509_CRL) *crls = NULL;
 	X509 *s_cert=NULL, *s_dcert=NULL;
 	X509_VERIFY_PARAM *vpm=NULL;
-	char *CApath=NULL,*CAfile=NULL, *chCApath=NULL,*chCAfile=NULL;
+	char *CApath=NULL, *CAfile=NULL, *chCApath=NULL, *chCAfile=NULL;
 	char *dhfile=NULL, *dpassarg=NULL, *dpass=NULL, *inrand=NULL;
-	char *passarg=NULL, *pass=NULL, *vfyCApath=NULL,*vfyCAfile=NULL;
+	char *passarg=NULL, *pass=NULL, *vfyCApath=NULL, *vfyCAfile=NULL;
 	char *crl_file=NULL, *prog, *p;
 	const char *unix_path=NULL;
 	int (*server_cb)(char *hostname, int s, int stype, unsigned char *context);
 	int vpmtouched=0, build_chain=0, no_cache=0, ext_cache=0;
-	int no_tmp_rsa=0,no_dhe=0,no_ecdhe=0,nocert=0, ret=1;
+	int no_tmp_rsa=0, no_dhe=0, no_ecdhe=0, nocert=0, ret=1;
 	int s_cert_format=FORMAT_PEM, s_key_format=FORMAT_PEM;
 	int s_dcert_format=FORMAT_PEM, s_dkey_format=FORMAT_PEM;
 	int rev=0, naccept=-1, sdebug=0, socket_type=SOCK_STREAM;
-	int state=0, unlink_unix_path=0;
-	int crl_format=FORMAT_PEM, crl_download=0;
+	int state=0, unlink_unix_path=0, crl_format=FORMAT_PEM, crl_download=0;
 	short port=PORT;
 	unsigned char *context=NULL;
+	enum options o;
 #ifndef OPENSSL_NO_TLSEXT
 	EVP_PKEY *s_key2=NULL;
 	X509 *s_cert2=NULL;
@@ -1049,7 +1049,6 @@ int s_server_main(int argc, char *argv[])
 	char *srpuserseed=NULL;
 	char *srp_verifier_file=NULL;
 #endif
-	enum options o;
 
 	local_argc = argc;
 	local_argv = argv;
@@ -1067,13 +1066,15 @@ int s_server_main(int argc, char *argv[])
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 err:
 			opt_help(s_server_options);
 			goto end;
 
 		case OPT_PORT:
-			if (!extract_port(opt_arg(),&port))
+			if (!extract_port(opt_arg(), &port))
 				goto end;
 			break;
 		case OPT_UNIX:

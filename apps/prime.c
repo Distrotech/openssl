@@ -70,20 +70,18 @@ OPTIONS prime_options[] = {
 
 int prime_main(int argc, char **argv)
 	{
-	int hex=0;
-	int checks=20;
-	int generate=0;
-	int bits=0;
-	int safe=0;
-	enum options o;
 	BIGNUM *bn=NULL;
+	int hex=0, checks=20, generate=0, bits=0, safe=0;
 	char* prog;
+	enum options o;
 
 	prog = opt_init(argc, argv, prime_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(prime_options);
 			return 1;
@@ -142,6 +140,6 @@ int prime_main(int argc, char **argv)
 
 	BN_free(bn);
 
+end:
 	return 0;
-
 	}

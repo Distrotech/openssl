@@ -111,31 +111,26 @@ OPTIONS rsautl_options[] = {
 
 int rsautl_main(int argc, char **argv)
 {
-	ENGINE *e=NULL;
 	BIO *in=NULL, *out=NULL;
-	char *infile=NULL, *outfile=NULL;
-	char *engine=NULL;
-	char *keyfile=NULL;
-	char rsa_mode=RSA_VERIFY, key_type=KEY_PRIVKEY;
-	int keyformat=FORMAT_PEM;
-	char need_priv=0, rev=0;
-	char hexdump=0, asn1parse=0;
-	X509 *x;
+	ENGINE *e=NULL;
 	EVP_PKEY *pkey=NULL;
 	RSA *rsa=NULL;
+	X509 *x;
+	char *engine=NULL, *infile=NULL, *outfile=NULL, *keyfile=NULL;
+	char *passinarg=NULL, *passin=NULL, *prog;
+	char rsa_mode=RSA_VERIFY, key_type=KEY_PRIVKEY;
 	unsigned char *rsa_in=NULL, *rsa_out=NULL, pad=RSA_PKCS1_PADDING;
-	char *passinarg=NULL, *passin=NULL;
-	int rsa_inlen, rsa_outlen=0;
-	int keysize;
-	int ret=1;
+	int rsa_inlen, keyformat=FORMAT_PEM, keysize, ret=1;
+	int rsa_outlen=0, hexdump=0, asn1parse=0, need_priv=0, rev=0;
 	enum options o;
-	char* prog;
 
 	prog = opt_init(argc, argv, rsautl_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(rsautl_options);
 			goto end;
