@@ -235,8 +235,10 @@ int ocsp_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
-err:
 			opt_help(ocsp_options);
 			goto end;
 		case OPT_OUTFILE:
@@ -440,14 +442,15 @@ err:
 				goto end;
 			break;
 		case OPT_MD:
-			opt_md(opt_unknown(), &cert_id_md);
+			if (!opt_md(opt_unknown(), &cert_id_md))
+				goto opthelp;
 			break;
 		}
 	}
 
 	/* Have we anything to do? */
 	if (!req && !reqin && !respin && !(port && ridx_filename))
-		goto err;
+		goto opthelp;
 
 	out = bio_open_default(outfile, "w");
 	if(out==NULL)

@@ -276,10 +276,10 @@ int srp_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-err:
 			opt_help(srp_options);
 			goto end;
 		case OPT_VERBOSE:
@@ -302,7 +302,7 @@ err:
 				BIO_printf(bio_err,
 					"%s: Only one of -add/delete-modify/-list\n",
 					prog);
-				goto err;
+				goto opthelp;
 			}
 			mode = o;
 			break;
@@ -334,16 +334,16 @@ err:
 		}
 	if (mode == OPT_ERR) {
 		BIO_printf(bio_err,"Exactly one of the options -add, -delete, -modify -list must be specified.\n");
-		goto err;
+		goto opthelp;
 		}
 	if ((mode == OPT_DELETE || mode == OPT_MODIFY || OPT_ADD) && argc < 1) {
 		BIO_printf(bio_err,"Need at least one user for options -add, -delete, -modify. \n");
-		goto err;
+		goto opthelp;
 		}
 	if ((passin || passout) && argc != 1 )
 		{
 		BIO_printf(bio_err,"-passin, -passout arguments only valid with one user.\n");
-		goto err;
+		goto opthelp;
 		}
 
 

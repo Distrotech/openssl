@@ -1066,10 +1066,10 @@ int s_server_main(int argc, char *argv[])
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-err:
 			opt_help(s_server_options);
 			goto end;
 
@@ -1275,7 +1275,7 @@ err:
 			break;
 #else
 		case OPT_TRACE:
-			goto err;
+			goto opthelp;
 #endif
 		case OPT_SECURITY_DEBUG:
 			sdebug = 1;
@@ -1426,7 +1426,7 @@ err:
 			break;
 #else
 		case OPT_JPAKE:
-			goto err;
+			goto opthelp;
 #endif
 		case OPT_SRTP_PROFILES:
 			srtp_profiles = opt_arg();

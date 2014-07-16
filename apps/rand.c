@@ -96,10 +96,10 @@ int rand_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-bad:
 			opt_help(rand_options);
 			goto end;
 		case OPT_OUT:
@@ -120,10 +120,10 @@ bad:
 		}
 	}
 	if (opt_num_rest() != 1 || (hex && base64))
-		goto bad;
+		goto opthelp;
 	argv = opt_rest();
 	if (sscanf(argv[0], "%d", &num) != 1 || num < 0)
-		goto bad;
+		goto opthelp;
 
 #ifndef OPENSSL_NO_ENGINE
         setup_engine(bio_err, engine, 0);

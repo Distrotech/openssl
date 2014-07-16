@@ -128,10 +128,10 @@ int ec_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-bad:
 			opt_help(ec_options);
 			goto end;
 		case OPT_INFORM:
@@ -172,16 +172,16 @@ bad:
 			break;
 		case OPT_CIPHER:
 			if (!opt_cipher(opt_unknown(), &enc))
-				goto bad;
+				goto opthelp;
 		case OPT_CONV_FORM:
 			if (!opt_pair(opt_arg(), conv_forms, &i))
-				goto bad;
+				goto opthelp;
 			new_form = 1;
 			form = i;
 			break;
 		case OPT_PARAM_ENC:
 			if (!opt_pair(opt_arg(), param_enc, &i))
-				goto bad;
+				goto opthelp;
 			new_asn1_flag = 1;
 			asn1_flag = i;
 			break;

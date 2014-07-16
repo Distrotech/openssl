@@ -199,10 +199,10 @@ int s_time_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-err:
 			opt_help(s_time_options);
 			goto end;
 		case OPT_CONNECT:
@@ -216,7 +216,7 @@ err:
 			break;
 		case OPT_VERIFY:
 			if (!opt_int(opt_arg(), &verify_depth))
-				goto err;
+				goto opthelp;
 			BIO_printf(bio_err, "%s: verify depth is %d\n",
 				prog, verify_depth);
 			break;
@@ -240,7 +240,7 @@ err:
 			break;
 		case OPT_TIME:
 			if (!opt_int(opt_arg(), &maxtime))
-				goto err;
+				goto opthelp;
 			break;
 		case OPT_WWW:
 			www_path = opt_arg();

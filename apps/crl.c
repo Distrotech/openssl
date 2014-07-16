@@ -131,10 +131,10 @@ int crl_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-bad:
 			opt_help(crl_options);
 			goto end;
 		case OPT_INFORM:
@@ -203,11 +203,11 @@ bad:
 			break;
 		case OPT_NAMEOPT:
 			if (!set_name_ex(&nmflag, opt_arg()))
-				goto bad;
+				goto opthelp;
 			break;
 		case OPT_MD:
 			if (!opt_md(opt_unknown(), &digest))
-				goto bad;
+				goto opthelp;
 		}
 	}
 

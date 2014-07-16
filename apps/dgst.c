@@ -149,10 +149,10 @@ int dgst_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-err:
 			opt_help(dgst_options);
 			goto end;
 
@@ -222,17 +222,17 @@ err:
 			if (!sigopts)
 				sigopts = sk_OPENSSL_STRING_new_null();
 			if (!sigopts || !sk_OPENSSL_STRING_push(sigopts, opt_arg()))
-				goto err;
+				goto opthelp;
 			break;
 		case OPT_MACOPT:
 			if (!macopts)
 				macopts = sk_OPENSSL_STRING_new_null();
 			if (!macopts || !sk_OPENSSL_STRING_push(macopts, opt_arg()))
-				goto err;
+				goto opthelp;
 			break;
 		case OPT_DIGEST:
 			if (!opt_md(opt_unknown(), &m))
-				goto err;
+				goto opthelp;
 			md=m;
 			break;
 		}

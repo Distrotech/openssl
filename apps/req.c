@@ -222,10 +222,10 @@ int req_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-bad:
 			opt_help(req_options);
 			goto end;
 		case OPT_INFORM:
@@ -288,13 +288,13 @@ bad:
 			if (!pkeyopts)
 				pkeyopts = sk_OPENSSL_STRING_new_null();
 			if (!pkeyopts || !sk_OPENSSL_STRING_push(pkeyopts, opt_arg()))
-				goto bad;
+				goto opthelp;
 			break;
 		case OPT_SIGOPT:
 			if (!sigopts)
 				sigopts = sk_OPENSSL_STRING_new_null();
 			if (!sigopts || !sk_OPENSSL_STRING_push(sigopts, opt_arg()))
-				goto bad;
+				goto opthelp;
 			break;
 		case OPT_BATCH:
 			batch=1;
@@ -321,10 +321,12 @@ bad:
 			chtype = MBSTRING_UTF8;
 			break;
 		case OPT_NAMEOPT:
-			if (!set_name_ex(&nmflag, opt_arg())) goto bad;
+			if (!set_name_ex(&nmflag, opt_arg()))
+				goto opthelp;
 			break;
 		case OPT_REQOPT:
-			if (!set_cert_ex(&reqflag, opt_arg())) goto bad;
+			if (!set_cert_ex(&reqflag, opt_arg()))
+				goto opthelp;
 			break;
 		case OPT_TEXT:
 			text=1;
@@ -344,7 +346,8 @@ bad:
 			break;
 		case OPT_SET_SERIAL:
 			serial = s2i_ASN1_INTEGER(NULL, opt_arg());
-			if (!serial) goto bad;
+			if (serial == NULL)
+				goto opthelp;
 			break;
 		case OPT_SUBJECT:
 			subj= opt_arg();
@@ -360,7 +363,7 @@ bad:
 			break;
 		case OPT_MD:
 			if (!opt_md(opt_unknown(), &md_alg))
-				goto bad;
+				goto opthelp;
 			digest=md_alg;
 			break;
 		}
@@ -433,8 +436,9 @@ bad:
 			ERR_clear_error();
 		else
 			{
-			if (opt_md(p, &md_alg))
-				digest=md_alg;
+			if (!opt_md(p, &md_alg))
+				goto opthelp;
+			digest=md_alg;
 			}
 		}
 

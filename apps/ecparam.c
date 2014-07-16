@@ -151,10 +151,10 @@ int ecparam_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-err:
 			opt_help(ecparam_options);
 			goto end;
 		case OPT_INFORM:
@@ -192,13 +192,13 @@ err:
 			break;
 		case OPT_CONV_FORM:
 			if (!opt_pair(opt_arg(), forms, &new_form))
-				goto err;
+				goto opthelp;
 			form = new_form;
 			new_form = 1;
 			break;
 		case OPT_PARAM_ENC:
 			if (!opt_pair(opt_arg(), encodings, &asn1_flag))
-				goto err;
+				goto opthelp;
 			new_asn1_flag = 1;
 			break;
 		case OPT_GENKEY:

@@ -110,10 +110,10 @@ int genpkey_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-err:
 			opt_help(genpkey_options);
 			goto end;
 		case OPT_OUTFORM:
@@ -133,7 +133,7 @@ err:
 #endif
 		case OPT_PARAMFILE:
 			if (do_param == 1)
-				goto err;
+				goto opthelp;
 			if (!init_keygen_file(bio_err, &ctx, opt_arg(), e))
 				goto end;
 			break;
@@ -145,7 +145,7 @@ err:
 			if (ctx == NULL) {
 				BIO_printf(bio_err,
 					"%s: No keytype specified.\n", prog);
-				goto err;
+				goto opthelp;
 			}
 			if (pkey_ctrl_string(ctx, opt_arg()) <= 0) {
 				BIO_printf(bio_err,
@@ -157,7 +157,7 @@ err:
 			break;
 		case OPT_GENPARAM:
 			if (ctx != NULL)
-				goto err;
+				goto opthelp;
 			do_param = 1;
 			break;
 		case OPT_TEXT:
@@ -166,12 +166,12 @@ err:
 		case OPT_CIPHER:
 			if (!opt_cipher(opt_unknown(), &cipher)
 			 || do_param == 1)
-				goto err;
+				goto opthelp;
 		}
 	}
 
 	if (ctx == NULL)
-		goto err;
+		goto opthelp;
 
 	if (!app_passwd(bio_err, passarg, NULL, &pass, NULL)) {
 		BIO_puts(bio_err, "Error getting password\n");

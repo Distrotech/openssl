@@ -117,10 +117,10 @@ int pkcs8_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-bad:
 			opt_help(pkcs8_options);
 			goto end;
 		case OPT_INFORM:
@@ -155,7 +155,7 @@ bad:
 			break;
 		case OPT_V2:
 			if (!opt_cipher(opt_arg(), &cipher))
-				goto bad;
+				goto opthelp;
 			break;
 		case OPT_V1:
 			pbe_nid=OBJ_txt2nid(opt_arg());
@@ -163,7 +163,7 @@ bad:
 				BIO_printf(bio_err,
 					"%s: Unknown PBE algorithm %s\n",
 					prog, opt_arg());
-				goto bad;
+				goto opthelp;
 			}
 			break;
 		case OPT_V2PRF:
@@ -172,12 +172,12 @@ bad:
 				BIO_printf(bio_err,
 					"%s: Unknown PRF algorithm %s\n",
 					prog, opt_arg());
-				goto bad;
+				goto opthelp;
 			}
 			break;
 		case OPT_ITER:
 			if (!opt_int(opt_arg(), &iter))
-				goto bad;
+				goto opthelp;
 			break;
 		case OPT_PASSIN:
 			passinarg = opt_arg();

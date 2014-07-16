@@ -168,10 +168,10 @@ int pkcs12_main(int argc, char **argv)
 	    switch (o) {
 	    case OPT_EOF:
 	    case OPT_ERR:
+opthelp:
 		    BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 		    goto end;
 	    case OPT_HELP:
-err:
 		    opt_help(pkcs12_options);
 		    goto end;
 	    case OPT_NOKEYS:
@@ -215,7 +215,7 @@ err:
 		    break;
 	    case OPT_CIPHER:
 		    if (!opt_cipher(opt_unknown(), &enc))
-			goto err;
+			goto opthelp;
 		    break;
 	    case OPT_NOITER:
 		    iter = 1;
@@ -237,11 +237,11 @@ err:
 		    break;
 	    case OPT_CERTPBE:
 		    if (!set_pbe(bio_err, &cert_pbe, opt_arg()))
-			goto err;
+			goto opthelp;
 		    break;
 	    case OPT_KEYPBE:
 		    if (!set_pbe(bio_err, &key_pbe, opt_arg()))
-			goto err;
+			goto opthelp;
 		    break;
 	    case OPT_RAND:
 		    inrand = opt_arg();
@@ -491,7 +491,7 @@ err:
 	if (macalg)
 		{
 		if (!opt_md(macalg, &macmd))
-			goto export_end;
+			goto opthelp;
 		}
 
 	if (maciter != -1)

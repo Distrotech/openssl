@@ -140,10 +140,10 @@ int gendsa_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-bad:
 			opt_help(gendsa_options);
 			goto end;
 		case OPT_OUT:
@@ -202,7 +202,7 @@ bad:
 	}
 
 	if (opt_num_rest() != 1)
-		goto bad;
+		goto opthelp;
 	argv = opt_rest();
 	dsaparams = *argv;
 

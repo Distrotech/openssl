@@ -168,7 +168,7 @@ int enc_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
-err:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
@@ -234,7 +234,7 @@ err:
 			if (k)
 				p[i] = '\0';
 			if (!opt_ulong(opt_arg(), &n))
-				goto err;
+				goto opthelp;
 			if (k)
 				n *=1024;
 			bsize = (int)n;
@@ -245,7 +245,7 @@ err:
 		case OPT_KFILE:
 			in = bio_open_default(opt_arg(), "r");
 			if (in == NULL)
-				goto err;
+				goto opthelp;
 			i = BIO_gets(in, buf, sizeof buf);
 			BIO_free(in);
 			in = NULL;
@@ -253,14 +253,14 @@ err:
 				BIO_printf(bio_err,
 					"%s Can't read key from %s\n",
 					prog, opt_arg());
-				goto err;
+				goto opthelp;
 			}
 			while (--i > 0 && (buf[i] == '\r' || buf[i] == '\n'))
 				buf[i] = '\0';
 			if (i <= 0) {
 				BIO_printf(bio_err,
 					"%s: zero length password\n", prog);
-				goto err;
+				goto opthelp;
 			}
 			str = buf;
 			break;
@@ -275,14 +275,14 @@ err:
 			break;
 		case OPT_MD:
 			if (!opt_md(opt_arg(), &dgst))
-				goto err;
+				goto opthelp;
 			break;
 		case OPT_NON_FIPS_ALLOW:
 			non_fips_allow = 1;
 			break;
 		case OPT_CIPHER:
 			if (!opt_cipher(opt_unknown(), &c))
-				goto err;
+				goto opthelp;
 			cipher = c;
 			break;
 		case OPT_NONE:

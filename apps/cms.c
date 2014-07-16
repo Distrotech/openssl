@@ -255,10 +255,10 @@ int cms_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-argerr:
 			opt_help(cms_options);
 			goto end;
 		case OPT_INFORM:
@@ -431,7 +431,7 @@ argerr:
 			secret_keyid = string_to_hex(opt_arg(), &ltmp);
 			if (secret_keyid == NULL) {
 				BIO_printf(bio_err, "Invalid id %s\n", opt_arg());
-				goto argerr;
+				goto opthelp;
 			}
 			secret_keyidlen = (size_t)ltmp;
 			break;
@@ -442,7 +442,7 @@ argerr:
 			econtent_type = OBJ_txt2obj(opt_arg(), 0);
 			if (econtent_type == NULL) {
 				BIO_printf(bio_err, "Invalid OID %s\n", opt_arg());
-				goto argerr;
+				goto opthelp;
 			}
 			break;
 		case OPT_RAND:
@@ -539,7 +539,7 @@ argerr:
 			}
 			if (keyidx < 0) {
 				BIO_printf(bio_err, "No key specified\n");
-				goto argerr;
+				goto opthelp;
 			}
 			if (key_param == NULL || key_param->idx != keyidx) {
 				cms_key_param *nparam;
@@ -579,18 +579,18 @@ argerr:
 	if (((rr_allorfirst != -1) || rr_from) && !rr_to)
 		{
 		BIO_puts(bio_err, "No Signed Receipts Recipients\n");
-		goto argerr;
+		goto opthelp;
 		}
 
 	if (!(operation & SMIME_SIGNERS)  && (rr_to || rr_from))
 		{
 		BIO_puts(bio_err, "Signed receipts only allowed with -sign\n");
-		goto argerr;
+		goto opthelp;
 		}
 	if (!(operation & SMIME_SIGNERS) && (skkeys || sksigners))
 		{
 		BIO_puts(bio_err, "Multiple signers or keys not allowed\n");
-		goto argerr;
+		goto opthelp;
 		}
 
 	if (operation & SMIME_SIGNERS)
@@ -598,7 +598,7 @@ argerr:
 		if (keyfile && !signerfile)
 			{
 			BIO_puts(bio_err, "Illegal -inkey without -signer\n");
-			goto argerr;
+			goto opthelp;
 			}
 		/* Check to see if any final signer needs to be appended */
 		if (signerfile)
@@ -615,7 +615,7 @@ argerr:
 		if (!sksigners)
 			{
 			BIO_printf(bio_err, "No signer certificate specified\n");
-			goto argerr;
+			goto opthelp;
 			}
 		signerfile = NULL;
 		keyfile = NULL;
@@ -627,7 +627,7 @@ argerr:
 		if (!recipfile && !keyfile && !secret_key && !pwri_pass)
 			{
 			BIO_printf(bio_err, "No recipient certificate or key specified\n");
-			goto argerr;
+			goto opthelp;
 			}
 		}
 	else if (operation == SMIME_ENCRYPT)
@@ -635,12 +635,12 @@ argerr:
 		if (*argv == NULL && !secret_key && !pwri_pass && !encerts)
 			{
 			BIO_printf(bio_err, "No recipient(s) certificate(s) specified\n");
-			goto argerr;
+			goto opthelp;
 			}
 		need_rand = 1;
 		}
 	else if (!operation)
-		goto argerr;
+		goto opthelp;
 
 #ifndef OPENSSL_NO_ENGINE
         e = setup_engine(bio_err, engine, 0);

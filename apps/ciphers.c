@@ -124,10 +124,10 @@ int ciphers_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-bad:
 			opt_help(ciphers_options);
 			goto end;
 		case OPT_V:
@@ -168,7 +168,7 @@ bad:
 	if (argc == 1)
 		ciphers = *argv;
 	else if (argc != 0)
-		goto bad;
+		goto opthelp;
 
 	OpenSSL_add_ssl_algorithms();
 	ctx=SSL_CTX_new(meth);

@@ -176,10 +176,10 @@ int ts_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-err:
 			opt_help(ts_options);
 			goto end;
 		case OPT_CONFIG:
@@ -192,7 +192,7 @@ err:
 		case OPT_REPLY:
 		case OPT_VERIFY:
 			if (mode != OPT_ERR)
-			    goto err;
+			    goto opthelp;
 			mode = o;
 			break;
 		case OPT_DATA:
@@ -257,7 +257,7 @@ err:
 			break;
 		case OPT_MD:
 			if (!opt_md(opt_unknown(), &md))
-			    goto err;
+			    goto opthelp;
 			break;
 		}
 	}
@@ -287,12 +287,12 @@ err:
 		{
 	default:
 	case OPT_ERR:
-		goto err;
+		goto opthelp;
 	case OPT_QUERY:
 		/* Data file and message imprint cannot be specified
 		   at the same time. */
 		ret = data != NULL && digest != NULL;
-		if (ret) goto err;
+		if (ret) goto opthelp;
 		/* Load the config file for possible policy OIDs. */
 		conf = load_config_file(configfile);
 		ret = !query_command(data, digest, md, policy, no_nonce, cert,
@@ -303,13 +303,13 @@ err:
 		if (in == NULL)
 			{
 			ret = !(queryfile != NULL && conf != NULL && !token_in);
-			if (ret) goto err;
+			if (ret) goto opthelp;
 			}
 		else
 			{
 			/* 'in' and 'queryfile' are exclusive. */
 			ret = !(queryfile == NULL);
-			if (ret) goto err;
+			if (ret) goto opthelp;
 			}
 
 		ret = !reply_command(conf, section, engine, queryfile, 
@@ -321,7 +321,7 @@ err:
 			 || (!queryfile && data && !digest)
 			 || (!queryfile && !data && digest))
 			&& in != NULL);
-		if (ret) goto err;
+		if (ret) goto opthelp;
 
 		ret = !verify_command(data, digest, queryfile, in, token_in,
 				      ca_path, ca_file, untrusted);

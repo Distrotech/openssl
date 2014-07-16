@@ -124,10 +124,10 @@ int rsa_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-bad:
 			opt_help(rsa_options);
 			goto end;
 		case OPT_INFORM:
@@ -189,7 +189,7 @@ bad:
 			break;
 		case OPT_CIPHER:
 			if (!opt_cipher(opt_unknown(), &enc))
-				goto bad;
+				goto opthelp;
 			break;
 		}
 	}

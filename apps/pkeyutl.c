@@ -134,10 +134,10 @@ int pkeyutl_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-err:
 			opt_help(pkeyutl_options);
 			goto end;
 		case OPT_IN:
@@ -156,12 +156,12 @@ err:
 				BIO_puts(bio_err,
 					"%s: Error initializing context\n");
 				ERR_print_errors(bio_err);
-				goto err;
+				goto opthelp;
 			}
 			break;
 		case OPT_PEERKEY:
 			if (!setup_peer(bio_err, ctx, peerform, opt_arg()))
-				goto err;
+				goto opthelp;
 			break;
 		case OPT_PASSIN:
 			passinarg= opt_arg();
@@ -214,7 +214,7 @@ err:
 				BIO_printf(bio_err,
 					"%s: Must have -inkey before -pkeyopt\n",
 					prog);
-				goto err;
+				goto opthelp;
 				}
 			if (pkey_ctrl_string(ctx, opt_arg()) <= 0) {
 				BIO_printf(bio_err,
@@ -227,7 +227,7 @@ err:
 	}
 
 	if (ctx == NULL)
-		goto err;
+		goto opthelp;
 
 	if (sigfile && (pkey_op != EVP_PKEY_OP_VERIFY))
 		{

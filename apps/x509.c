@@ -242,10 +242,10 @@ int x509_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-err:
 			opt_help(x509_options);
 			goto end;
 		case OPT_INFORM:
@@ -277,7 +277,7 @@ err:
 			if (!sigopts)
 				sigopts = sk_OPENSSL_STRING_new_null();
 			if (!sigopts || !sk_OPENSSL_STRING_push(sigopts, opt_arg()))
-				goto err;
+				goto opthelp;
 			break;
 #ifdef OPENSSL_SSL_DEBUG_BROKEN_PROTOCOL
 		case OPT_FORCE_VERSION:
@@ -314,7 +314,7 @@ err:
 			break;
 		case OPT_SET_SERIAL:
 			if ((sno = s2i_ASN1_INTEGER(NULL, opt_arg())) == NULL)
-				goto err;
+				goto opthelp;
 			break;
 		case OPT_FORCE_PUBKEY:
 			fkeyfile = opt_arg();
@@ -324,7 +324,7 @@ err:
 				BIO_printf(bio_err,
 					"%s: Invalid trust object value %s\n",
 					prog, opt_arg());
-				goto err;
+				goto opthelp;
 			}
 			if (trust == NULL)
 				trust = sk_ASN1_OBJECT_new_null();
@@ -336,7 +336,7 @@ err:
 				BIO_printf(bio_err,
 					"%s: Invalid reject object value %s\n",
 					prog, opt_arg());
-				goto err;
+				goto opthelp;
 			}
 			if (reject == NULL)
 				reject = sk_ASN1_OBJECT_new_null();
@@ -349,11 +349,11 @@ err:
 			break;
 		case OPT_CERTOPT:
 			if (!set_cert_ex(&certflag, opt_arg()))
-				goto err;
+				goto opthelp;
 			break;
 		case OPT_NAMEOPT:
 			if (!set_name_ex(&nmflag, opt_arg()))
-				goto err;
+				goto opthelp;
 			break;
 		case OPT_ENGINE:
 			engine = opt_arg();
@@ -469,8 +469,8 @@ err:
 			checkip = opt_arg();
 			break;
 		case OPT_MD:
-			if (!opt_md(opt_arg(), &digest))
-				goto err;
+			if (!opt_md(opt_unknown(), &digest))
+				goto opthelp;
 		}
 	}
 

@@ -82,15 +82,15 @@ int passwd_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-bad:
 			opt_help(passwd_options);
 			goto end;
 		case OPT_IN:
 			if (pw_source_defined)
-				goto bad;
+				goto opthelp;
 			infile = opt_arg();
 			pw_source_defined = 1;
 			break;
@@ -121,7 +121,7 @@ bad:
 			break;
 		case OPT_STDIN:
 			if (pw_source_defined)
-				goto bad;
+				goto opthelp;
 			in_stdin = 1;
 			break;
 		}
@@ -130,7 +130,7 @@ bad:
 	argv = opt_rest();
 	if (*argv) {
 		if (pw_source_defined)
-			goto bad;
+			goto opthelp;
 		pw_source_defined = 1;
 		passwds = argv;
 	}
@@ -140,15 +140,15 @@ bad:
 		usecrypt = 1;
 	if (usecrypt + use1 + useapr1 > 1)
 		/* conflict */
-		goto bad;
+		goto opthelp;
 
 #ifdef OPENSSL_NO_DES
 	if (usecrypt)
-		goto bad;
+		goto opthelp;
 #endif
 #ifdef NO_MD5CRYPT_1
 	if (use1 || useapr1)
-		goto bad;
+		goto opthelp;
 #endif
 
 	if (infile && in_stdin) {

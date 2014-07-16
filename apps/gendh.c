@@ -118,10 +118,10 @@ int gendh_main(int argc, char **argv)
 		switch (i) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-err:
 			opt_help(gendh_options);
 			goto end;
 		case OPT_OUT:
@@ -143,7 +143,7 @@ err:
 	}
 	argv = opt_rest();
 	if (argv[0] != NULL && (sscanf(*argv,"%d",&num) == 0 || num < 0))
-		goto err;
+		goto opthelp;
 
 #ifndef OPENSSL_NO_ENGINE
         setup_engine(bio_err, engine, 0);

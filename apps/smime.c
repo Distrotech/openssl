@@ -178,10 +178,10 @@ int smime_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+opthelp:
 			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
 			goto end;
 		case OPT_HELP:
-err:
 			opt_help(smime_options);
 			goto end;
 		case OPT_INFORM:
@@ -296,11 +296,11 @@ err:
 			break;
 		case OPT_MD:
 			if (!opt_md(opt_arg(), &sign_md))
-				goto err;
+				goto opthelp;
 			break;
 		case OPT_CIPHER:
 			if (!opt_cipher(opt_unknown(), &cipher))
-				goto err;
+				goto opthelp;
 			break;
 		case OPT_INKEY:
 			/* If previous -inkey arument add signer to list */
@@ -309,7 +309,7 @@ err:
 					BIO_printf(bio_err,
 				"%s: Must have -signer before -inkey\n",
 						prog);
-					goto err;
+					goto opthelp;
 				}
 				if (sksigners == NULL)
 					sksigners = sk_OPENSSL_STRING_new_null();
@@ -338,7 +338,7 @@ err:
 			break;
 		case OPT_V_CASES:
 			if (!opt_verify(o, vpm))
-				goto err;
+				goto opthelp;
 			vpmtouched++;
 			break;
 		}
@@ -349,7 +349,7 @@ err:
 	if (!(operation & SMIME_SIGNERS) && (skkeys || sksigners))
 		{
 		BIO_puts(bio_err, "Multiple signers or keys not allowed\n");
-		goto err;
+		goto opthelp;
 		}
 
 	if (operation & SMIME_SIGNERS)
@@ -358,7 +358,7 @@ err:
 		if (keyfile && !signerfile)
 			{
 			BIO_puts(bio_err, "Illegal -inkey without -signer\n");
-			goto err;
+			goto opthelp;
 			}
 		if (signerfile)
 			{
@@ -374,7 +374,7 @@ err:
 		if (!sksigners)
 			{
 			BIO_printf(bio_err, "No signer certificate specified\n");
-			goto err;
+			goto opthelp;
 			}
 		signerfile = NULL;
 		keyfile = NULL;
@@ -385,7 +385,7 @@ err:
 		if (!recipfile && !keyfile)
 			{
 			BIO_printf(bio_err, "No recipient certificate or key specified\n");
-			goto err;
+			goto opthelp;
 			}
 		}
 	else if (operation == SMIME_ENCRYPT)
@@ -393,12 +393,12 @@ err:
 		if (argc == 0)
 			{
 			BIO_printf(bio_err, "No recipient(s) certificate(s) specified\n");
-			goto err;
+			goto opthelp;
 			}
 		need_rand = 1;
 		}
 	else if (!operation)
-		goto err;
+		goto opthelp;
 
 
 #ifndef OPENSSL_NO_ENGINE
