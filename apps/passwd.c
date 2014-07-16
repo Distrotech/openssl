@@ -68,30 +68,26 @@ OPTIONS passwd_options[] = {
 		
 int passwd_main(int argc, char **argv)
 	{
-	int ret=1;
-	char *infile=NULL;
-	int in_stdin=0, in_noverify=0;
-	char *salt=NULL, *passwd=NULL, **passwds=NULL;
-	char *salt_malloc=NULL, *passwd_malloc=NULL;
-	size_t passwd_malloc_size=0;
-	int pw_source_defined=0;
 	BIO *in=NULL;
-	int passed_salt=0, quiet=0, table=0, reverse=0;
-	int usecrypt=0, use1=0, useapr1=0;
-	size_t pw_maxlen=256;
-
+	char *infile=NULL, *salt=NULL, *passwd=NULL, **passwds=NULL;
+	char *salt_malloc=NULL, *passwd_malloc=NULL, *prog;
 	enum options o;
-	char* prog;
+	int in_stdin=0, in_noverify=0, pw_source_defined=0;
+	int passed_salt=0, quiet=0, table=0, reverse=0;
+	int ret=1, usecrypt=0, use1=0, useapr1=0;
+	size_t passwd_malloc_size=0, pw_maxlen=256;
 
 	prog = opt_init(argc, argv, passwd_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 bad:
 			opt_help(passwd_options);
-			goto err;
+			goto end;
 		case OPT_IN:
 			if (pw_source_defined)
 				goto bad;
@@ -157,12 +153,12 @@ bad:
 
 	if (infile && in_stdin) {
 		BIO_printf(bio_err, "%s: Can't combine -in and -stdin\n", prog);
-		goto err;
+		goto end;
 		}
 
 	in = bio_open_default(infile, "r");
 	if (in == NULL)
-		goto err;
+		goto end;
 	
 	if (usecrypt)
 		pw_maxlen = 8;
@@ -177,7 +173,7 @@ bad:
 		/* longer than necessary so that we can warn about truncation */
 		passwd = passwd_malloc = OPENSSL_malloc(passwd_malloc_size);
 		if (passwd_malloc == NULL)
-			goto err;
+			goto end;
 		}
 
 	if ((in == NULL) && (passwds == NULL))
@@ -188,7 +184,7 @@ bad:
 		passwds = passwds_static;
 		if (in == NULL)
 			if (EVP_read_pw_string(passwd_malloc, passwd_malloc_size, "Password: ", !(passed_salt || in_noverify)) != 0)
-				goto err;
+				goto end;
 		passwds[0] = passwd_malloc;
 		}
 
@@ -202,7 +198,7 @@ bad:
 			passwd = *passwds++;
 			if (!do_passwd(passed_salt, &salt, &salt_malloc, passwd, bio_out,
 				quiet, table, reverse, pw_maxlen, usecrypt, use1, useapr1))
-				goto err;
+				goto end;
 			}
 		while (*passwds != NULL);
 		}
@@ -231,7 +227,7 @@ bad:
 				
 				if (!do_passwd(passed_salt, &salt, &salt_malloc, passwd, bio_out,
 					quiet, table, reverse, pw_maxlen, usecrypt, use1, useapr1))
-					goto err;
+					goto end;
 				}
 			done = (r <= 0);
 			}
@@ -239,7 +235,7 @@ bad:
 		}
 	ret = 0;
 
-err:
+end:
 	ERR_print_errors(bio_err);
 	if (salt_malloc)
 		OPENSSL_free(salt_malloc);
@@ -388,10 +384,10 @@ static int do_passwd(int passed_salt, char **salt_p, char **salt_malloc_p,
 				{
 				*salt_p = *salt_malloc_p = OPENSSL_malloc(3);
 				if (*salt_malloc_p == NULL)
-					goto err;
+					goto end;
 				}
 			if (RAND_pseudo_bytes((unsigned char *)*salt_p, 2) < 0)
-				goto err;
+				goto end;
 			(*salt_p)[0] = cov_2char[(*salt_p)[0] & 0x3f]; /* 6 bits */
 			(*salt_p)[1] = cov_2char[(*salt_p)[1] & 0x3f]; /* 6 bits */
 			(*salt_p)[2] = 0;
@@ -411,10 +407,10 @@ static int do_passwd(int passed_salt, char **salt_p, char **salt_malloc_p,
 				{
 				*salt_p = *salt_malloc_p = OPENSSL_malloc(9);
 				if (*salt_malloc_p == NULL)
-					goto err;
+					goto end;
 				}
 			if (RAND_pseudo_bytes((unsigned char *)*salt_p, 8) < 0)
-				goto err;
+				goto end;
 			
 			for (i = 0; i < 8; i++)
 				(*salt_p)[i] = cov_2char[(*salt_p)[i] & 0x3f]; /* 6 bits */
@@ -452,10 +448,10 @@ static int do_passwd(int passed_salt, char **salt_p, char **salt_malloc_p,
 		BIO_printf(out, "%s\t%s\n", hash, passwd);
 	else
 		BIO_printf(out, "%s\n", hash);
-	return 1;
-	
-err:
 	return 0;
+	
+end:
+	return 1;
 	}
 #else
 

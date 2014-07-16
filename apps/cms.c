@@ -222,6 +222,8 @@ int cms_main(int argc, char **argv)
 	CMS_ReceiptRequest *rr=NULL;
 	ENGINE *e=NULL;
 	EVP_PKEY *key=NULL;
+	const EVP_CIPHER *cipher=NULL, *wrap_cipher=NULL;
+	const EVP_MD *sign_md=NULL;
 	STACK_OF(OPENSSL_STRING) *rr_to=NULL, *rr_from=NULL;
 	STACK_OF(OPENSSL_STRING) *sksigners=NULL, *skkeys=NULL;
 	STACK_OF(X509) *encerts=NULL, *other=NULL;
@@ -234,10 +236,8 @@ int cms_main(int argc, char **argv)
 	char *passinarg=NULL, *passin=NULL, *signerfile=NULL, *recipfile=NULL;
 	char *to=NULL, *from=NULL, *subject=NULL, *prog;
 	cms_key_param *key_first=NULL, *key_param=NULL;
-	const EVP_CIPHER *cipher=NULL, *wrap_cipher=NULL;
-	const EVP_MD *sign_md=NULL;
 	const char *inmode="r", *outmode="w";
-	int flags=CMS_DETACHED, noout=0, print=0;
+	int flags=CMS_DETACHED, noout=0, print=0, keyidx=-1, vpmtouched=0;
 	int informat=FORMAT_SMIME, outformat=FORMAT_SMIME;
 	int need_rand=0, operation=0, ret=0, rr_print=0, rr_allorfirst=-1;
 	int verify_retcode=0, rctformat=FORMAT_SMIME, keyform=FORMAT_PEM;
@@ -245,7 +245,6 @@ int cms_main(int argc, char **argv)
 	unsigned char *pwri_pass=NULL, *pwri_tmp=NULL;
 	unsigned char *secret_key=NULL, *secret_keyid=NULL;
 	long ltmp;
-	int keyidx=-1, vpmtouched=0;
 	enum options o;
 
 	if ((vpm = X509_VERIFY_PARAM_new()) == NULL)
@@ -256,6 +255,8 @@ int cms_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 argerr:
 			opt_help(cms_options);

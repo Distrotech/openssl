@@ -164,22 +164,20 @@ OPTIONS dhparam_options[] = {
 };
 int dhparam_main(int argc, char **argv)
 	{
-	DH *dh=NULL;
-	int i,text=0;
-	enum options o;
 	BIO *in=NULL,*out=NULL;
-	int informat=FORMAT_PEM,outformat=FORMAT_PEM,check=0,noout=0,C=0,ret=1;
-	char *infile=NULL,*outfile=NULL,*prog;
-	char *inrand=NULL;
-	int num = 0, g = 0;
-	int dsaparam=0;
-	char *engine=NULL;
+	DH *dh=NULL;
+	char *engine=NULL, *infile=NULL, *outfile=NULL, *prog, *inrand=NULL;
+	int dsaparam=0, i, text=0, C=0, ret=1, num=0, g=0;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM, check=0, noout=0;
+	enum options o;
 
 	prog = opt_init(argc, argv, dhparam_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(dhparam_options);
 			goto end;

@@ -78,19 +78,20 @@ OPTIONS nseq_options[] = {
 
 int nseq_main(int argc, char **argv)
 {
-	char *infile=NULL, *outfile=NULL;
 	BIO *in=NULL, *out=NULL;
 	X509 *x509=NULL;
 	NETSCAPE_CERT_SEQUENCE *seq=NULL;
 	enum options o;
-	int toseq=0, ret=1,i;
-	char* prog;
+	int toseq=0, ret=1, i;
+	char *infile=NULL, *outfile=NULL, *prog;
 
 	prog = opt_init(argc, argv, nseq_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(nseq_options);
 			goto end;

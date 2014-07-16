@@ -90,19 +90,20 @@ static SSL_SESSION *load_sess_id(char *file, int format);
 int sess_id_main(int argc, char **argv)
 	{
 	SSL_SESSION *x=NULL;
-	X509 *peer = NULL;
-	int ret=1,i,num=0;
+	X509 *peer=NULL;
 	BIO *out=NULL;
-	int informat=FORMAT_PEM,outformat=FORMAT_PEM;
-	char *infile=NULL,*outfile=NULL,*context=NULL;
-	int cert=0,noout=0,text=0;
+	char *infile=NULL, *outfile=NULL, *context=NULL, *prog;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM;
+	int cert=0, noout=0, text=0, ret=1, i, num=0;
 	enum options o;
 
-	opt_init(argc, argv, sess_id_options);
+	prog = opt_init(argc, argv, sess_id_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(sess_id_options);
 			goto end;

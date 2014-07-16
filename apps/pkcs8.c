@@ -99,29 +99,26 @@ OPTIONS pkcs8_options[] = {
 
 int pkcs8_main(int argc, char **argv)
 	{
-	ENGINE *e = NULL;
-	char *infile=NULL, *outfile=NULL;
-	char *passinarg=NULL, *passoutarg=NULL;
 	BIO *in=NULL, *out=NULL;
-	int topk8=0, pbe_nid=-1;
-	const EVP_CIPHER *cipher=NULL;
-	int iter=PKCS12_DEFAULT_ITER;
-	int informat=FORMAT_PEM, outformat=FORMAT_PEM;
-	int p8_broken=PKCS8_OK;
-	int nocrypt=0, ret=1;
-	X509_SIG *p8=NULL;
-	PKCS8_PRIV_KEY_INFO *p8inf=NULL;
+	ENGINE *e = NULL;
 	EVP_PKEY *pkey=NULL;
+	PKCS8_PRIV_KEY_INFO *p8inf=NULL;
+	X509_SIG *p8=NULL;
+	const EVP_CIPHER *cipher=NULL;
+	char *engine=NULL, *infile=NULL, *outfile=NULL;
+	char *passinarg=NULL, *passoutarg=NULL, *prog;
 	char pass[50], *passin=NULL, *passout=NULL, *p8pass=NULL;
-	char *engine=NULL;
 	enum options o;
-	char* prog;
+	int nocrypt=0, ret=1, iter=PKCS12_DEFAULT_ITER, p8_broken=PKCS8_OK;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM, topk8=0, pbe_nid=-1;
 
 	prog = opt_init(argc, argv, pkcs8_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 bad:
 			opt_help(pkcs8_options);

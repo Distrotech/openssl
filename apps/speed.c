@@ -610,9 +610,9 @@ int speed_main(int argc, char **argv)
 	enum options o;
 	int decrypt=0, multiblock=0, doit[ALGOR_NUM], pr_header=0;
 	int dsa_doit[DSA_NUM], prime_doit[PRIME_NUM], rsa_doit[RSA_NUM];
-	int mret=1,i,j,k;
-	long c[ALGOR_NUM][SIZE_NUM], count=0,save_count=0, prime_c[PRIME_NUM];
-	unsigned char *buf=NULL,*buf2=NULL;
+	int mret=1, i, j, k;
+	long c[ALGOR_NUM][SIZE_NUM], count=0, save_count=0, prime_c[PRIME_NUM];
+	unsigned char *buf=NULL, *buf2=NULL;
 	unsigned char md[EVP_MAX_MD_SIZE];
 #ifndef NO_FORK
 	int multi=0;
@@ -858,6 +858,8 @@ int speed_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(speed_options);
 			goto end;

@@ -127,22 +127,21 @@ OPTIONS gendsa_options[] = {
 
 int gendsa_main(int argc, char **argv)
 	{
-	DSA *dsa=NULL;
-	int ret=1;
-	char *outfile=NULL;
-	char *inrand=NULL,*dsaparams=NULL;
-	char *passoutarg = NULL, *passout = NULL;
 	BIO *out=NULL,*in=NULL;
+	DSA *dsa=NULL;
 	const EVP_CIPHER *enc=NULL;
-	char *engine=NULL;
+	char *engine=NULL, *inrand=NULL,*dsaparams=NULL;
+	char *outfile=NULL, *passoutarg=NULL, *passout=NULL, *prog;
 	enum options o;
-	char* prog;
+	int ret=1;
 
 	prog = opt_init(argc, argv, gendsa_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 bad:
 			opt_help(gendsa_options);

@@ -189,49 +189,41 @@ OPTIONS req_options[] = {
 
 int req_main(int argc, char **argv)
 	{
-	ENGINE *e = NULL, *gen_eng = NULL;
-	unsigned long nmflag = 0, reqflag = 0;
-	int ex=1,x509=0,days=30;
+	ASN1_INTEGER *serial=NULL;
+	BIO *in=NULL, *out=NULL;
+	ENGINE *e=NULL, *gen_eng=NULL;
+	EVP_PKEY *pkey=NULL;
+	EVP_PKEY_CTX *genctx=NULL;
+	STACK_OF(OPENSSL_STRING) *pkeyopts=NULL, *sigopts=NULL;
 	X509 *x509ss=NULL;
 	X509_REQ *req=NULL;
-	EVP_PKEY_CTX *genctx = NULL;
-	const char *keyalg = NULL;
-	char *keyalgstr = NULL;
-	STACK_OF(OPENSSL_STRING) *pkeyopts = NULL, *sigopts = NULL;
-	EVP_PKEY *pkey=NULL;
-	int i=0,newreq=0,verbose=0,pkey_type=-1;
-	enum options o;
-	long newkey = -1;
-	BIO *in=NULL,*out=NULL;
-	int informat=FORMAT_PEM,outformat=FORMAT_PEM,keyform=FORMAT_PEM;
-	int verify=0,noout=0,text=0;
-	int nodes=0,kludge=0,newhdr=0,subject=0,pubkey=0;
-	char *infile=NULL,*outfile=NULL,*keyfile=NULL;
-	char *template=NULL,*keyout=NULL;
-	char *engine=NULL;
-	char *extensions = NULL;
-	char *req_exts = NULL;
 	const EVP_CIPHER *cipher=NULL;
-	ASN1_INTEGER *serial = NULL;
-	int modulus=0;
-	char *inrand=NULL;
-	char *passargin = NULL, *passargout = NULL;
-	char *passin = NULL, *passout = NULL;
-	char *p;
-	char *subj = NULL;
-	int multirdn = 0;
-	const EVP_MD *md_alg=NULL,*digest=NULL;
-	unsigned long chtype = MBSTRING_ASC;
+	const EVP_MD *md_alg=NULL, *digest=NULL;
+	char *engine=NULL, *extensions=NULL, *infile=NULL;
+	char *outfile=NULL, *keyfile=NULL, *inrand=NULL;
+	char *keyalgstr=NULL, *p, *prog, *passargin=NULL, *passargout=NULL;
+	char *passin=NULL, *passout=NULL, *req_exts=NULL, *subj=NULL;
+	char *template=NULL, *keyout=NULL;
+	const char *keyalg=NULL;
+	enum options o;
+	int ex=1, x509=0, days=30, i=0, newreq=0, verbose=0, pkey_type=-1;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM, keyform=FORMAT_PEM;
+	int modulus=0, multirdn=0, verify=0, noout=0, text=0;
+	int nodes=0, kludge=0, newhdr=0, subject=0, pubkey=0;
+	long newkey=-1;
+	unsigned long chtype=MBSTRING_ASC, nmflag=0, reqflag=0;
 
 #ifndef OPENSSL_NO_DES
 	cipher=EVP_des_ede3_cbc();
 #endif
 
-	opt_init(argc, argv, req_options);
+	prog = opt_init(argc, argv, req_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 bad:
 			opt_help(req_options);

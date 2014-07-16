@@ -117,27 +117,24 @@ static OPTIONS dgst_options[] = {
 
 int dgst_main(int argc, char **argv)
 	{
+	BIO *in=NULL, *inp, *bmd=NULL, *out=NULL;
 	ENGINE *e=NULL, *impl=NULL;
-	unsigned char *buf=NULL;
-	const EVP_MD *md=NULL,*m;
-	BIO *in=NULL,*inp, *bmd=NULL, *out=NULL;
-	int separator=0, debug=0, keyform=FORMAT_PEM;
+	EVP_PKEY *sigkey=NULL;
+	STACK_OF(OPENSSL_STRING) *sigopts=NULL, *macopts=NULL;
+	char *hmac_key=NULL;
+	char *mac_name=NULL;
+	char *passinarg=NULL, *passin=NULL;
+	const EVP_MD *md=NULL, *m;
 	const char *outfile=NULL, *keyfile=NULL, *prog=NULL;
 	const char *sigfile=NULL, *randfile=NULL;
-	int i,err=1;
-	int out_bin=-1, want_pub=0, do_verify=0;
-	EVP_PKEY *sigkey=NULL;
-	unsigned char *sigbuf=NULL;
-	int siglen=0, non_fips_allow=0;
-	char *passinarg=NULL, *passin=NULL;
+	enum options o;
+	int separator=0, debug=0, keyform=FORMAT_PEM, siglen=0;
+	int i, err=1, out_bin=-1, want_pub=0, do_verify=0, non_fips_allow=0;
+	unsigned char *buf=NULL, *sigbuf=NULL;
 #ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
 	int engine_impl=0;
 #endif
-	char *hmac_key=NULL;
-	char *mac_name=NULL;
-	STACK_OF(OPENSSL_STRING) *sigopts=NULL, *macopts=NULL;
-	enum options o;
 
 	prog = opt_progname(argv[0]);
 	if ((buf=(unsigned char *)OPENSSL_malloc(BUFSIZE)) == NULL) {
@@ -152,6 +149,8 @@ int dgst_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 err:
 			opt_help(dgst_options);

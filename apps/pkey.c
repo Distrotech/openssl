@@ -92,24 +92,23 @@ OPTIONS pkey_options[] = {
 
 int pkey_main(int argc, char **argv)
 	{
-	ENGINE *e = NULL;
-	char *infile = NULL, *outfile = NULL;
-	char *passinarg = NULL, *passoutarg = NULL;
-	BIO *in = NULL, *out = NULL;
-	const EVP_CIPHER *cipher = NULL;
-	int informat=FORMAT_PEM, outformat=FORMAT_PEM;
-	int pubin = 0, pubout = 0, pubtext = 0, text = 0, noout = 0;
+	BIO *in=NULL, *out=NULL;
+	ENGINE *e=NULL;
 	EVP_PKEY *pkey=NULL;
-	char *passin = NULL, *passout = NULL;
-	int ret = 1;
+	const EVP_CIPHER *cipher=NULL;
+	char *infile=NULL, *outfile=NULL, *passin=NULL, *passout=NULL;
+	char *passinarg=NULL, *passoutarg=NULL, * prog, *engine=NULL;
 	enum options o;
-	char* prog, *engine=NULL;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM;
+	int pubin=0, pubout=0, pubtext=0, text=0, noout=0, ret = 1;
 
 	prog = opt_init(argc, argv, pkey_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 bad:
 			opt_help(pkey_options);

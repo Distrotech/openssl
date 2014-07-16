@@ -107,33 +107,32 @@ OPTIONS crl_options[] = {
 
 int crl_main(int argc, char **argv)
 	{
-	unsigned long nmflag = 0;
 	X509_CRL *x=NULL;
-	char *CAfile = NULL, *CApath = NULL;
-	int ret=1,num,badsig=0;
-	enum options o;
 	BIO *out=NULL;
-	int informat=FORMAT_PEM,outformat=FORMAT_PEM, keyformat=FORMAT_PEM;
-	char *infile=NULL,*outfile=NULL, *crldiff = NULL, *keyfile = NULL;
-	int hash=0,issuer=0,lastupdate=0,nextupdate=0,noout=0,text=0;
-	char* prog;
-#ifndef OPENSSL_NO_MD5
-       int hash_old=0;
-#endif
-	int fingerprint = 0, crlnumber = 0;
-	X509_STORE *store = NULL;
+	X509_STORE *store=NULL;
 	X509_STORE_CTX ctx;
-	X509_LOOKUP *lookup = NULL;
+	X509_LOOKUP *lookup=NULL;
 	X509_OBJECT xobj;
 	EVP_PKEY *pkey;
-	int i,do_ver = 0;
 	const EVP_MD *digest=EVP_sha1();
+	unsigned long nmflag=0;
+	char *infile=NULL, *outfile=NULL, *crldiff=NULL, *keyfile=NULL;
+	char *CAfile=NULL, *CApath=NULL, *prog;
+	enum options o;
+	int hash=0, issuer=0, lastupdate=0, nextupdate=0, noout=0, text=0;
+	int informat=FORMAT_PEM, outformat=FORMAT_PEM, keyformat=FORMAT_PEM;
+	int ret=1, num, badsig=0, fingerprint=0, crlnumber=0, i, do_ver=0;
+#ifndef OPENSSL_NO_MD5
+	int hash_old=0;
+#endif
 
 	prog = opt_init(argc, argv, crl_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 bad:
 			opt_help(crl_options);

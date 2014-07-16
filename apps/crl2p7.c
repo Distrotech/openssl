@@ -91,16 +91,15 @@ OPTIONS crl2pkcs7_options[] = {
 
 int crl2pkcs7_main(int argc, char **argv)
 	{
-	BIO *in=NULL,*out=NULL;
-	int i,informat=FORMAT_PEM,outformat=FORMAT_PEM;
-	char *infile=NULL,*outfile=NULL,*prog,*certfile;
-	PKCS7 *p7 = NULL;
-	PKCS7_SIGNED *p7s = NULL;
-	X509_CRL *crl=NULL;
+	BIO *in=NULL, *out=NULL;
+	PKCS7 *p7=NULL;
+	PKCS7_SIGNED *p7s=NULL;
 	STACK_OF(OPENSSL_STRING) *certflst=NULL;
-	STACK_OF(X509_CRL) *crl_stack=NULL;
 	STACK_OF(X509) *cert_stack=NULL;
-	int ret=1,nocrl=0;
+	STACK_OF(X509_CRL) *crl_stack=NULL;
+	X509_CRL *crl=NULL;
+	char *infile=NULL, *outfile=NULL, *prog, *certfile;
+	int i, informat=FORMAT_PEM, outformat=FORMAT_PEM, ret=1, nocrl=0;
 	enum options o;
 
 	prog = opt_init(argc, argv, crl2pkcs7_options);
@@ -108,6 +107,8 @@ int crl2pkcs7_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(crl2pkcs7_options);
 			goto end;

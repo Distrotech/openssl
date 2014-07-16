@@ -105,12 +105,9 @@ int gendh_main(int argc, char **argv)
 	{
 	BN_GENCB cb;
 	DH *dh=NULL;
-	int i,ret=1,num=DEFBITS;
-	int g=2;
-	char *outfile=NULL;
-	char *inrand=NULL;
 	BIO *out=NULL;
-	char* prog;
+	int i, ret=1, num=DEFBITS, g=2;
+	char *outfile=NULL, *inrand=NULL, *prog;
 #ifndef OPENSSL_NO_ENGINE
 	char *engine=NULL;
 #endif
@@ -121,6 +118,8 @@ int gendh_main(int argc, char **argv)
 		switch (i) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 err:
 			opt_help(gendh_options);

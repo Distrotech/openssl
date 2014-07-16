@@ -165,7 +165,7 @@ static double tm_Time_F(int s)
 
 int s_time_main(int argc, char **argv)
 	{
-	MS_STATIC char buf[1024*8];
+	char buf[1024*8];
 	SSL *scon=NULL;
 	SSL_CTX *ctx=NULL;
 	const SSL_METHOD *meth=NULL;
@@ -199,6 +199,8 @@ int s_time_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 err:
 			opt_help(s_time_options);

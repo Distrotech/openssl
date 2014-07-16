@@ -102,21 +102,20 @@ static int do_generate(BIO *bio, char *genstr, char *genconf, BUF_MEM *buf);
 
 int asn1parse_main(int argc, char **argv)
 	{
-	int offset=0,ret=1,j;
-	enum options i;
-	unsigned int length=0;
-	long num,tmplen;
-	BIO *in=NULL,*b64=NULL, *derout = NULL;
-	int informat=FORMAT_PEM;
-	int indent=0, noout = 0, dump = 0, strictpem = 0;
-	char *infile=NULL,*str=NULL,*oidfile=NULL, *derfile=NULL, *name=NULL, *header=NULL;
-	char *genstr=NULL, *genconf=NULL;
-	unsigned char *tmpbuf;
-	char *prog;
-	const unsigned char *ctmpbuf;
+	ASN1_TYPE *at=NULL;
+	BIO *in=NULL, *b64=NULL, *derout = NULL;
 	BUF_MEM *buf=NULL;
 	STACK_OF(OPENSSL_STRING) *osk=NULL;
-	ASN1_TYPE *at=NULL;
+	char *genstr=NULL, *genconf=NULL;
+	char *infile=NULL, *str=NULL, *oidfile=NULL, *derfile=NULL;
+	char *name=NULL, *header=NULL, *prog;
+	const unsigned char *ctmpbuf;
+	enum options i;
+	int indent=0, noout=0, dump=0, strictpem=0, informat=FORMAT_PEM;
+	int offset=0, ret=1, j;
+	long num, tmplen;
+	unsigned char *tmpbuf;
+	unsigned int length=0;
 
 	prog = opt_init(argc, argv, asn1parse_options);
 
@@ -130,6 +129,8 @@ int asn1parse_main(int argc, char **argv)
 		switch (i) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 			opt_help(asn1parse_options);
 			goto end;

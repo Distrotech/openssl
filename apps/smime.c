@@ -147,30 +147,28 @@ OPTIONS smime_options[] = {
 
 int smime_main(int argc, char **argv)
 	{
-	const char *inmode="r", *outmode="w";
-	char *infile=NULL, *outfile=NULL, *signerfile=NULL, *recipfile=NULL;
-	char *certfile=NULL, *keyfile=NULL, *contfile=NULL;
-	char *to=NULL, *from=NULL, *subject=NULL;
-	char *passinarg=NULL, *passin=NULL;
+	BIO *in=NULL, *out=NULL, *indata=NULL;
+	EVP_PKEY *key=NULL;
+	PKCS7 *p7=NULL;
+	STACK_OF(OPENSSL_STRING) *sksigners=NULL, *skkeys=NULL;
+	STACK_OF(X509) *encerts=NULL, *other=NULL;
+	X509 *cert=NULL, *recip=NULL, *signer=NULL;
+	X509_STORE *store=NULL;
+	X509_VERIFY_PARAM *vpm=NULL;
+	const EVP_CIPHER *cipher=NULL;
+	const EVP_MD *sign_md=NULL;
 	char *CAfile=NULL, *CApath=NULL, *inrand=NULL, *engine=NULL;
+	char *certfile=NULL, *keyfile=NULL, *contfile=NULL, *prog;
+	char *infile=NULL, *outfile=NULL, *signerfile=NULL, *recipfile=NULL;
+	char *passinarg=NULL, *passin=NULL, *to=NULL, *from=NULL, *subject=NULL;
+	const char *inmode="r", *outmode="w";
+	enum options o;
 	int flags=PKCS7_DETACHED, operation=0, ret=0, need_rand=0, indef=0;
 	int informat=FORMAT_SMIME, outformat=FORMAT_SMIME, keyform=FORMAT_PEM;
 	int vpmtouched=0;
-	const EVP_MD *sign_md=NULL;
 #ifndef OPENSSL_NO_ENGINE
 	ENGINE *e=NULL;
 #endif
-	const EVP_CIPHER *cipher=NULL;
-	X509_VERIFY_PARAM *vpm=NULL;
-	STACK_OF(OPENSSL_STRING) *sksigners=NULL, *skkeys=NULL;
-	PKCS7 *p7=NULL;
-	X509_STORE *store=NULL;
-	X509 *cert=NULL, *recip=NULL, *signer=NULL;
-	EVP_PKEY *key=NULL;
-	STACK_OF(X509) *encerts=NULL, *other=NULL;
-	BIO *in=NULL, *out=NULL, *indata=NULL;
-	enum options o;
-	char* prog;
 
 	if ((vpm = X509_VERIFY_PARAM_new()) == NULL)
 		return 1;
@@ -180,6 +178,8 @@ int smime_main(int argc, char **argv)
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 err:
 			opt_help(smime_options);

@@ -160,23 +160,24 @@ OPTIONS ts_options[] = {
 int ts_main(int argc, char **argv)
 	{
 	CONF *conf=NULL;
-	enum options mode = OPT_ERR;
-	char *data=NULL, *digest=NULL, *rnd=NULL, *policy=NULL;
-	const EVP_MD *md=NULL;
-	int ret=1, no_nonce=0, cert=0, text=0;
+	char *ca_file=NULL, *untrusted=NULL, *engine=NULL, *prog;
 	char *configfile=NULL, *section=NULL;
+	char *data=NULL, *digest=NULL, *rnd=NULL, *policy=NULL;
 	char *in=NULL, *out=NULL, *queryfile=NULL, *passin=NULL, *password=NULL;
 	char *inkey=NULL, *signer=NULL, *chain=NULL, *ca_path=NULL;
-	char *ca_file=NULL, *untrusted=NULL, *engine=NULL, * prog;
+	const EVP_MD *md=NULL;
+	enum options o, mode=OPT_ERR;
+	int ret=1, no_nonce=0, cert=0, text=0;
 	int token_in=0;	/* Input is ContentInfo instead of TimeStampResp. */
 	int token_out=0; /* Output is ContentInfo instead of TimeStampResp. */
-	enum options o;
 
 	prog = opt_init(argc, argv, ts_options);
 	while ((o = opt_next()) != OPT_EOF) {
 		switch (o) {
 		case OPT_EOF:
 		case OPT_ERR:
+			BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+			goto end;
 		case OPT_HELP:
 err:
 			opt_help(ts_options);

@@ -168,7 +168,9 @@ int pkcs12_main(int argc, char **argv)
 	    switch (o) {
 	    case OPT_EOF:
 	    case OPT_ERR:
-		case OPT_HELP:
+		    BIO_printf(bio_err, "%s: Use -help for summary.\n", prog);
+		    goto end;
+	    case OPT_HELP:
 err:
 		    opt_help(pkcs12_options);
 		    goto end;
