@@ -60,6 +60,38 @@ decc_feat_t decc_feat_array[] =
  { (char *)NULL, 0 }
 };
 
+ 
+char **copy_argv(int *argc, char *argv[])
+{
+	/* 2011-03-22 SMS.
+	 * Problem 1: Compaq/HP C before V7.3 always used 32-bit
+	 * pointers for argv[].
+	 * Fix 1: For a 32-bit argv[], when we're using 64-bit pointers
+	 * everywhere else, we always allocate and use a 64-bit
+	 * duplicate of argv[].
+	 * Problem 2: Compaq/HP C V7.3 (Alpha, IA64) before ECO1 failed
+	 * to NULL-terminate a 64-bit argv[].  (As this was written, the
+	 * compiler ECO was available only on IA64.)
+	 * Fix 2: Unless advised not to (VMS_TRUST_ARGV), we test a
+	 * 64-bit argv[argc] for NULL, and, if necessary, use a
+	 * (properly) NULL-terminated (64-bit) duplicate of argv[].
+	 * The same code is used in either case to duplicate argv[].
+	 * Some of these decisions could be handled in preprocessing,
+	 * but the code tends to get even uglier, and the penalty for
+	 * deciding at compile- or run-time is tiny.
+	 *
+	 * 2014-07-16, rsalz: Simpler -- just always copy it.
+	 */
+
+	int i;
+	char **newargv = (char **)OPENSSL_malloc((*argc+1) * sizeof *newargv);
+
+	for (i = 0; argv[i]; i++)
+		newargv[i] = argv[i];
+	newargv[i] = NULL;
+	*argc = i;
+	return newargv;
+}
 
 /* LIB$INITIALIZE initialization function. */
 

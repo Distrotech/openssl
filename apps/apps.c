@@ -174,108 +174,90 @@ int str2fmt(char *s)
 	{
 	if (s == NULL)
 		return FORMAT_UNDEF;
-	if 	((*s == 'D') || (*s == 'd'))
+	switch (*s++) {
+	case 'D': case 'd':
 		return(FORMAT_ASN1);
-	else if ((*s == 'T') || (*s == 't'))
+	case 'T': case 't':
 		return(FORMAT_TEXT);
-	else if ((strcmp(s,"NSS") == 0) || (strcmp(s,"nss") == 0))
-		return(FORMAT_NSS);
-  	else if ((*s == 'N') || (*s == 'n'))
+	case 'N': case 'n':
+		if (strcmp(s,"SS") == 0 || strcmp(s,"ss") == 0)
+			return(FORMAT_NSS);
   		return(FORMAT_NETSCAPE);
-  	else if ((*s == 'S') || (*s == 's'))
+	case 'S': case 's':
   		return(FORMAT_SMIME);
- 	else if ((*s == 'M') || (*s == 'm'))
+	case 'M': case 'm':
  		return(FORMAT_MSBLOB);
-	else if ((*s == '1')
-		|| (strcmp(s,"PKCS12") == 0) || (strcmp(s,"pkcs12") == 0)
-		|| (strcmp(s,"P12") == 0) || (strcmp(s,"p12") == 0))
+	case '1':
 		return(FORMAT_PKCS12);
-	else if ((*s == 'E') || (*s == 'e'))
+	case 'E': case 'e':
 		return(FORMAT_ENGINE);
-	else if ((*s == 'H') || (*s == 'h'))
+	case 'H': case 'h':
 		return FORMAT_HTTP;
-	else if ((*s == 'P') || (*s == 'p'))
- 		{
- 		if (s[1] == 'V' || s[1] == 'v')
+	case 'P': case 'p':
+		if (strcmp(s, "12") == 0
+		 || strcmp(s, "KCS12") == 0
+		 || strcmp(s, "kcs12") == 0)
+			return(FORMAT_PKCS12);
+		if (strcmp(s, "VK") == 0 || strcmp(s, "vk") == 0)
  			return FORMAT_PVK;
- 		else
-  			return(FORMAT_PEM);
- 		}
-	else
-		return(FORMAT_UNDEF);
+		return(FORMAT_PEM);
+	}
+	return(FORMAT_UNDEF);
 	}
 
 
-int chopup_args(ARGS *arg, char *buf, int *argc, char **argv[])
+int chopup_args(ARGS *arg, char *buf)
 	{
-	int num,i;
-	char *p;
+	int quoted;
+	char c, *p;
 
-	*argc=0;
-	*argv=NULL;
-
-	i=0;
-	if (arg->count == 0)
+	arg->argc = 0;
+	if (arg->size == 0)
 		{
-		arg->count=20;
-		arg->data=(char **)OPENSSL_malloc(sizeof(char *)*arg->count);
-		if (arg->data == NULL)
+		arg->size=20;
+		arg->argv=(char **)OPENSSL_malloc(sizeof(char *)*arg->size);
+		if (arg->argv == NULL)
 			return 0;
 		}
-	for (i=0; i<arg->count; i++)
-		arg->data[i]=NULL;
 
-	num=0;
-	p=buf;
-	for (;;)
+	for (p=buf;;)
 		{
-		/* first scan over white space */
-		if (!*p) break;
-		while (*p && ((*p == ' ') || (*p == '\t') || (*p == '\n')))
+		/* Skip whitespace. */
+		while (*p && isspace(*p))
 			p++;
 		if (!*p) break;
 
 		/* The start of something good :-) */
-		if (num >= arg->count)
+		if (arg->argc >= arg->size)
 			{
-			char **tmp_p;
-			int tlen = arg->count + 20;
-			tmp_p = (char **)OPENSSL_realloc(arg->data,
-				sizeof(char *)*tlen);
-			if (tmp_p == NULL)
+			arg->size += 20;
+			arg->argv = (char **)OPENSSL_realloc(arg->argv,
+				sizeof(char *)*arg->size);
+			if (arg->argv == NULL)
 				return 0;
-			arg->data  = tmp_p;
-			arg->count = tlen;
-			/* initialize newly allocated data */
-			for (i = num; i < arg->count; i++)
-				arg->data[i] = NULL;
 			}
-		arg->data[num++]=p;
+		quoted = *p == '\'' || *p == '"';
+		if (quoted)
+			c = *p++;
+		arg->argv[arg->argc++]=p;
+
 
 		/* now look for the end of this */
-		if ((*p == '\'') || (*p == '\"')) /* scan for closing quote */
+		if (quoted)
 			{
-			i= *(p++);
-			arg->data[num-1]++; /* jump over quote */
-			while (*p && (*p != i))
+			while (*p && *p != c)
 				p++;
-			*p='\0';
+			*p++='\0';
 			}
 		else
 			{
-			while (*p && ((*p != ' ') &&
-				(*p != '\t') && (*p != '\n')))
+			while (*p && !isspace(*p))
 				p++;
-
-			if (*p == '\0')
-				p--;
-			else
-				*p='\0';
+			if (*p)
+				*p++='\0';
 			}
-		p++;
 		}
-	*argc=num;
-	*argv=arg->data;
+	arg->argv[arg->argc] = NULL;
 	return(1);
 	}
 

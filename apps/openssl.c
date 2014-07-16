@@ -337,30 +337,30 @@ BIO* bio_open_default(const char* filename, const char* mode)
 	return NULL;
 }
 
-
-#if defined( OPENSSL_SYS_VMS) && (__INITIAL_POINTER_SIZE == 64)
-# define ARGV _Argv
-#else
-# define ARGV Argv
+#if defined( OPENSSL_SYS_VMS)
+extern char** copy_argv(int *argc, char **argv);
 #endif
 
-int main(int Argc, char *ARGV[])
+int main(int argc, char *argv[])
 	{
 	ARGS arg;
-#define PROG_NAME_SIZE	39
 	char *pname;
 	FUNCTION f,*fp;
 	MS_STATIC const char *prompt;
 	MS_STATIC char buf[1024];
 	char *to_free=NULL;
 	int n,i,ret=0;
-	int argc;
-	char **argv,*p;
+	char *p;
 	LHASH_OF(FUNCTION) *prog=NULL;
 	long errline;
+	char **copied_argv=NULL;
 
-	arg.data=NULL;
-	arg.count=0;
+	arg.argv=NULL;
+	arg.size=0;
+
+#if defined( OPENSSL_SYS_VMS)
+	copied_argv = argv = copy_argv(&argc, argv);
+#endif
 
 	if (getenv("OPENSSL_DEBUG_MEMORY") != NULL) /* if not defined, use compiled-in library defaults */
 		{
@@ -437,25 +437,25 @@ int main(int Argc, char *ARGV[])
 		}
 
 	prog=prog_init();
-	pname = opt_progname(Argv[0]);
+	pname = opt_progname(argv[0]);
 
 	/* first check the program name */
 	f.name=pname;
 	fp=lh_FUNCTION_retrieve(prog,&f);
 	if (fp != NULL)
 		{
-		Argv[0]=pname;
-		ret=fp->func(Argc,Argv);
+		argv[0]=pname;
+		ret=fp->func(argc,argv);
 		goto end;
 		}
 
 	/* ok, now check that there are not arguments, if there are,
 	 * run with them, shifting the ssleay off the front */
-	if (Argc != 1)
+	if (argc != 1)
 		{
-		Argc--;
-		Argv++;
-		ret=do_cmd(prog,Argc,Argv);
+		argc--;
+		argv++;
+		ret=do_cmd(prog,argc,argv);
 		if (ret < 0) ret=0;
 		goto end;
 		}
@@ -486,9 +486,9 @@ int main(int Argc, char *ARGV[])
 			p+=i;
 			n-=i;
 			}
-		if (!chopup_args(&arg,buf,&argc,&argv)) break;
+		if (!chopup_args(&arg,buf)) break;
 
-		ret=do_cmd(prog,argc,argv);
+		ret=do_cmd(prog,arg.argc,arg.argv);
 		if (ret < 0)
 			{
 			ret=0;
@@ -502,6 +502,8 @@ int main(int Argc, char *ARGV[])
 	BIO_printf(bio_err,"bad exit\n");
 	ret=1;
 end:
+	if (copied_argv)
+		OPENSSL_free(copied_argv);
 	if (to_free)
 		OPENSSL_free(to_free);
 	if (config != NULL)
@@ -510,7 +512,7 @@ end:
 		config=NULL;
 		}
 	if (prog != NULL) lh_FUNCTION_free(prog);
-	if (arg.data != NULL) OPENSSL_free(arg.data);
+	if (arg.argv != NULL) OPENSSL_free(arg.argv);
 
 	apps_shutdown();
 
@@ -537,6 +539,8 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 
 	if ((argc <= 0) || (argv[0] == NULL))
 		{ ret=0; goto end; }
+	if (strcmp(argv[0], ":") == 0)
+		argc--, argv++;
 	f.name=argv[0];
 	fp=lh_FUNCTION_retrieve(prog,&f);
 	if (fp == NULL)
@@ -595,9 +599,6 @@ static int do_cmd(LHASH_OF(FUNCTION) *prog, int argc, char *argv[])
 			list_type = FUNC_TYPE_PKEY;
 		else if (strcmp(argv[0],LIST_CIPHER_ALGORITHMS) == 0)
 			list_type = FUNC_TYPE_CIPHER_ALG;
-
-		if (!load_config(bio_err, NULL))
-			goto end;
 
 		if (list_type == FUNC_TYPE_PKEY)
 			list_pkey(bio_out);	
