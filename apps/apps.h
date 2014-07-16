@@ -328,8 +328,9 @@ extern void opt_help(const OPTIONS* list);
 
 typedef struct args_st
 	{
-	char **data;
-	int count;
+	int size;
+	int argc;
+	char **argv;
 	} ARGS;
 
 #define PW_MIN_LENGTH 4
@@ -345,7 +346,7 @@ int password_callback(char *buf, int bufsiz, int verify,
 int setup_ui_method(void);
 void destroy_ui_method(void);
 
-int chopup_args(ARGS *arg,char *buf, int *argc, char **argv[]);
+int chopup_args(ARGS *arg,char *buf);
 #ifdef HEADER_X509_H
 int dump_cert_text(BIO *out, X509 *x);
 void print_name(BIO *out, const char *title, X509_NAME *nm, unsigned long lflags);
