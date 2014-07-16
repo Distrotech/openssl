@@ -703,9 +703,9 @@ void opt_help(const OPTIONS* list)
 #include <sys/stat.h>
 
 enum options {
-	OPT_ERR=-1, OPT_EOF=0, OPT_NOTUSED, OPT_HELP,
+	OPT_ERR=-1, OPT_EOF=0, OPT_HELP,
 	OPT_IN, OPT_INFORM, OPT_OUT, OPT_COUNT, OPT_U, OPT_FLAG,
-	OPT_STR, OPT_HELP
+	OPT_STR, OPT_NOTUSED
 };
 static OPTIONS options[] = {
 	{ OPT_HELP_STR, 1, '-', "Usage: %s flags\n" },
@@ -719,7 +719,6 @@ static OPTIONS options[] = {
 	{ "u",      OPT_U,      'u', "an unsigned number" },
 	{ "flag",   OPT_FLAG,     0, "just some flag" },
 	{ "str",    OPT_STR,    's', "the magic word" },
-	{ "help",   OPT_HELP,   '-', "get this output" },
 	{ "areallyverylongoption", OPT_HELP, '-', "long way for help" },
 	{ NULL }
 };
@@ -746,8 +745,7 @@ int main(int ac, char **av)
 		case OPT_NOTUSED:
 		case OPT_EOF:
 		case OPT_ERR:
-		case OPT_HELP:
-			printf("Usage error; try -help.");
+			printf("Usage error; try -help.\n");
 			return -1;
 		case OPT_HELP:
 			opt_help(options);
